@@ -667,7 +667,7 @@ export default function AdminContent() {
                   className="w-full bg-red-600 hover:bg-red-700 text-white py-3 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
                   {isSaving && "⏳ 저장 중..."}
-                  {!isSaving && gameStatus === "waiting" && "🎮 게임 예약 완료"}
+                  {!isSaving && gameStatus === "waiting" && "🎮 게임 예약하기"}
                   {!isSaving && gameStatus === "starting" && "⏱️ 시작 중..."}
                   {!isSaving && gameStatus === "in-progress" && "🎯 게임 진행 중"}
                   {!isSaving && gameStatus === "completed" && "✅ 게임 완료"}
