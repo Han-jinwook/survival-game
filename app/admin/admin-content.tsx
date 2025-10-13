@@ -374,10 +374,36 @@ export default function AdminContent() {
     }
   }
 
-  const handleCancelReservation = () => {
+  const handleCancelReservation = async () => {
     if (confirm("게임 예약을 취소하시겠습니까?")) {
       console.log("[Admin] 게임 예약 취소")
+      
+      try {
+        const response = await fetch("/api/game/settings")
+        if (response.ok) {
+          const data = await response.json()
+          if (data.session) {
+            await fetch("/api/game/session", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "complete",
+                sessionId: data.session.id,
+                updates: { status: "completed" }
+              })
+            })
+          }
+        }
+      } catch (error) {
+        console.error("[Admin] 예약 취소 중 오류:", error)
+      }
+      
       setGameScheduled(false)
+      setCafeName("")
+      setEventName("")
+      setPrize("")
+      setGameStartTime("")
+      setParticipants([])
       setGameMessage("게임 예약이 취소되었습니다.")
       setTimeout(() => {
         setGameMessage("")
