@@ -631,36 +631,34 @@ export default function AdminContent() {
                 <p className="text-xs text-yellow-400 text-center">⚠️ 최소 2명 이상의 참가자를 추가해주세요</p>
               )}
 
-              {gameScheduled && gameStatus === "waiting" ? (
-                <div key="game-scheduled" className="flex gap-2">
-                  <Button
-                    disabled
-                    className="flex-1 bg-green-700 text-white py-3 text-lg font-semibold cursor-not-allowed"
-                  >
-                    ✓ 게임 예약됨
-                  </Button>
-                  <Button
+              <div className="flex gap-2">
+                <button
+                  onClick={handleGameSetupClick}
+                  disabled={isSaving || gameStatus !== "waiting" || participants.length < 2 || gameScheduled}
+                  className={`py-3 text-lg font-semibold transition-all ${
+                    gameScheduled 
+                      ? "flex-1 bg-green-700 text-white cursor-not-allowed" 
+                      : "w-full bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  }`}
+                  style={{ borderRadius: '0.375rem' }}
+                >
+                  {gameScheduled && "✓ 게임 예약됨"}
+                  {!gameScheduled && isSaving && "⏳ 저장 중..."}
+                  {!gameScheduled && !isSaving && gameStatus === "waiting" && "🎮 게임 예약하기"}
+                  {!gameScheduled && !isSaving && gameStatus === "starting" && "⏱️ 시작 중..."}
+                  {!gameScheduled && !isSaving && gameStatus === "in-progress" && "🎯 게임 진행 중"}
+                  {!gameScheduled && !isSaving && gameStatus === "completed" && "✅ 게임 완료"}
+                </button>
+                {gameScheduled && gameStatus === "waiting" && (
+                  <button
                     onClick={handleCancelReservation}
-                    variant="destructive"
-                    className="flex-1 py-3 text-lg font-semibold"
+                    className="flex-1 bg-red-900 hover:bg-red-800 text-white py-3 text-lg font-semibold transition-all"
+                    style={{ borderRadius: '0.375rem' }}
                   >
                     예약 취소
-                  </Button>
-                </div>
-              ) : (
-                <Button
-                  key="game-not-scheduled"
-                  onClick={handleGameSetupClick}
-                  disabled={isSaving || gameStatus !== "waiting" || participants.length < 2}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white py-3 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  {isSaving && "⏳ 저장 중..."}
-                  {!isSaving && gameStatus === "waiting" && "🎮 게임 예약하기"}
-                  {!isSaving && gameStatus === "starting" && "⏱️ 시작 중..."}
-                  {!isSaving && gameStatus === "in-progress" && "🎯 게임 진행 중"}
-                  {!isSaving && gameStatus === "completed" && "✅ 게임 완료"}
-                </Button>
-              )}
+                  </button>
+                )}
+              </div>
             </div>
           </Card>
         </div>
