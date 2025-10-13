@@ -6,7 +6,8 @@ export async function POST(request: NextRequest) {
     const { 
       sessionName, 
       initialLives, 
-      participants 
+      participants,
+      gameStartTime
     } = await request.json()
 
     if (!sessionName || !initialLives) {
@@ -26,10 +27,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 새 게임 세션 생성
+    // 새 게임 세션 생성 (gameStartTime이 있으면 started_at에 설정)
     const session = await DatabaseService.createGameSession(
       sessionName,
-      initialLives
+      initialLives,
+      gameStartTime
     )
 
     // 참가자 등록
@@ -87,11 +89,13 @@ export async function GET() {
         initialLives: session.initial_lives,
         status: session.status,
         currentRound: session.current_round,
+        startedAt: session.started_at,
         createdAt: session.created_at,
       },
-      participants: participants.map(p => ({
+      participants: participants.map((p: any) => ({
         id: p.id,
         userId: p.user_id,
+        naverId: p.naver_id,
         nickname: p.nickname,
         initialLives: p.initial_lives,
         currentLives: p.current_lives,

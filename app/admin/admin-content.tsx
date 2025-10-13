@@ -9,18 +9,12 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 
 interface Participant {
-  id: string // 고유 ID 추가
+  id: string
   naverId: string
   nickname: string
   lives: number
   status: "waiting" | "ready" | "playing"
 }
-
-const DEFAULT_PARTICIPANTS: Participant[] = [
-  { id: "1", naverId: "testuser", nickname: "테스트유저", lives: 5, status: "waiting" }, // id 추가
-  { id: "2", naverId: "gamemaster", nickname: "게임마스터", lives: 7, status: "waiting" }, // id 추가
-  { id: "3", naverId: "player1", nickname: "플레이어1", lives: 3, status: "waiting" }, // id 추가
-]
 
 export default function AdminContent() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -64,64 +58,48 @@ export default function AdminContent() {
   }
 
   useEffect(() => {
-    const savedSettings = localStorage.getItem("gameSettings")
-    if (savedSettings) {
+    console.log("[Admin] 초기 로드 시작 - DB에서 데이터를 불러옵니다")
+    
+    const loadSettings = async () => {
       try {
-        const settings = JSON.parse(savedSettings)
-        setCafeName(settings.cafeName || "썬드림 즐빛카페")
-        setEventName(settings.eventName || "하나빼기 서바이벌 이벤트")
-        setPrize(settings.prize || "아이폰 16 Pro Max")
-        setGameStartTime(settings.gameStartTime || "2025-01-15T20:00")
-
-        const loadedParticipants = settings.participants || []
-        const participantsWithIds = loadedParticipants.map((p: Participant, index: number) => {
-          if (!p.id) {
-            // id가 없으면 고유한 id 생성
-            return {
-              ...p,
-              id: `${Date.now()}-${index}-${Math.random().toString(36).substring(2, 9)}`,
-            }
+        const response = await fetch("/api/game/settings")
+        if (response.ok) {
+          const data = await response.json()
+          console.log("[Admin] DB 데이터 로드 성공:", data)
+          
+          if (data.session) {
+            setCafeName("")
+            setEventName(data.session.sessionName || "")
+            setPrize("")
+            setGameStartTime(data.session.startedAt?.slice(0, 16) || "")
+            setGameScheduled(data.session.status === "waiting")
           }
-          return p
-        })
-
-        setParticipants(participantsWithIds)
-        setGameScheduled(settings.gameScheduled || false)
-        console.log("[v0] 저장된 설정 로드 완료, 참가자 수:", participantsWithIds.length)
-
-        if (participantsWithIds.some((p: Participant, i: number) => p.id !== loadedParticipants[i]?.id)) {
-          const updatedSettings = {
-            ...settings,
-            participants: participantsWithIds,
+          
+          if (data.participants && data.participants.length > 0) {
+            const loadedParticipants = data.participants.map((p: any) => ({
+              id: p.id,
+              naverId: p.naverId || "",
+              nickname: p.nickname,
+              lives: p.currentLives,
+              status: p.status,
+            }))
+            setParticipants(loadedParticipants)
+            console.log("[Admin] 참가자 로드 완료:", loadedParticipants.length, "명")
+          } else {
+            console.log("[Admin] 저장된 게임 설정이 없습니다. 빈 상태로 시작합니다.")
+            setParticipants([])
           }
-          localStorage.setItem("gameSettings", JSON.stringify(updatedSettings))
-          console.log("[v0] 참가자 ID 자동 생성 및 저장 완료")
+        } else {
+          console.log("[Admin] DB에 저장된 설정 없음 - 빈 상태로 시작")
+          setParticipants([])
         }
       } catch (error) {
-        console.error("Failed to load settings:", error)
-        setCafeName("썬드림 즐빛카페")
-        setEventName("하나빼기 서바이벌 이벤트")
-        setPrize("아이폰 16 Pro Max")
-        setGameStartTime("2025-01-15T20:00")
-        setParticipants(DEFAULT_PARTICIPANTS)
+        console.error("[Admin] 데이터 로드 실패:", error)
+        setParticipants([])
       }
-    } else {
-      console.log("[v0] 저장된 설정 없음, 기본값 사용")
-      setCafeName("썬드림 즐빛카페")
-      setEventName("하나빼기 서바이벌 이벤트")
-      setPrize("아이폰 16 Pro Max")
-      setGameStartTime("2025-01-15T20:00")
-      setParticipants(DEFAULT_PARTICIPANTS)
-      const defaultSettings = {
-        cafeName: "썬드림 즐빛카페",
-        eventName: "하나빼기 서바이벌 이벤트",
-        prize: "아이폰 16 Pro Max",
-        gameStartTime: "2025-01-15T20:00",
-        participants: DEFAULT_PARTICIPANTS,
-        gameScheduled: false,
-      }
-      localStorage.setItem("gameSettings", JSON.stringify(defaultSettings))
     }
+    
+    loadSettings()
   }, [])
 
   useEffect(() => {
@@ -173,37 +151,69 @@ export default function AdminContent() {
     }
   }
 
-  const saveSettings = () => {
-    const settings = {
-      cafeName,
-      eventName,
-      prize,
-      gameStartTime,
-      participants,
-      gameScheduled,
+  const saveSettings = async () => {
+    try {
+      const response = await fetch("/api/game/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionName: eventName || cafeName || "가위바위보 하나빼기 게임",
+          initialLives: 5,
+          gameStartTime: gameStartTime || undefined,
+          participants: participants.map(p => ({
+            naverId: p.naverId,
+            nickname: p.nickname,
+            lives: p.lives,
+          })),
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "설정 저장 실패")
+      }
+
+      setIsSaved(true)
+      setLastSavedTime(new Date())
+      setIsEditing(false)
+      console.log("[Admin] 설정 DB 저장 완료, 참가자 수:", participants.length)
+      alert("설정이 DB에 저장되었습니다!")
+    } catch (error: any) {
+      console.error("[Admin] 설정 저장 실패:", error)
+      alert(error.message || "설정 저장에 실패했습니다. 다시 시도해주세요.")
     }
-    localStorage.setItem("gameSettings", JSON.stringify(settings))
-    setIsSaved(true)
-    setLastSavedTime(new Date())
-    setIsEditing(false)
-    console.log("[v0] 설정 저장 완료, 참가자 수:", participants.length)
-    alert("설정이 저장되었습니다!")
   }
 
-  const saveParticipants = () => {
-    const settings = {
-      cafeName,
-      eventName,
-      prize,
-      gameStartTime,
-      participants,
-      gameScheduled,
+  const saveParticipants = async () => {
+    try {
+      const response = await fetch("/api/game/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionName: eventName || cafeName || "가위바위보 하나빼기 게임",
+          initialLives: 5,
+          gameStartTime: gameStartTime || undefined,
+          participants: participants.map(p => ({
+            naverId: p.naverId,
+            nickname: p.nickname,
+            lives: p.lives,
+          })),
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "참가자 목록 저장 실패")
+      }
+
+      setIsSaved(true)
+      setLastSavedTime(new Date())
+      console.log("[Admin] 참가자 목록 DB 저장 완료, 참가자 수:", participants.length)
+      alert("참가자 목록이 DB에 저장되었습니다!")
+    } catch (error: any) {
+      console.error("[Admin] 참가자 저장 실패:", error)
+      alert(error.message || "참가자 저장에 실패했습니다. 다시 시도해주세요.")
     }
-    localStorage.setItem("gameSettings", JSON.stringify(settings))
-    setIsSaved(true)
-    setLastSavedTime(new Date())
-    console.log("[v0] 참가자 목록 저장 완료, 참가자 수:", participants.length)
-    alert("참가자 목록이 저장되었습니다!")
   }
 
   const addParticipant = () => {
@@ -270,7 +280,7 @@ export default function AdminContent() {
     }
   }
 
-  const completeGameSetup = () => {
+  const completeGameSetup = async () => {
     if (participants.length < 2) {
       alert("최소 2명 이상의 참가자가 필요합니다.")
       return
@@ -302,22 +312,37 @@ export default function AdminContent() {
       timeMessage = `${minutes}분`
     }
 
-    const settings = {
-      cafeName,
-      eventName,
-      prize,
-      gameStartTime,
-      participants,
-      gameScheduled: true,
+    try {
+      const response = await fetch("/api/game/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionName: eventName || cafeName || "가위바위보 하나빼기 게임",
+          initialLives: 5,
+          gameStartTime: gameStartTime,
+          participants: participants.map(p => ({
+            naverId: p.naverId,
+            nickname: p.nickname,
+            lives: p.lives,
+          })),
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "게임 예약 실패")
+      }
+
+      setGameScheduled(true)
+      setIsSaved(true)
+      setLastSavedTime(new Date())
+      console.log("[Admin] 게임 예약 DB 저장 완료, 참가자 수:", participants.length)
+
+      alert(`게임 예약이 완료되었습니다!\n게임 시작까지 ${timeMessage} 남았습니다.`)
+    } catch (error: any) {
+      console.error("[Admin] 게임 예약 실패:", error)
+      alert(error.message || "게임 예약에 실패했습니다. 다시 시도해주세요.")
     }
-
-    localStorage.setItem("gameSettings", JSON.stringify(settings))
-    setGameScheduled(true)
-    setIsSaved(true)
-    setLastSavedTime(new Date())
-    console.log("[v0] 게임 예약 완료, 참가자 수:", participants.length)
-
-    alert(`게임 예약이 완료되었습니다!\n게임 시작까지 ${timeMessage} 남았습니다.`)
   }
 
   const handleGameSetupClick = () => {
@@ -480,16 +505,23 @@ export default function AdminContent() {
                     저장
                   </Button>
                   <Button
-                    onClick={() => {
+                    onClick={async () => {
                       setIsEditing(false)
                       setIsSaved(true)
-                      const savedSettings = localStorage.getItem("gameSettings")
-                      if (savedSettings) {
-                        const settings = JSON.parse(savedSettings)
-                        setCafeName(settings.cafeName || "썬드림 즐빛카페")
-                        setEventName(settings.eventName || "하나빼기 서바이벌 이벤트")
-                        setPrize(settings.prize || "아이폰 16 Pro Max")
-                        setGameStartTime(settings.gameStartTime || "2025-01-15T20:00")
+                      console.log("[Admin] 수정 취소 - 변경사항 되돌림")
+                      try {
+                        const response = await fetch("/api/game/settings")
+                        if (response.ok) {
+                          const data = await response.json()
+                          if (data.session) {
+                            setCafeName(data.session.sessionName || "")
+                            setEventName(data.session.sessionName || "")
+                            setPrize("")
+                            setGameStartTime(data.session.startedAt?.slice(0, 16) || "")
+                          }
+                        }
+                      } catch (error) {
+                        console.error("[Admin] 데이터 복원 실패:", error)
                       }
                     }}
                     variant="outline"
@@ -554,18 +586,10 @@ export default function AdminContent() {
 
               {gameScheduled && gameStatus === "waiting" && (
                 <Button
-                  onClick={() => {
+                  onClick={async () => {
                     if (confirm("게임 예약을 취소하시겠습니까?")) {
                       setGameScheduled(false)
-                      const settings = {
-                        cafeName,
-                        eventName,
-                        prize,
-                        gameStartTime,
-                        participants,
-                        gameScheduled: false,
-                      }
-                      localStorage.setItem("gameSettings", JSON.stringify(settings))
+                      console.log("[Admin] 게임 예약 취소 - DB 업데이트는 필요 시 추가 구현")
                     }
                   }}
                   variant="destructive"

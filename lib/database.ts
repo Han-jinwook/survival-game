@@ -110,14 +110,24 @@ export class DatabaseService {
   // 게임 세션 관련
   static async createGameSession(
     sessionName: string,
-    initialLives: number
+    initialLives: number,
+    startedAt?: string
   ): Promise<GameSession> {
     const db = getPool()
-    const result = await db.query<GameSession>(
-      'INSERT INTO game_sessions (session_name, initial_lives) VALUES ($1, $2) RETURNING *',
-      [sessionName, initialLives]
-    )
-    return result.rows[0]
+    
+    if (startedAt) {
+      const result = await db.query<GameSession>(
+        'INSERT INTO game_sessions (session_name, initial_lives, started_at) VALUES ($1, $2, $3) RETURNING *',
+        [sessionName, initialLives, startedAt]
+      )
+      return result.rows[0]
+    } else {
+      const result = await db.query<GameSession>(
+        'INSERT INTO game_sessions (session_name, initial_lives) VALUES ($1, $2) RETURNING *',
+        [sessionName, initialLives]
+      )
+      return result.rows[0]
+    }
   }
 
   static async getActiveGameSession(): Promise<GameSession | null> {
@@ -192,8 +202,12 @@ export class DatabaseService {
 
   static async getParticipants(sessionId: string): Promise<GameParticipant[]> {
     const db = getPool()
-    const result = await db.query<GameParticipant>(
-      'SELECT * FROM game_participants WHERE game_session_id = $1 ORDER BY joined_at',
+    const result = await db.query<GameParticipant & {naver_id: string}>(
+      `SELECT gp.*, u.naver_id 
+       FROM game_participants gp 
+       JOIN users u ON gp.user_id = u.id 
+       WHERE gp.game_session_id = $1 
+       ORDER BY gp.joined_at`,
       [sessionId]
     )
     return result.rows

@@ -17,20 +17,33 @@ export default function GameLanding() {
   })
 
   useEffect(() => {
-    const savedSettings = localStorage.getItem("gameSettings")
-    if (savedSettings) {
+    const loadEventInfo = async () => {
       try {
-        const settings = JSON.parse(savedSettings)
-        setEventInfo({
-          name: settings.eventName || "2025 신년 특별 이벤트",
-          prize: settings.prize || "아이폰 16 Pro Max",
-          startTime: settings.gameStartTime || "2025-01-15T20:00",
-        })
-        setPlayerCount(settings.participants?.length || 847)
+        const response = await fetch("/api/game/settings")
+        if (response.ok) {
+          const data = await response.json()
+          console.log("[Home] DB 데이터 로드 성공:", data)
+          
+          if (data.session) {
+            setEventInfo({
+              name: data.session.sessionName || "2025 신년 특별 이벤트",
+              prize: "아이폰 16 Pro Max",
+              startTime: data.session.startedAt || data.session.createdAt || "2025-01-15T20:00",
+            })
+            
+            if (data.participants) {
+              setPlayerCount(data.participants.length)
+            }
+          }
+        } else {
+          console.log("[Home] DB에 저장된 설정 없음 - 기본값 사용")
+        }
       } catch (error) {
-        console.error("[v0] Failed to load settings:", error)
+        console.error("[Home] 데이터 로드 실패:", error)
       }
     }
+    
+    loadEventInfo()
   }, [])
 
   const formatDateTime = (dateTimeStr: string) => {
