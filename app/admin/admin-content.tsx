@@ -33,6 +33,8 @@ export default function AdminContent() {
   const [countdown, setCountdown] = useState(0)
   const [isSaved, setIsSaved] = useState(true)
   const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveMessage, setSaveMessage] = useState("")
   const isInitialMount = useRef(true)
 
   const calculateTimeRemaining = () => {
@@ -152,6 +154,9 @@ export default function AdminContent() {
   }
 
   const saveSettings = async () => {
+    setIsSaving(true)
+    setSaveMessage("")
+    
     try {
       const response = await fetch("/api/game/settings", {
         method: "POST",
@@ -177,14 +182,21 @@ export default function AdminContent() {
       setLastSavedTime(new Date())
       setIsEditing(false)
       console.log("[Admin] 설정 DB 저장 완료, 참가자 수:", participants.length)
-      alert("설정이 DB에 저장되었습니다!")
+      setSaveMessage("✅ 설정이 DB에 저장되었습니다!")
+      setTimeout(() => setSaveMessage(""), 3000)
     } catch (error: any) {
       console.error("[Admin] 설정 저장 실패:", error)
-      alert(error.message || "설정 저장에 실패했습니다. 다시 시도해주세요.")
+      setSaveMessage(`❌ ${error.message || "설정 저장에 실패했습니다."}`)
+      setTimeout(() => setSaveMessage(""), 5000)
+    } finally {
+      setIsSaving(false)
     }
   }
 
   const saveParticipants = async () => {
+    setIsSaving(true)
+    setSaveMessage("")
+    
     try {
       const response = await fetch("/api/game/settings", {
         method: "POST",
@@ -209,10 +221,14 @@ export default function AdminContent() {
       setIsSaved(true)
       setLastSavedTime(new Date())
       console.log("[Admin] 참가자 목록 DB 저장 완료, 참가자 수:", participants.length)
-      alert("참가자 목록이 DB에 저장되었습니다!")
+      setSaveMessage("✅ 참가자 목록이 DB에 저장되었습니다!")
+      setTimeout(() => setSaveMessage(""), 3000)
     } catch (error: any) {
       console.error("[Admin] 참가자 저장 실패:", error)
-      alert(error.message || "참가자 저장에 실패했습니다. 다시 시도해주세요.")
+      setSaveMessage(`❌ ${error.message || "참가자 저장에 실패했습니다."}`)
+      setTimeout(() => setSaveMessage(""), 5000)
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -282,11 +298,13 @@ export default function AdminContent() {
 
   const completeGameSetup = async () => {
     if (participants.length < 2) {
-      alert("최소 2명 이상의 참가자가 필요합니다.")
+      setSaveMessage("❌ 최소 2명 이상의 참가자가 필요합니다.")
+      setTimeout(() => setSaveMessage(""), 5000)
       return
     }
     if (!gameStartTime) {
-      alert("게임 시작 일시를 설정해주세요.")
+      setSaveMessage("❌ 게임 시작 일시를 설정해주세요.")
+      setTimeout(() => setSaveMessage(""), 5000)
       return
     }
 
@@ -295,7 +313,8 @@ export default function AdminContent() {
     const diff = startTime.getTime() - now.getTime()
 
     if (diff <= 0) {
-      alert("게임 시작 시간이 이미 지났습니다. 새로운 시간을 설정해주세요.")
+      setSaveMessage("❌ 게임 시작 시간이 이미 지났습니다. 새로운 시간을 설정해주세요.")
+      setTimeout(() => setSaveMessage(""), 5000)
       return
     }
 
@@ -311,6 +330,9 @@ export default function AdminContent() {
     } else {
       timeMessage = `${minutes}분`
     }
+
+    setIsSaving(true)
+    setSaveMessage("")
 
     try {
       const response = await fetch("/api/game/settings", {
@@ -338,24 +360,31 @@ export default function AdminContent() {
       setLastSavedTime(new Date())
       console.log("[Admin] 게임 예약 DB 저장 완료, 참가자 수:", participants.length)
 
-      alert(`게임 예약이 완료되었습니다!\n게임 시작까지 ${timeMessage} 남았습니다.`)
+      setSaveMessage(`🎉 게임 예약이 완료되었습니다! 시작까지 ${timeMessage} 남았습니다.`)
+      setTimeout(() => setSaveMessage(""), 5000)
     } catch (error: any) {
       console.error("[Admin] 게임 예약 실패:", error)
-      alert(error.message || "게임 예약에 실패했습니다. 다시 시도해주세요.")
+      setSaveMessage(`❌ ${error.message || "게임 예약에 실패했습니다."}`)
+      setTimeout(() => setSaveMessage(""), 5000)
+    } finally {
+      setIsSaving(false)
     }
   }
 
   const handleGameSetupClick = () => {
     if (gameScheduled) {
-      alert("이미 게임이 예약되었습니다.")
+      setSaveMessage("⚠️ 이미 게임이 예약되었습니다.")
+      setTimeout(() => setSaveMessage(""), 3000)
       return
     }
     if (gameStatus !== "waiting") {
-      alert("게임이 이미 시작되었거나 진행 중입니다.")
+      setSaveMessage("⚠️ 게임이 이미 시작되었거나 진행 중입니다.")
+      setTimeout(() => setSaveMessage(""), 3000)
       return
     }
     if (participants.length < 2) {
-      alert("최소 2명 이상의 참가자를 추가해주세요.")
+      setSaveMessage("❌ 최소 2명 이상의 참가자를 추가해주세요.")
+      setTimeout(() => setSaveMessage(""), 3000)
       return
     }
 
@@ -444,6 +473,18 @@ export default function AdminContent() {
       </header>
 
       <main className="relative z-10 max-w-6xl mx-auto p-6 space-y-8">
+        {saveMessage && (
+          <div className={`p-4 rounded-lg border text-center font-medium animate-in fade-in slide-in-from-top-2 ${
+            saveMessage.includes("✅") || saveMessage.includes("🎉")
+              ? "bg-green-950/50 border-green-600/50 text-green-300"
+              : saveMessage.includes("⚠️")
+              ? "bg-yellow-950/50 border-yellow-600/50 text-yellow-300"
+              : "bg-red-950/50 border-red-600/50 text-red-300"
+          }`}>
+            {saveMessage}
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="bg-black/60 border-red-800/50 p-6">
             <h3 className="text-xl font-bold mb-4 text-red-300">이벤트 설정</h3>
@@ -500,9 +541,10 @@ export default function AdminContent() {
                 <div className="flex gap-2">
                   <Button
                     onClick={saveSettings}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 font-semibold"
+                    disabled={isSaving}
+                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
-                    저장
+                    {isSaving ? "⏳ 저장 중..." : "저장"}
                   </Button>
                   <Button
                     onClick={async () => {
@@ -570,14 +612,15 @@ export default function AdminContent() {
 
               <Button
                 onClick={handleGameSetupClick}
-                disabled={gameScheduled || gameStatus !== "waiting" || participants.length < 2}
-                className="w-full bg-red-600 hover:bg-red-700 text-white py-3 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSaving || gameScheduled || gameStatus !== "waiting" || participants.length < 2}
+                className="w-full bg-red-600 hover:bg-red-700 text-white py-3 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
-                {!gameScheduled && gameStatus === "waiting" && "게임 예약 완료"}
-                {gameScheduled && gameStatus === "waiting" && "✓ 게임 예약됨"}
-                {gameStatus === "starting" && "⏱️ 시작 중..."}
-                {gameStatus === "in-progress" && "🎯 게임 진행 중"}
-                {gameStatus === "completed" && "✅ 게임 완료"}
+                {isSaving && "⏳ 저장 중..."}
+                {!isSaving && !gameScheduled && gameStatus === "waiting" && "게임 예약 완료"}
+                {!isSaving && gameScheduled && gameStatus === "waiting" && "✓ 게임 예약됨"}
+                {!isSaving && gameStatus === "starting" && "⏱️ 시작 중..."}
+                {!isSaving && gameStatus === "in-progress" && "🎯 게임 진행 중"}
+                {!isSaving && gameStatus === "completed" && "✅ 게임 완료"}
               </Button>
 
               {!gameScheduled && gameStatus === "waiting" && participants.length < 2 && (
@@ -665,11 +708,11 @@ export default function AdminContent() {
               <div className="flex gap-2">
                 <Button
                   onClick={saveParticipants}
-                  disabled={isSaved}
+                  disabled={isSaving || isSaved}
                   size="sm"
-                  className="h-8 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="h-8 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
-                  저장
+                  {isSaving ? "⏳ 저장 중..." : "저장"}
                 </Button>
                 {participants.length > 0 && (
                   <Button onClick={() => setParticipants([])} variant="destructive" size="sm" className="h-8">
