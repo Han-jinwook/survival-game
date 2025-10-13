@@ -42,6 +42,8 @@ export interface User {
 export interface GameSession {
   id: string
   session_name: string
+  cafe_name?: string
+  prize?: string
   status: "waiting" | "in_progress" | "completed"
   initial_lives: number
   current_round: number
@@ -118,23 +120,17 @@ export class DatabaseService {
   static async createGameSession(
     sessionName: string,
     initialLives: number,
-    startedAt?: string
+    startedAt?: string,
+    cafeName?: string,
+    prize?: string
   ): Promise<GameSession> {
     const db = getPool()
     
-    if (startedAt) {
-      const result = await db.query<GameSession>(
-        'INSERT INTO game_sessions (session_name, initial_lives, started_at) VALUES ($1, $2, $3) RETURNING *',
-        [sessionName, initialLives, startedAt]
-      )
-      return result.rows[0]
-    } else {
-      const result = await db.query<GameSession>(
-        'INSERT INTO game_sessions (session_name, initial_lives) VALUES ($1, $2) RETURNING *',
-        [sessionName, initialLives]
-      )
-      return result.rows[0]
-    }
+    const result = await db.query<GameSession>(
+      'INSERT INTO game_sessions (session_name, initial_lives, started_at, cafe_name, prize) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [sessionName, initialLives, startedAt || null, cafeName || null, prize || null]
+    )
+    return result.rows[0]
   }
 
   static async getActiveGameSession(): Promise<GameSession | null> {

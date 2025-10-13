@@ -70,9 +70,9 @@ export default function AdminContent() {
           console.log("[Admin] DB 데이터 로드 성공:", data)
           
           if (data.session) {
-            setCafeName("")
+            setCafeName(data.session.cafeName || "")
             setEventName(data.session.sessionName || "")
-            setPrize("")
+            setPrize(data.session.prize || "")
             setGameStartTime(data.session.startedAt?.slice(0, 16) || "")
             setGameScheduled(data.session.status === "waiting")
           }
@@ -163,6 +163,8 @@ export default function AdminContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionName: eventName || cafeName || "가위바위보 하나빼기 게임",
+          cafeName: cafeName || undefined,
+          prize: prize || undefined,
           initialLives: 5,
           gameStartTime: gameStartTime || undefined,
           participants: participants.map(p => ({
@@ -203,6 +205,8 @@ export default function AdminContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionName: eventName || cafeName || "가위바위보 하나빼기 게임",
+          cafeName: cafeName || undefined,
+          prize: prize || undefined,
           initialLives: 5,
           gameStartTime: gameStartTime || undefined,
           participants: participants.map(p => ({
@@ -340,6 +344,8 @@ export default function AdminContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           sessionName: eventName || cafeName || "가위바위보 하나빼기 게임",
+          cafeName: cafeName || undefined,
+          prize: prize || undefined,
           initialLives: 5,
           gameStartTime: gameStartTime,
           participants: participants.map(p => ({
@@ -520,15 +526,46 @@ export default function AdminContent() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">게임 시작 일시</label>
-                <Input
-                  type="datetime-local"
-                  value={gameStartTime}
-                  onChange={(e) => setGameStartTime(e.target.value)}
-                  className="bg-black/40 border-red-800/50 text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                  disabled={!isEditing}
-                />
-                <p className="text-xs text-yellow-400 mt-2">⚠️ 게임 시작 1분 전까지 모든 참가자는 입장 완료 필수!</p>
+                <label className="block text-sm font-medium text-gray-300 mb-3">게임 시작 일시</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-400">날짜</label>
+                    <Input
+                      type="date"
+                      value={gameStartTime?.slice(0, 10) || ""}
+                      onChange={(e) => {
+                        const time = gameStartTime?.slice(11, 16) || "00:00"
+                        setGameStartTime(e.target.value ? `${e.target.value}T${time}` : "")
+                      }}
+                      className="bg-black/40 border-red-800/50 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={!isEditing}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-gray-400">시간</label>
+                    <Input
+                      type="time"
+                      value={gameStartTime?.slice(11, 16) || ""}
+                      onChange={(e) => {
+                        const date = gameStartTime?.slice(0, 10) || new Date().toISOString().slice(0, 10)
+                        setGameStartTime(e.target.value ? `${date}T${e.target.value}` : "")
+                      }}
+                      className="bg-black/40 border-red-800/50 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                      disabled={!isEditing}
+                    />
+                  </div>
+                </div>
+                {gameStartTime && (
+                  <div className="mt-3 p-2 bg-yellow-950/30 border border-yellow-600/30 rounded">
+                    <p className="text-xs text-yellow-300">⏰ {new Date(gameStartTime).toLocaleString('ko-KR', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })} 시작 예정</p>
+                  </div>
+                )}
               </div>
               {!isEditing ? (
                 <Button

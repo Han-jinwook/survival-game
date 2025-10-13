@@ -7,7 +7,9 @@ export async function POST(request: NextRequest) {
       sessionName, 
       initialLives, 
       participants,
-      gameStartTime
+      gameStartTime,
+      cafeName,
+      prize
     } = await request.json()
 
     if (!sessionName || !initialLives) {
@@ -27,14 +29,18 @@ export async function POST(request: NextRequest) {
       session = await DatabaseService.createGameSession(
         sessionName,
         initialLives,
-        gameStartTime
+        gameStartTime,
+        cafeName,
+        prize
       )
     } else {
       // 새 게임 세션 생성
       session = await DatabaseService.createGameSession(
         sessionName,
         initialLives,
-        gameStartTime
+        gameStartTime,
+        cafeName,
+        prize
       )
     }
 
@@ -90,6 +96,8 @@ export async function GET() {
       session: {
         id: session.id,
         sessionName: session.session_name,
+        cafeName: session.cafe_name,
+        prize: session.prize,
         initialLives: session.initial_lives,
         status: session.status,
         currentRound: session.current_round,
