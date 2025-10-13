@@ -536,6 +536,7 @@ export default function AdminContent() {
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
+                        type="button"
                         variant="outline"
                         disabled={!isEditing}
                         className="flex-1 justify-start bg-black/40 border-red-800/50 text-white hover:bg-black/60 disabled:opacity-60"
@@ -544,7 +545,7 @@ export default function AdminContent() {
                         {gameStartTime ? format(new Date(gameStartTime), 'yyyy년 MM월 dd일', { locale: ko }) : '날짜 선택'}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 bg-gray-900 border-gray-700">
+                    <PopoverContent className="w-auto p-0 bg-gray-900 border-gray-700" align="start">
                       <Calendar
                         mode="single"
                         selected={gameStartTime ? new Date(gameStartTime) : undefined}
@@ -555,22 +556,24 @@ export default function AdminContent() {
                             setGameStartTime(`${dateStr}T${time}`)
                           }
                         }}
-                        disabled={!isEditing}
                         locale={ko}
                         className="rounded-md"
                       />
                     </PopoverContent>
                   </Popover>
-                  <Input
-                    type="time"
-                    value={gameStartTime?.slice(11, 16) || ""}
-                    onChange={(e) => {
-                      const date = gameStartTime?.slice(0, 10) || format(new Date(), 'yyyy-MM-dd')
-                      setGameStartTime(e.target.value ? `${date}T${e.target.value}` : "")
-                    }}
-                    disabled={!isEditing}
-                    className="w-32 bg-black/40 border-red-800/50 text-white disabled:opacity-60"
-                  />
+                  <div className="relative w-40">
+                    <Input
+                      type="time"
+                      value={gameStartTime?.slice(11, 16) || ""}
+                      onChange={(e) => {
+                        const date = gameStartTime?.slice(0, 10) || format(new Date(), 'yyyy-MM-dd')
+                        setGameStartTime(e.target.value ? `${date}T${e.target.value}` : "")
+                      }}
+                      disabled={!isEditing}
+                      className="w-full bg-black/40 border-red-800/50 text-white disabled:opacity-60 pl-3 pr-8"
+                      style={{ colorScheme: 'dark' }}
+                    />
+                  </div>
                 </div>
                 {gameStartTime && (
                   <p className="text-sm text-gray-400 mt-2">

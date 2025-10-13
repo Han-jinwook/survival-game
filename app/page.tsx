@@ -27,7 +27,7 @@ export default function GameLanding() {
           if (data.session) {
             setEventInfo({
               name: data.session.sessionName || "2025 신년 특별 이벤트",
-              prize: "아이폰 16 Pro Max",
+              prize: data.session.prize || "아이폰 16 Pro Max",
               startTime: data.session.startedAt || data.session.createdAt || "2025-01-15T20:00",
             })
             
