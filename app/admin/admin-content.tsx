@@ -208,8 +208,38 @@ export default function AdminContent() {
       setIsSaved(true)
       setLastSavedTime(new Date())
       setIsEditing(false)
+      
+      if (gameStartTime) {
+        setGameScheduled(true)
+        const now = new Date()
+        const startTime = new Date(gameStartTime)
+        const diff = startTime.getTime() - now.getTime()
+        
+        if (diff > 0) {
+          const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+          const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
+          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+          
+          let timeMessage = ""
+          if (days > 0) {
+            timeMessage = `${days}일 ${hours}시간 ${minutes}분`
+          } else if (hours > 0) {
+            timeMessage = `${hours}시간 ${minutes}분`
+          } else {
+            timeMessage = `${minutes}분`
+          }
+          
+          console.log("[Admin] 게임 예약 완료, 시작까지:", timeMessage)
+          setSaveMessage(`✅ 게임이 예약되었습니다! 시작까지 ${timeMessage} 남았습니다.`)
+        } else {
+          setSaveMessage("✅ 설정이 저장되었습니다!")
+        }
+      } else {
+        setGameScheduled(false)
+        setSaveMessage("✅ 설정이 저장되었습니다!")
+      }
+      
       console.log("[Admin] 설정 DB 저장 완료, 참가자 수:", participants.length)
-      setSaveMessage("설정이 DB에 저장되었습니다!")
     } catch (error: any) {
       console.error("[Admin] 설정 저장 실패:", error)
       setSaveMessage(`❌ ${error.message || "설정 저장에 실패했습니다."}`)
@@ -321,128 +351,6 @@ export default function AdminContent() {
     }
   }
 
-  const completeGameSetup = async () => {
-    if (participants.length < 2) {
-      setSaveMessage("❌ 최소 2명 이상의 참가자가 필요합니다.")
-      return
-    }
-    if (!gameStartTime) {
-      setSaveMessage("❌ 게임 시작 일시를 설정해주세요.")
-      return
-    }
-
-    const now = new Date()
-    const startTime = new Date(gameStartTime)
-    const diff = startTime.getTime() - now.getTime()
-
-    if (diff <= 0) {
-      setSaveMessage("❌ 게임 시작 시간이 이미 지났습니다. 새로운 시간을 설정해주세요.")
-      return
-    }
-
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24))
-    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60))
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
-
-    let timeMessage = ""
-    if (days > 0) {
-      timeMessage = `${days}일 ${hours}시간 ${minutes}분`
-    } else if (hours > 0) {
-      timeMessage = `${hours}시간 ${minutes}분`
-    } else {
-      timeMessage = `${minutes}분`
-    }
-
-    setIsSaving(true)
-    setSaveMessage("")
-
-    try {
-      const response = await fetch("/api/game/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionName: eventName || cafeName || "가위바위보 하나빼기 게임",
-          cafeName: cafeName || undefined,
-          prize: prize || undefined,
-          initialLives: 5,
-          gameStartTime: gameStartTime,
-          participants: participants.map(p => ({
-            naverId: p.naverId,
-            nickname: p.nickname,
-            lives: p.lives,
-          })),
-        }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error || "게임 예약 실패")
-      }
-
-      console.log("[Admin] 게임 예약 DB 저장 완료, 참가자 수:", participants.length)
-      
-      setGameScheduled(true)
-      setIsSaved(true)
-      setLastSavedTime(new Date())
-      setGameMessage(`🎉 게임 예약이 완료되었습니다! 시작까지 ${timeMessage} 남았습니다.`)
-    } catch (error: any) {
-      console.error("[Admin] 게임 예약 실패:", error)
-      setGameMessage(`❌ ${error.message || "게임 예약에 실패했습니다."}`)
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  const handleCancelReservation = async () => {
-    if (confirm("게임 예약을 취소하시겠습니까?")) {
-      console.log("[Admin] 게임 예약 취소")
-      
-      try {
-        const response = await fetch("/api/game/settings")
-        if (response.ok) {
-          const data = await response.json()
-          if (data.session) {
-            await fetch("/api/game/session", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                action: "complete",
-                sessionId: data.session.id,
-                updates: { status: "completed" }
-              })
-            })
-          }
-        }
-      } catch (error) {
-        console.error("[Admin] 예약 취소 중 오류:", error)
-      }
-      
-      setGameScheduled(false)
-      setCafeName("")
-      setEventName("")
-      setPrize("")
-      setGameStartTime("")
-      setParticipants([])
-      setGameMessage("게임 예약이 취소되었습니다.")
-    }
-  }
-
-  const handleGameSetupClick = () => {
-    if (gameScheduled) {
-      setGameMessage("⚠️ 이미 게임이 예약되었습니다.")
-      return
-    }
-    if (gameStatus !== "waiting") {
-      setGameMessage("⚠️ 게임이 이미 시작되었거나 진행 중입니다.")
-      return
-    }
-    if (participants.length < 2) {
-      setGameMessage("❌ 최소 2명 이상의 참가자를 추가해주세요.")
-      return
-    }
-
-    completeGameSetup()
-  }
 
   if (!isAuthenticated) {
     return (
@@ -630,7 +538,6 @@ export default function AdminContent() {
           </Card>
 
           <Card className="bg-black/60 border-red-800/50 p-6">
-            <h3 className="text-xl font-bold mb-4 text-red-300">게임 제어</h3>
             <div className="space-y-4">
               {gameScheduled && gameStatus === "waiting" && (
                 <div className="p-4 bg-blue-950/30 border border-blue-600/50 rounded-lg">
@@ -661,45 +568,6 @@ export default function AdminContent() {
                     : 0}
                   개
                 </Badge>
-              </div>
-
-              {gameMessage && (
-                <div className="p-3 bg-blue-900/50 border border-blue-600/50 rounded-lg">
-                  <p className="text-sm text-blue-300 text-center">{gameMessage}</p>
-                </div>
-              )}
-
-              {!gameScheduled && gameStatus === "waiting" && participants.length < 2 && (
-                <p className="text-xs text-yellow-400 text-center">⚠️ 최소 2명 이상의 참가자를 추가해주세요</p>
-              )}
-
-              <div className="flex gap-2">
-                <button
-                  onClick={handleGameSetupClick}
-                  disabled={isSaving || gameStatus !== "waiting" || participants.length < 2 || gameScheduled}
-                  className={`py-3 text-lg font-semibold transition-all ${
-                    gameScheduled 
-                      ? "flex-1 bg-green-700 text-white cursor-not-allowed" 
-                      : "w-full bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
-                  }`}
-                  style={{ borderRadius: '0.375rem' }}
-                >
-                  {gameScheduled && "✓ 게임 예약됨"}
-                  {!gameScheduled && isSaving && "⏳ 저장 중..."}
-                  {!gameScheduled && !isSaving && gameStatus === "waiting" && "🎮 게임 예약하기"}
-                  {!gameScheduled && !isSaving && gameStatus === "starting" && "⏱️ 시작 중..."}
-                  {!gameScheduled && !isSaving && gameStatus === "in-progress" && "🎯 게임 진행 중"}
-                  {!gameScheduled && !isSaving && gameStatus === "completed" && "✅ 게임 완료"}
-                </button>
-                {gameScheduled && gameStatus === "waiting" && (
-                  <button
-                    onClick={handleCancelReservation}
-                    className="flex-1 bg-red-900 hover:bg-red-800 text-white py-3 text-lg font-semibold transition-all"
-                    style={{ borderRadius: '0.375rem' }}
-                  >
-                    예약 취소
-                  </button>
-                )}
               </div>
             </div>
           </Card>
