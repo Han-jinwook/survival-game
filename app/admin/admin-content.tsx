@@ -375,10 +375,13 @@ export default function AdminContent() {
   }
 
   const handleCancelReservation = () => {
-    if (confirm("게임 예약을 취소하시겠습니까?")) {
-      setGameScheduled(false)
-      setGameMessage("")
+    const confirmCancel = confirm("게임 예약을 취소하시겠습니까?")
+    if (confirmCancel) {
       console.log("[Admin] 게임 예약 취소")
+      setGameMessage("")
+      setTimeout(() => {
+        setGameScheduled(false)
+      }, 0)
     }
   }
 
@@ -481,18 +484,6 @@ export default function AdminContent() {
       </header>
 
       <main className="relative z-10 max-w-6xl mx-auto p-6 space-y-8">
-        {saveMessage && (
-          <div className={`p-4 rounded-lg border text-center font-medium animate-in fade-in slide-in-from-top-2 ${
-            saveMessage.includes("✅") || saveMessage.includes("🎉")
-              ? "bg-green-950/50 border-green-600/50 text-green-300"
-              : saveMessage.includes("⚠️")
-              ? "bg-yellow-950/50 border-yellow-600/50 text-yellow-300"
-              : "bg-red-950/50 border-red-600/50 text-red-300"
-          }`}>
-            {saveMessage}
-          </div>
-        )}
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="bg-black/60 border-red-800/50 p-6">
             <h3 className="text-xl font-bold mb-4 text-red-300">이벤트 설정</h3>
