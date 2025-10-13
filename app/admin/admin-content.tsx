@@ -6,6 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { CalendarIcon } from "lucide-react"
+import { format } from "date-fns"
+import { ko } from "date-fns/locale"
 import Link from "next/link"
 
 interface Participant {
@@ -526,45 +531,51 @@ export default function AdminContent() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-300 mb-3">게임 시작 일시</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <label className="text-xs text-gray-400">날짜</label>
-                    <Input
-                      type="date"
-                      value={gameStartTime?.slice(0, 10) || ""}
-                      onChange={(e) => {
-                        const time = gameStartTime?.slice(11, 16) || "00:00"
-                        setGameStartTime(e.target.value ? `${e.target.value}T${time}` : "")
-                      }}
-                      className="bg-black/40 border-red-800/50 text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                      disabled={!isEditing}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs text-gray-400">시간</label>
-                    <Input
-                      type="time"
-                      value={gameStartTime?.slice(11, 16) || ""}
-                      onChange={(e) => {
-                        const date = gameStartTime?.slice(0, 10) || new Date().toISOString().slice(0, 10)
-                        setGameStartTime(e.target.value ? `${date}T${e.target.value}` : "")
-                      }}
-                      className="bg-black/40 border-red-800/50 text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                      disabled={!isEditing}
-                    />
-                  </div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">게임 시작 일시</label>
+                <div className="flex gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        disabled={!isEditing}
+                        className="flex-1 justify-start bg-black/40 border-red-800/50 text-white hover:bg-black/60 disabled:opacity-60"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {gameStartTime ? format(new Date(gameStartTime), 'yyyy년 MM월 dd일', { locale: ko }) : '날짜 선택'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 bg-gray-900 border-gray-700">
+                      <Calendar
+                        mode="single"
+                        selected={gameStartTime ? new Date(gameStartTime) : undefined}
+                        onSelect={(date: Date | undefined) => {
+                          if (date) {
+                            const time = gameStartTime?.slice(11, 16) || "12:00"
+                            const dateStr = format(date, 'yyyy-MM-dd')
+                            setGameStartTime(`${dateStr}T${time}`)
+                          }
+                        }}
+                        disabled={!isEditing}
+                        locale={ko}
+                        className="rounded-md"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Input
+                    type="time"
+                    value={gameStartTime?.slice(11, 16) || ""}
+                    onChange={(e) => {
+                      const date = gameStartTime?.slice(0, 10) || format(new Date(), 'yyyy-MM-dd')
+                      setGameStartTime(e.target.value ? `${date}T${e.target.value}` : "")
+                    }}
+                    disabled={!isEditing}
+                    className="w-32 bg-black/40 border-red-800/50 text-white disabled:opacity-60"
+                  />
                 </div>
                 {gameStartTime && (
-                  <div className="mt-3 p-2 bg-yellow-950/30 border border-yellow-600/30 rounded">
-                    <p className="text-xs text-yellow-300">⏰ {new Date(gameStartTime).toLocaleString('ko-KR', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })} 시작 예정</p>
-                  </div>
+                  <p className="text-sm text-gray-400 mt-2">
+                    ⏰ {format(new Date(gameStartTime), 'yyyy년 MM월 dd일 HH:mm', { locale: ko })} 시작
+                  </p>
                 )}
               </div>
               {!isEditing ? (
