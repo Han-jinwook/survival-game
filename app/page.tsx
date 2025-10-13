@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import Link from "next/link"
 import AudioSystem from "@/components/audio-system"
 
@@ -180,54 +181,62 @@ export default function GameLanding() {
             전통 가위바위보 하나빼기 게임이 생존 게임으로 돌아왔습니다. 행운권이 곧 당신의 목숨입니다.
           </p>
 
-          {/* Game Rules */}
-          <Card className="bg-black/60 border-red-800/50 p-8 mb-12 text-left">
-            <h3 className="text-2xl font-bold mb-6 text-red-300">게임 규칙</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-semibold text-white mb-3">기본 규칙</h4>
-                <ul className="space-y-2 text-gray-300">
-                  <li>• 모든 참가자는 1~10개의 행운권(목숨)으로 시작</li>
-                  <li>• 가위/바위/보 중 2개를 선택 후 하나빼기</li>
-                  <li>• 패배 시 행운권 1개 차감</li>
-                  <li>• 행운권이 0개가 되면 게임 종료</li>
-                  <li className="text-yellow-300 font-semibold">• 시간 내 선택하지 않으면 즉시 탈락</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold text-white mb-3">승패 결정</h4>
-                <ul className="space-y-2 text-gray-300">
-                  <li>• 가장 적은 인원이 선택한 무기가 패배</li>
-                  <li className="text-red-300 font-semibold">
-                    • 동점 최소인 경우 모두 패배 (예: 3-1-1 → 1명씩 선택한 2개 무기 모두 패배)
-                  </li>
-                  <li>• 모든 무기가 동일 인원이면 무승부</li>
-                  <li>• 최후의 1인이 될 때까지 생존</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold text-white mb-3">게임 모드</h4>
-                <ul className="space-y-2 text-gray-300">
-                  <li>
-                    • <span className="text-yellow-400 font-semibold">예선전</span>: 로비 입장자 5명 이상일 때
-                  </li>
-                  <li>• 예선전에서 4명 이하로 줄어들면 결승전 진입</li>
-                  <li>
-                    • <span className="text-red-400 font-semibold">결승전</span>: 로비 입장자 4명 이하일 때
-                  </li>
-                  <li>• 결승전은 최종 1명이 남을 때까지 진행</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold text-white mb-3">중요 안내</h4>
-                <ul className="space-y-2 text-gray-300">
-                  <li>• 참가예정자가 100명이어도 로비 입장자가 4명이면 바로 결승전</li>
-                  <li>• 게임 시작 시간 내에 로비 입장 필수</li>
-                  <li>• 입장하지 않은 참가예정자는 게임 불참 처리</li>
-                  <li>• 게임 중 퇴장 시 자동 패배 처리</li>
-                </ul>
-              </div>
-            </div>
+          {/* Game Rules - Accordion */}
+          <Card className="bg-black/60 border-red-800/50 mb-12">
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="rules" className="border-none">
+                <AccordionTrigger className="px-8 py-6 hover:no-underline">
+                  <h3 className="text-2xl font-bold text-red-300">게임 규칙</h3>
+                </AccordionTrigger>
+                <AccordionContent className="px-8 pb-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                    <div>
+                      <h4 className="font-semibold text-white mb-3">기본 규칙</h4>
+                      <ul className="space-y-2 text-gray-300">
+                        <li>• 모든 참가자는 1~10개의 행운권(목숨)으로 시작</li>
+                        <li>• 가위/바위/보 중 2개를 선택 후 하나빼기</li>
+                        <li>• 패배 시 행운권 1개 차감</li>
+                        <li>• 행운권이 0개가 되면 게임 종료</li>
+                        <li className="text-yellow-300 font-semibold">• 시간 내 선택하지 않으면 즉시 탈락</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white mb-3">승패 결정</h4>
+                      <ul className="space-y-2 text-gray-300">
+                        <li>• 가장 적은 인원이 선택한 무기가 패배</li>
+                        <li className="text-red-300 font-semibold">
+                          • 동점 최소인 경우 모두 패배 (예: 3-1-1 → 1명씩 선택한 2개 무기 모두 패배)
+                        </li>
+                        <li>• 모든 무기가 동일 인원이면 무승부</li>
+                        <li>• 최후의 1인이 될 때까지 생존</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white mb-3">게임 모드</h4>
+                      <ul className="space-y-2 text-gray-300">
+                        <li>
+                          • <span className="text-yellow-400 font-semibold">예선전</span>: 로비 입장자 5명 이상일 때
+                        </li>
+                        <li>• 예선전에서 4명 이하로 줄어들면 결승전 진입</li>
+                        <li>
+                          • <span className="text-red-400 font-semibold">결승전</span>: 로비 입장자 4명 이하일 때
+                        </li>
+                        <li>• 결승전은 최종 1명이 남을 때까지 진행</li>
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-white mb-3">중요 안내</h4>
+                      <ul className="space-y-2 text-gray-300">
+                        <li>• 참가예정자가 100명이어도 로비 입장자가 4명이면 바로 결승전</li>
+                        <li>• 게임 시작 시간 내에 로비 입장 필수</li>
+                        <li>• 입장하지 않은 참가예정자는 게임 불참 처리</li>
+                        <li>• 게임 중 퇴장 시 자동 패배 처리</li>
+                      </ul>
+                    </div>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </Card>
 
           {/* Action Buttons */}
