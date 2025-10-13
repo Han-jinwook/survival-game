@@ -186,12 +186,10 @@ export default function AdminContent() {
       setLastSavedTime(new Date())
       setIsEditing(false)
       console.log("[Admin] 설정 DB 저장 완료, 참가자 수:", participants.length)
-      setSaveMessage("✅ 설정이 DB에 저장되었습니다!")
-      setTimeout(() => setSaveMessage(""), 3000)
+      setSaveMessage("설정이 DB에 저장되었습니다!")
     } catch (error: any) {
       console.error("[Admin] 설정 저장 실패:", error)
       setSaveMessage(`❌ ${error.message || "설정 저장에 실패했습니다."}`)
-      setTimeout(() => setSaveMessage(""), 5000)
     } finally {
       setIsSaving(false)
     }
@@ -227,12 +225,10 @@ export default function AdminContent() {
       setIsSaved(true)
       setLastSavedTime(new Date())
       console.log("[Admin] 참가자 목록 DB 저장 완료, 참가자 수:", participants.length)
-      setSaveMessage("✅ 참가자 목록이 DB에 저장되었습니다!")
-      setTimeout(() => setSaveMessage(""), 3000)
+      setSaveMessage("참가자 목록이 DB에 저장되었습니다!")
     } catch (error: any) {
       console.error("[Admin] 참가자 저장 실패:", error)
       setSaveMessage(`❌ ${error.message || "참가자 저장에 실패했습니다."}`)
-      setTimeout(() => setSaveMessage(""), 5000)
     } finally {
       setIsSaving(false)
     }
@@ -543,49 +539,60 @@ export default function AdminContent() {
                   </p>
                 )}
               </div>
-              {!isEditing ? (
-                <Button
-                  onClick={() => setIsEditing(true)}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 font-semibold"
-                >
-                  수정
-                </Button>
-              ) : (
+              <div className="space-y-3">
+                {saveMessage && (
+                  <div className="p-3 bg-green-900/50 border border-green-600/50 rounded-lg">
+                    <p className="text-sm text-green-300 text-center">✅ {saveMessage}</p>
+                  </div>
+                )}
+                
                 <div className="flex gap-2">
-                  <Button
-                    onClick={saveSettings}
-                    disabled={isSaving}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    {isSaving ? "⏳ 저장 중..." : "저장"}
-                  </Button>
-                  <Button
-                    onClick={async () => {
-                      setIsEditing(false)
-                      setIsSaved(true)
-                      console.log("[Admin] 수정 취소 - 변경사항 되돌림")
-                      try {
-                        const response = await fetch("/api/game/settings")
-                        if (response.ok) {
-                          const data = await response.json()
-                          if (data.session) {
-                            setCafeName(data.session.sessionName || "")
-                            setEventName(data.session.sessionName || "")
-                            setPrize("")
-                            setGameStartTime(data.session.startedAt?.slice(0, 16) || "")
+                  {!isEditing ? (
+                    <Button
+                      onClick={() => setIsEditing(true)}
+                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 font-semibold"
+                    >
+                      📝 정보 수정
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        onClick={saveSettings}
+                        disabled={isSaving}
+                        className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      >
+                        {isSaving ? "⏳ 저장 중..." : "💾 저장"}
+                      </Button>
+                      <Button
+                        onClick={async () => {
+                          setIsEditing(false)
+                          setIsSaved(true)
+                          setSaveMessage("")
+                          console.log("[Admin] 수정 취소 - 변경사항 되돌림")
+                          try {
+                            const response = await fetch("/api/game/settings")
+                            if (response.ok) {
+                              const data = await response.json()
+                              if (data.session) {
+                                setCafeName(data.session.cafeName || "")
+                                setEventName(data.session.sessionName || "")
+                                setPrize(data.session.prize || "")
+                                setGameStartTime(data.session.startedAt?.slice(0, 16) || "")
+                              }
+                            }
+                          } catch (error) {
+                            console.error("[Admin] 데이터 복원 실패:", error)
                           }
-                        }
-                      } catch (error) {
-                        console.error("[Admin] 데이터 복원 실패:", error)
-                      }
-                    }}
-                    variant="outline"
-                    className="border-gray-600 text-gray-300 hover:bg-gray-800"
-                  >
-                    취소
-                  </Button>
+                        }}
+                        variant="outline"
+                        className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
+                      >
+                        ❌ 취소
+                      </Button>
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </Card>
 
@@ -623,35 +630,42 @@ export default function AdminContent() {
                 </Badge>
               </div>
 
-              <Button
-                onClick={handleGameSetupClick}
-                disabled={isSaving || gameScheduled || gameStatus !== "waiting" || participants.length < 2}
-                className="w-full bg-red-600 hover:bg-red-700 text-white py-3 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-              >
-                {isSaving && "⏳ 저장 중..."}
-                {!isSaving && !gameScheduled && gameStatus === "waiting" && "게임 예약 완료"}
-                {!isSaving && gameScheduled && gameStatus === "waiting" && "✓ 게임 예약됨"}
-                {!isSaving && gameStatus === "starting" && "⏱️ 시작 중..."}
-                {!isSaving && gameStatus === "in-progress" && "🎯 게임 진행 중"}
-                {!isSaving && gameStatus === "completed" && "✅ 게임 완료"}
-              </Button>
-
-              {!gameScheduled && gameStatus === "waiting" && participants.length < 2 && (
+{!gameScheduled && gameStatus === "waiting" && participants.length < 2 && (
                 <p className="text-xs text-yellow-400 text-center">⚠️ 최소 2명 이상의 참가자를 추가해주세요</p>
               )}
 
-              {gameScheduled && gameStatus === "waiting" && (
+              {gameScheduled && gameStatus === "waiting" ? (
+                <div className="flex gap-2">
+                  <Button
+                    disabled
+                    className="flex-1 bg-green-700 text-white py-3 text-lg font-semibold cursor-not-allowed"
+                  >
+                    ✓ 게임 예약됨
+                  </Button>
+                  <Button
+                    onClick={async () => {
+                      if (confirm("게임 예약을 취소하시겠습니까?")) {
+                        setGameScheduled(false)
+                        console.log("[Admin] 게임 예약 취소 - DB 업데이트는 필요 시 추가 구현")
+                      }
+                    }}
+                    variant="destructive"
+                    className="flex-1 py-3 text-lg font-semibold"
+                  >
+                    예약 취소
+                  </Button>
+                </div>
+              ) : (
                 <Button
-                  onClick={async () => {
-                    if (confirm("게임 예약을 취소하시겠습니까?")) {
-                      setGameScheduled(false)
-                      console.log("[Admin] 게임 예약 취소 - DB 업데이트는 필요 시 추가 구현")
-                    }
-                  }}
-                  variant="destructive"
-                  className="w-full"
+                  onClick={handleGameSetupClick}
+                  disabled={isSaving || gameStatus !== "waiting" || participants.length < 2}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white py-3 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
-                  예약 취소
+                  {isSaving && "⏳ 저장 중..."}
+                  {!isSaving && gameStatus === "waiting" && "🎮 게임 예약 완료"}
+                  {!isSaving && gameStatus === "starting" && "⏱️ 시작 중..."}
+                  {!isSaving && gameStatus === "in-progress" && "🎯 게임 진행 중"}
+                  {!isSaving && gameStatus === "completed" && "✅ 게임 완료"}
                 </Button>
               )}
             </div>
