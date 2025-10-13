@@ -18,17 +18,6 @@ export default function AuthPage() {
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
   const [userInfo, setUserInfo] = useState<{ nickname: string; lives: number } | null>(null)
-  const [registeredMembers, setRegisteredMembers] = useState<any[]>([])
-
-  useEffect(() => {
-    const gameSettings = localStorage.getItem("gameSettings")
-    if (gameSettings) {
-      const settings = JSON.parse(gameSettings)
-      if (settings.participants && Array.isArray(settings.participants)) {
-        setRegisteredMembers(settings.participants)
-      }
-    }
-  }, [])
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,12 +34,18 @@ export default function AuthPage() {
       return
     }
 
-    setTimeout(() => {
-      const member = registeredMembers.find((m) => m.naverId.toLowerCase() === trimmedNaverId.toLowerCase())
+    try {
+      const response = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ naverId: trimmedNaverId }),
+      })
 
-      if (member) {
-        console.log("[v0] Authentication successful for:", member.nickname)
-        setUserInfo({ nickname: member.nickname, lives: member.lives })
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        console.log("[v0] Authentication successful for:", data.user.nickname)
+        setUserInfo({ nickname: data.user.nickname, lives: data.user.lives })
         setSuccess(true)
 
         try {
@@ -63,16 +58,20 @@ export default function AuthPage() {
           "userInfo",
           JSON.stringify({
             naverId: trimmedNaverId,
-            nickname: member.nickname,
-            lives: member.lives,
+            nickname: data.user.nickname,
+            lives: data.user.lives,
           }),
         )
       } else {
         console.log("[v0] Authentication failed for:", trimmedNaverId)
-        setError("등록되지 않은 네이버 ID입니다. 썬드림 즐빛카페 운영자에게 문의해주세요.")
+        setError(data.error || "등록되지 않은 네이버 ID입니다. 썬드림 즐빛카페 운영자에게 문의해주세요.")
       }
+    } catch (error) {
+      console.error("[v0] API error:", error)
+      setError("서버 연결에 실패했습니다. 잠시 후 다시 시도해주세요.")
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
   const handleEnterLobby = () => {
