@@ -47,6 +47,20 @@ export default function AdminContent() {
     }
   }, [])
 
+  useEffect(() => {
+    if (saveMessage) {
+      const timer = setTimeout(() => setSaveMessage(""), saveMessage.includes("❌") ? 5000 : 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [saveMessage])
+
+  useEffect(() => {
+    if (gameMessage) {
+      const timer = setTimeout(() => setGameMessage(""), gameMessage.includes("❌") ? 5000 : 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [gameMessage])
+
   const calculateTimeRemaining = () => {
     if (!gameStartTime) return ""
 
@@ -196,11 +210,9 @@ export default function AdminContent() {
       setIsEditing(false)
       console.log("[Admin] 설정 DB 저장 완료, 참가자 수:", participants.length)
       setSaveMessage("설정이 DB에 저장되었습니다!")
-      setTimeout(() => setSaveMessage(""), 3000)
     } catch (error: any) {
       console.error("[Admin] 설정 저장 실패:", error)
       setSaveMessage(`❌ ${error.message || "설정 저장에 실패했습니다."}`)
-      setTimeout(() => setSaveMessage(""), 5000)
     } finally {
       setIsSaving(false)
     }
@@ -237,11 +249,9 @@ export default function AdminContent() {
       setLastSavedTime(new Date())
       console.log("[Admin] 참가자 목록 DB 저장 완료, 참가자 수:", participants.length)
       setSaveMessage("참가자 목록이 DB에 저장되었습니다!")
-      setTimeout(() => setSaveMessage(""), 3000)
     } catch (error: any) {
       console.error("[Admin] 참가자 저장 실패:", error)
       setSaveMessage(`❌ ${error.message || "참가자 저장에 실패했습니다."}`)
-      setTimeout(() => setSaveMessage(""), 5000)
     } finally {
       setIsSaving(false)
     }
@@ -314,12 +324,10 @@ export default function AdminContent() {
   const completeGameSetup = async () => {
     if (participants.length < 2) {
       setSaveMessage("❌ 최소 2명 이상의 참가자가 필요합니다.")
-      setTimeout(() => setSaveMessage(""), 5000)
       return
     }
     if (!gameStartTime) {
       setSaveMessage("❌ 게임 시작 일시를 설정해주세요.")
-      setTimeout(() => setSaveMessage(""), 5000)
       return
     }
 
@@ -329,7 +337,6 @@ export default function AdminContent() {
 
     if (diff <= 0) {
       setSaveMessage("❌ 게임 시작 시간이 이미 지났습니다. 새로운 시간을 설정해주세요.")
-      setTimeout(() => setSaveMessage(""), 5000)
       return
     }
 
@@ -378,11 +385,9 @@ export default function AdminContent() {
       setIsSaved(true)
       setLastSavedTime(new Date())
       setGameMessage(`🎉 게임 예약이 완료되었습니다! 시작까지 ${timeMessage} 남았습니다.`)
-      setTimeout(() => setGameMessage(""), 5000)
     } catch (error: any) {
       console.error("[Admin] 게임 예약 실패:", error)
       setGameMessage(`❌ ${error.message || "게임 예약에 실패했습니다."}`)
-      setTimeout(() => setGameMessage(""), 5000)
     } finally {
       setIsSaving(false)
     }
@@ -419,26 +424,20 @@ export default function AdminContent() {
       setGameStartTime("")
       setParticipants([])
       setGameMessage("게임 예약이 취소되었습니다.")
-      setTimeout(() => {
-        setGameMessage("")
-      }, 3000)
     }
   }
 
   const handleGameSetupClick = () => {
     if (gameScheduled) {
       setGameMessage("⚠️ 이미 게임이 예약되었습니다.")
-      setTimeout(() => setGameMessage(""), 3000)
       return
     }
     if (gameStatus !== "waiting") {
       setGameMessage("⚠️ 게임이 이미 시작되었거나 진행 중입니다.")
-      setTimeout(() => setGameMessage(""), 3000)
       return
     }
     if (participants.length < 2) {
       setGameMessage("❌ 최소 2명 이상의 참가자를 추가해주세요.")
-      setTimeout(() => setGameMessage(""), 3000)
       return
     }
 
