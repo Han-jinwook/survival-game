@@ -9,15 +9,13 @@ import AudioSystem from "@/components/audio-system"
 
 export default function GameLanding() {
   const [playerCount, setPlayerCount] = useState(0)
-  const [totalVisitors, setTotalVisitors] = useState(0)
+  const [spectatorCount, setSpectatorCount] = useState(0)
   const [eventInfo, setEventInfo] = useState({
     cafeName: "",
     name: "2025 신년 특별 이벤트",
     prize: "아이폰 16 Pro Max",
     startTime: "2025-01-15T20:00",
   })
-  
-  const spectatorCount = Math.max(0, totalVisitors - playerCount)
 
   useEffect(() => {
     const loadEventInfo = async () => {
@@ -57,12 +55,12 @@ export default function GameLanding() {
       const newCount = currentCount + 1
       localStorage.setItem(visitorKey, newCount.toString())
       localStorage.setItem(userVisitKey, "true")
-      setTotalVisitors(newCount)
-      console.log("[Home] 신규 방문자, 총 방문자:", newCount)
+      setSpectatorCount(newCount)
+      console.log("[Home] 신규 방문자, 총 관람자:", newCount)
     } else {
       const currentCount = parseInt(localStorage.getItem(visitorKey) || "847", 10)
-      setTotalVisitors(currentCount)
-      console.log("[Home] 재방문자, 총 방문자:", currentCount)
+      setSpectatorCount(currentCount)
+      console.log("[Home] 재방문자, 총 관람자:", currentCount)
     }
   }, [])
 
