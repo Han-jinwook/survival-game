@@ -37,6 +37,7 @@ export default function AdminContent() {
   const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState("")
+  const [gameMessage, setGameMessage] = useState("")
   const isInitialMount = useRef(true)
 
   const calculateTimeRemaining = () => {
@@ -364,31 +365,34 @@ export default function AdminContent() {
       setLastSavedTime(new Date())
       console.log("[Admin] 게임 예약 DB 저장 완료, 참가자 수:", participants.length)
 
-      setSaveMessage(`🎉 게임 예약이 완료되었습니다! 시작까지 ${timeMessage} 남았습니다.`)
-      setTimeout(() => setSaveMessage(""), 5000)
+      setGameMessage(`🎉 게임 예약이 완료되었습니다! 시작까지 ${timeMessage} 남았습니다.`)
     } catch (error: any) {
       console.error("[Admin] 게임 예약 실패:", error)
-      setSaveMessage(`❌ ${error.message || "게임 예약에 실패했습니다."}`)
-      setTimeout(() => setSaveMessage(""), 5000)
+      setGameMessage(`❌ ${error.message || "게임 예약에 실패했습니다."}`)
     } finally {
       setIsSaving(false)
     }
   }
 
+  const handleCancelReservation = () => {
+    if (confirm("게임 예약을 취소하시겠습니까?")) {
+      setGameScheduled(false)
+      setGameMessage("")
+      console.log("[Admin] 게임 예약 취소")
+    }
+  }
+
   const handleGameSetupClick = () => {
     if (gameScheduled) {
-      setSaveMessage("⚠️ 이미 게임이 예약되었습니다.")
-      setTimeout(() => setSaveMessage(""), 3000)
+      setGameMessage("⚠️ 이미 게임이 예약되었습니다.")
       return
     }
     if (gameStatus !== "waiting") {
-      setSaveMessage("⚠️ 게임이 이미 시작되었거나 진행 중입니다.")
-      setTimeout(() => setSaveMessage(""), 3000)
+      setGameMessage("⚠️ 게임이 이미 시작되었거나 진행 중입니다.")
       return
     }
     if (participants.length < 2) {
-      setSaveMessage("❌ 최소 2명 이상의 참가자를 추가해주세요.")
-      setTimeout(() => setSaveMessage(""), 3000)
+      setGameMessage("❌ 최소 2명 이상의 참가자를 추가해주세요.")
       return
     }
 
@@ -630,7 +634,13 @@ export default function AdminContent() {
                 </Badge>
               </div>
 
-{!gameScheduled && gameStatus === "waiting" && participants.length < 2 && (
+              {gameMessage && (
+                <div className="p-3 bg-blue-900/50 border border-blue-600/50 rounded-lg">
+                  <p className="text-sm text-blue-300 text-center">{gameMessage}</p>
+                </div>
+              )}
+
+              {!gameScheduled && gameStatus === "waiting" && participants.length < 2 && (
                 <p className="text-xs text-yellow-400 text-center">⚠️ 최소 2명 이상의 참가자를 추가해주세요</p>
               )}
 
@@ -643,12 +653,7 @@ export default function AdminContent() {
                     ✓ 게임 예약됨
                   </Button>
                   <Button
-                    onClick={async () => {
-                      if (confirm("게임 예약을 취소하시겠습니까?")) {
-                        setGameScheduled(false)
-                        console.log("[Admin] 게임 예약 취소 - DB 업데이트는 필요 시 추가 구현")
-                      }
-                    }}
+                    onClick={handleCancelReservation}
                     variant="destructive"
                     className="flex-1 py-3 text-lg font-semibold"
                   >
