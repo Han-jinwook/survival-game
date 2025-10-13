@@ -1,23 +1,41 @@
-// 데이터베이스 연결 및 쿼리 유틸리티
-// Supabase 통합이 완료되면 실제 데이터베이스와 연결됩니다.
+// PostgreSQL 데이터베이스 연결 및 쿼리 유틸리티
+import { Pool, QueryResult } from 'pg'
 
+// PostgreSQL 연결 풀 (싱글톤)
+let pool: Pool | null = null
+
+function getPool(): Pool {
+  if (!pool) {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL 환경 변수가 설정되지 않았습니다.')
+    }
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      max: 20, // 최대 연결 수
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
+    })
+
+    pool.on('error', (err) => {
+      console.error('[DB] 예기치 않은 오류:', err)
+    })
+  }
+  return pool
+}
+
+// 타입 정의
 export interface User {
   id: string
   naver_id: string
   nickname: string
-  initial_lives: number
   created_at: string
-  total_games: number
-  total_wins: number
-  total_eliminations: number
+  is_active: boolean
 }
 
 export interface GameSession {
   id: string
   session_name: string
-  status: "waiting" | "in_progress" | "completed" | "cancelled"
-  max_players: number
-  min_players: number
+  status: "waiting" | "in_progress" | "completed"
   initial_lives: number
   current_round: number
   winner_id?: string
@@ -31,137 +49,129 @@ export interface GameParticipant {
   game_session_id: string
   user_id: string
   nickname: string
+  initial_lives: number
   current_lives: number
-  status: "waiting" | "ready" | "playing" | "eliminated" | "winner"
+  status: "waiting" | "playing" | "eliminated" | "winner"
   joined_at: string
   eliminated_at?: string
-  final_rank?: number
 }
 
 export interface GameRound {
   id: string
   game_session_id: string
   round_number: number
-  phase: "choosing" | "revealing" | "eliminating" | "completed"
+  phase: "waiting" | "selectTwo" | "excludeOne" | "revealing"
+  survivors_count?: number
+  rock_count: number
+  paper_count: number
+  scissors_count: number
+  losing_choice?: "rock" | "paper" | "scissors"
   started_at: string
   ended_at?: string
-  survivors_count: number
-  eliminated_count: number
 }
 
 export interface PlayerChoice {
   id: string
   round_id: string
   participant_id: string
-  choice: "rock" | "paper" | "scissors"
+  selected_choices?: string[] // 2개 선택 단계
+  final_choice?: "rock" | "paper" | "scissors" // 최종 선택
   chosen_at: string
 }
 
-export interface Elimination {
-  id: string
-  round_id: string
-  eliminated_participant_id: string
-  eliminator_participant_id?: string
-  lives_lost: number
-  eliminated_at: string
-  reason: string
-}
+// 실시간 업데이트 리스너 타입
+export type GameUpdateCallback = (update: {
+  table: string
+  operation: string
+  data: any
+}) => void
 
-// 임시 데이터 (실제 데이터베이스 연결 전까지 사용)
-export const mockUsers: User[] = [
-  {
-    id: "1",
-    naver_id: "testuser",
-    nickname: "테스터",
-    initial_lives: 3,
-    created_at: new Date().toISOString(),
-    total_games: 15,
-    total_wins: 3,
-    total_eliminations: 45,
-  },
-  {
-    id: "2",
-    naver_id: "gamemaster123",
-    nickname: "게임마스터",
-    initial_lives: 10,
-    created_at: new Date().toISOString(),
-    total_games: 25,
-    total_wins: 8,
-    total_eliminations: 67,
-  },
-  {
-    id: "3",
-    naver_id: "survivalking",
-    nickname: "서바이벌킹",
-    initial_lives: 7,
-    created_at: new Date().toISOString(),
-    total_games: 30,
-    total_wins: 12,
-    total_eliminations: 89,
-  },
-  {
-    id: "4",
-    naver_id: "luckyplayer",
-    nickname: "행운아",
-    initial_lives: 1,
-    created_at: new Date().toISOString(),
-    total_games: 8,
-    total_wins: 1,
-    total_eliminations: 12,
-  },
-  {
-    id: "5",
-    naver_id: "veteran99",
-    nickname: "베테랑",
-    initial_lives: 15,
-    created_at: new Date().toISOString(),
-    total_games: 50,
-    total_wins: 20,
-    total_eliminations: 150,
-  },
-]
-
-// 데이터베이스 쿼리 함수들 (Supabase 연결 후 실제 구현)
+// 데이터베이스 서비스
 export class DatabaseService {
+  // 사용자 관련
   static async getUserByNaverId(naverId: string): Promise<User | null> {
-    // TODO: Supabase 쿼리로 교체
-    return mockUsers.find((user) => user.naver_id.toLowerCase() === naverId.toLowerCase()) || null
+    const db = getPool()
+    const result = await db.query<User>(
+      'SELECT * FROM users WHERE naver_id = $1',
+      [naverId]
+    )
+    return result.rows[0] || null
   }
 
-  static async createUser(userData: Partial<User>): Promise<User> {
-    // TODO: Supabase 쿼리로 교체
-    const newUser: User = {
-      id: Date.now().toString(),
-      naver_id: userData.naver_id!,
-      nickname: userData.nickname!,
-      initial_lives: userData.initial_lives || 5,
-      created_at: new Date().toISOString(),
-      total_games: 0,
-      total_wins: 0,
-      total_eliminations: 0,
-    }
-    mockUsers.push(newUser)
-    return newUser
+  static async createUser(naverId: string, nickname: string): Promise<User> {
+    const db = getPool()
+    const result = await db.query<User>(
+      'INSERT INTO users (naver_id, nickname) VALUES ($1, $2) RETURNING *',
+      [naverId, nickname]
+    )
+    return result.rows[0]
   }
 
   // 게임 세션 관련
-  static async createGameSession(sessionData: Partial<GameSession>): Promise<GameSession> {
-    // TODO: Supabase 쿼리로 교체
-    return {
-      id: Date.now().toString(),
-      session_name: sessionData.session_name || "Survival Game",
-      status: "waiting",
-      max_players: sessionData.max_players || 100,
-      min_players: sessionData.min_players || 10,
-      initial_lives: sessionData.initial_lives || 5,
-      current_round: 1,
-      created_at: new Date().toISOString(),
-    }
+  static async createGameSession(
+    sessionName: string,
+    initialLives: number
+  ): Promise<GameSession> {
+    const db = getPool()
+    const result = await db.query<GameSession>(
+      'INSERT INTO game_sessions (session_name, initial_lives) VALUES ($1, $2) RETURNING *',
+      [sessionName, initialLives]
+    )
+    return result.rows[0]
   }
 
   static async getActiveGameSession(): Promise<GameSession | null> {
-    // TODO: Supabase 쿼리로 교체
-    return null
+    const db = getPool()
+    const result = await db.query<GameSession>(
+      "SELECT * FROM game_sessions WHERE status IN ('waiting', 'in_progress') ORDER BY created_at DESC LIMIT 1"
+    )
+    return result.rows[0] || null
+  }
+
+  static async getGameSession(sessionId: string): Promise<GameSession | null> {
+    const db = getPool()
+    const result = await db.query<GameSession>(
+      'SELECT * FROM game_sessions WHERE id = $1',
+      [sessionId]
+    )
+    return result.rows[0] || null
+  }
+
+  static async updateGameSession(
+    sessionId: string,
+    updates: Partial<GameSession>
+  ): Promise<GameSession> {
+    const db = getPool()
+    const fields: string[] = []
+    const values: any[] = []
+    let paramCount = 1
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value !== undefined) {
+        fields.push(`${key} = $${paramCount}`)
+        values.push(value)
+        paramCount++
+      }
+    })
+
+    // 빈 업데이트 방지
+    if (fields.length === 0) {
+      const result = await db.query<GameSession>(
+        'SELECT * FROM game_sessions WHERE id = $1',
+        [sessionId]
+      )
+      if (!result.rows[0]) {
+        throw new Error(`GameSession with id ${sessionId} not found`)
+      }
+      return result.rows[0]
+    }
+
+    values.push(sessionId)
+    const result = await db.query<GameSession>(
+      `UPDATE game_sessions SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+      values
+    )
+    return result.rows[0]
   }
 
   // 게임 참가자 관련
@@ -169,81 +179,186 @@ export class DatabaseService {
     sessionId: string,
     userId: string,
     nickname: string,
-    initialLives: number,
+    initialLives: number
   ): Promise<GameParticipant> {
-    // TODO: Supabase 쿼리로 교체
-    return {
-      id: Date.now().toString(),
-      game_session_id: sessionId,
-      user_id: userId,
-      nickname,
-      current_lives: initialLives,
-      status: "waiting",
-      joined_at: new Date().toISOString(),
-    }
+    const db = getPool()
+    const result = await db.query<GameParticipant>(
+      `INSERT INTO game_participants (game_session_id, user_id, nickname, initial_lives, current_lives)
+       VALUES ($1, $2, $3, $4, $4) RETURNING *`,
+      [sessionId, userId, nickname, initialLives]
+    )
+    return result.rows[0]
   }
 
   static async getParticipants(sessionId: string): Promise<GameParticipant[]> {
-    // TODO: Supabase 쿼리로 교체
-    return []
+    const db = getPool()
+    const result = await db.query<GameParticipant>(
+      'SELECT * FROM game_participants WHERE game_session_id = $1 ORDER BY joined_at',
+      [sessionId]
+    )
+    return result.rows
+  }
+
+  static async updateParticipant(
+    participantId: string,
+    updates: Partial<GameParticipant>
+  ): Promise<GameParticipant> {
+    const db = getPool()
+    const fields: string[] = []
+    const values: any[] = []
+    let paramCount = 1
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value !== undefined) {
+        fields.push(`${key} = $${paramCount}`)
+        values.push(value)
+        paramCount++
+      }
+    })
+
+    // 빈 업데이트 방지
+    if (fields.length === 0) {
+      const result = await db.query<GameParticipant>(
+        'SELECT * FROM game_participants WHERE id = $1',
+        [participantId]
+      )
+      if (!result.rows[0]) {
+        throw new Error(`GameParticipant with id ${participantId} not found`)
+      }
+      return result.rows[0]
+    }
+
+    values.push(participantId)
+    const result = await db.query<GameParticipant>(
+      `UPDATE game_participants SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+      values
+    )
+    return result.rows[0]
   }
 
   // 게임 라운드 관련
-  static async createRound(sessionId: string, roundNumber: number): Promise<GameRound> {
-    // TODO: Supabase 쿼리로 교체
-    return {
-      id: Date.now().toString(),
-      game_session_id: sessionId,
-      round_number: roundNumber,
-      phase: "choosing",
-      started_at: new Date().toISOString(),
-      survivors_count: 0,
-      eliminated_count: 0,
+  static async createRound(
+    sessionId: string,
+    roundNumber: number
+  ): Promise<GameRound> {
+    const db = getPool()
+    const result = await db.query<GameRound>(
+      'INSERT INTO game_rounds (game_session_id, round_number) VALUES ($1, $2) RETURNING *',
+      [sessionId, roundNumber]
+    )
+    return result.rows[0]
+  }
+
+  static async getCurrentRound(sessionId: string): Promise<GameRound | null> {
+    const db = getPool()
+    const result = await db.query<GameRound>(
+      'SELECT * FROM game_rounds WHERE game_session_id = $1 ORDER BY round_number DESC LIMIT 1',
+      [sessionId]
+    )
+    return result.rows[0] || null
+  }
+
+  static async updateRound(
+    roundId: string,
+    updates: Partial<GameRound>
+  ): Promise<GameRound> {
+    const db = getPool()
+    const fields: string[] = []
+    const values: any[] = []
+    let paramCount = 1
+
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value !== undefined) {
+        fields.push(`${key} = $${paramCount}`)
+        values.push(value)
+        paramCount++
+      }
+    })
+
+    // 빈 업데이트 방지
+    if (fields.length === 0) {
+      const result = await db.query<GameRound>(
+        'SELECT * FROM game_rounds WHERE id = $1',
+        [roundId]
+      )
+      if (!result.rows[0]) {
+        throw new Error(`GameRound with id ${roundId} not found`)
+      }
+      return result.rows[0]
     }
+
+    values.push(roundId)
+    const result = await db.query<GameRound>(
+      `UPDATE game_rounds SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+      values
+    )
+    return result.rows[0]
   }
 
   // 플레이어 선택 관련
   static async savePlayerChoice(
     roundId: string,
     participantId: string,
-    choice: "rock" | "paper" | "scissors",
+    selectedChoices?: string[],
+    finalChoice?: "rock" | "paper" | "scissors"
   ): Promise<PlayerChoice> {
-    // TODO: Supabase 쿼리로 교체
-    return {
-      id: Date.now().toString(),
-      round_id: roundId,
-      participant_id: participantId,
-      choice,
-      chosen_at: new Date().toISOString(),
+    const db = getPool()
+    const result = await db.query<PlayerChoice>(
+      `INSERT INTO player_choices (round_id, participant_id, selected_choices, final_choice)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (round_id, participant_id)
+       DO UPDATE SET selected_choices = $3, final_choice = $4, chosen_at = NOW()
+       RETURNING *`,
+      [roundId, participantId, selectedChoices || null, finalChoice || null]
+    )
+    return result.rows[0]
+  }
+
+  static async getPlayerChoices(roundId: string): Promise<PlayerChoice[]> {
+    const db = getPool()
+    const result = await db.query<PlayerChoice>(
+      'SELECT * FROM player_choices WHERE round_id = $1',
+      [roundId]
+    )
+    return result.rows
+  }
+
+  // 실시간 동기화 (LISTEN/NOTIFY)
+  static async listenToGameUpdates(
+    callback: GameUpdateCallback
+  ): Promise<() => void> {
+    const db = getPool()
+    const client = await db.connect()
+
+    await client.query('LISTEN game_update')
+
+    client.on('notification', (msg) => {
+      if (msg.channel === 'game_update' && msg.payload) {
+        try {
+          const update = JSON.parse(msg.payload)
+          callback(update)
+        } catch (err) {
+          console.error('[DB] NOTIFY 파싱 오류:', err)
+        }
+      }
+    })
+
+    // 연결 해제 함수 반환
+    return () => {
+      client.query('UNLISTEN game_update').finally(() => {
+        client.release()
+      })
     }
   }
 
-  // 제거 기록 관련
-  static async recordElimination(
-    roundId: string,
-    eliminatedParticipantId: string,
-    eliminatorParticipantId?: string,
-  ): Promise<Elimination> {
-    // TODO: Supabase 쿼리로 교체
-    return {
-      id: Date.now().toString(),
-      round_id: roundId,
-      eliminated_participant_id: eliminatedParticipantId,
-      eliminator_participant_id: eliminatorParticipantId,
-      lives_lost: 1,
-      eliminated_at: new Date().toISOString(),
-      reason: "game_elimination",
+  // 연결 종료
+  static async closePool(): Promise<void> {
+    if (pool) {
+      await pool.end()
+      pool = null
     }
-  }
-
-  // 통계 관련
-  static async getUserStatistics(userId: string): Promise<User | null> {
-    // TODO: Supabase 쿼리로 교체
-    return mockUsers.find((user) => user.id === userId) || null
-  }
-
-  static async getLeaderboard(limit = 10): Promise<User[]> {
-    // TODO: Supabase 쿼리로 교체
-    return mockUsers.sort((a, b) => b.total_wins - a.total_wins).slice(0, limit)
   }
 }
+
+// 기본 export
+export default DatabaseService
