@@ -5,11 +5,13 @@
 ### 마지막 업데이트
 - 날짜: 2025-10-13
 - v0에서 Replit으로 마이그레이션 완료
-- UI/UX 완성 상태, DB 연동 대기 중
+- UI/UX 완성, PostgreSQL DB 연동 완료 ✅
 
 ### 기술 스택
 - **프레임워크**: Next.js 14.2.16 (App Router)
 - **언어**: TypeScript
+- **데이터베이스**: Replit PostgreSQL (Neon-backed)
+- **DB 라이브러리**: pg (node-postgres)
 - **스타일링**: Tailwind CSS v4 (CSS-first configuration)
 - **UI 컴포넌트**: shadcn/ui + Radix UI
 - **배포**: Replit (개발), Autoscale 설정 완료
@@ -47,18 +49,17 @@
    - 페이지별 배경음악 설정
    - 음성 안내 시스템 (TTS) 준비
 
-5. **임시 데이터 구조**
-   - localStorage 기반 상태 관리
-   - Mock 데이터 (lib/database.ts)
+5. **데이터베이스 연동 완료 (2025-10-13)** ✅
+   - Replit PostgreSQL 데이터베이스 생성
+   - 5개 핵심 테이블 설계 및 생성 (users, game_sessions, game_participants, game_rounds, player_choices)
+   - 6개 필수 인덱스 생성 (성능 최적화)
+   - PostgreSQL LISTEN/NOTIFY 실시간 동기화 시스템 구축
+   - lib/database.ts: Mock → 실제 PostgreSQL 연결 (pg 라이브러리)
+   - Connection Pool 기반 안전한 DB 연결 관리
+   - CRUD 함수 11개 구현 (에러 처리 완료)
 
 #### ⏳ 진행 예정 작업
-1. **데이터베이스 연동** (최우선)
-   - Supabase 또는 Replit PostgreSQL 선택
-   - 테이블 생성 (scripts/ 폴더 SQL 파일 참조)
-   - 실시간 동기화 구현
-   - localStorage → DB 마이그레이션
-
-2. **서버 기능 구현**
+1. **서버 기능 구현** (다음 단계)
    - API Routes 구현 (app/api/)
    - 게임 로직 서버사이드 처리
    - WebSocket/Server-Sent Events for 실시간
@@ -85,7 +86,7 @@ app/
     └── game/session/route.ts
 
 lib/
-├── database.ts           # DB 유틸리티 (현재 Mock)
+├── database.ts           # PostgreSQL DB 연결 및 CRUD (pg 라이브러리)
 ├── voice.ts             # TTS 음성 시스템
 └── utils.ts             # 유틸리티
 
@@ -95,10 +96,12 @@ scripts/
 └── 03_create_functions.sql
 ```
 
-### 환경 변수 (추후 설정 필요)
-- `DATABASE_URL`: PostgreSQL 연결 문자열
-- `NEXT_PUBLIC_SUPABASE_URL` (옵션)
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (옵션)
+### 환경 변수
+✅ **설정 완료**:
+- `DATABASE_URL`: PostgreSQL 연결 문자열 (Replit 자동 설정)
+- `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` (Replit 자동 설정)
+
+⏳ **추후 설정 필요**:
 - `NAVER_CLIENT_ID` (옵션)
 - `NAVER_CLIENT_SECRET` (옵션)
 
@@ -121,11 +124,23 @@ scripts/
 - ✅ 빌드 캐시 문제 → 해결됨 (.next 삭제)
 - ⚠️ React peer dependency 경고 (react 18.0.0 vs ^18.2.0) - 기능에는 영향 없음
 
+### 데이터베이스 스키마
+**5개 핵심 테이블** (최소 필수 설계):
+1. **users** - 네이버 카페 회원 (naver_id, nickname)
+2. **game_sessions** - 게임 세션 (session_name, status, initial_lives)
+3. **game_participants** - 참가자 (user_id, current_lives, status)
+4. **game_rounds** - 라운드 진행 (round_number, phase, survivors_count, 선택 집계)
+5. **player_choices** - 플레이어 선택 (selected_choices[], final_choice)
+
+**실시간 동기화**: PostgreSQL LISTEN/NOTIFY 트리거 (4개 테이블)
+
 ### 다음 단계
-1. DB 선택 및 연동 (Supabase vs Replit PostgreSQL)
-2. 실시간 게임 로직 서버 구현
-3. 테스트 및 디버깅
-4. 프로덕션 배포
+1. ✅ ~~DB 연동 완료~~ (Replit PostgreSQL)
+2. API Routes 구현 (app/api/)
+3. localStorage → DB 마이그레이션
+4. 실시간 게임 로직 서버 구현
+5. 테스트 및 디버깅
+6. 프로덕션 배포
 
 ### 참고 문서
 - [GAME_RULES.md](./GAME_RULES.md) - 게임 규칙 상세
