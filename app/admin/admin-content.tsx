@@ -362,13 +362,10 @@ export default function AdminContent() {
 
       console.log("[Admin] 게임 예약 DB 저장 완료, 참가자 수:", participants.length)
       
+      setGameScheduled(true)
       setIsSaved(true)
       setLastSavedTime(new Date())
       setGameMessage(`🎉 게임 예약이 완료되었습니다! 시작까지 ${timeMessage} 남았습니다.`)
-      
-      setTimeout(() => {
-        setGameScheduled(true)
-      }, 100)
     } catch (error: any) {
       console.error("[Admin] 게임 예약 실패:", error)
       setGameMessage(`❌ ${error.message || "게임 예약에 실패했습니다."}`)
@@ -635,7 +632,7 @@ export default function AdminContent() {
               )}
 
               {gameScheduled && gameStatus === "waiting" ? (
-                <div className="flex gap-2">
+                <div key="game-scheduled" className="flex gap-2">
                   <Button
                     disabled
                     className="flex-1 bg-green-700 text-white py-3 text-lg font-semibold cursor-not-allowed"
@@ -652,6 +649,7 @@ export default function AdminContent() {
                 </div>
               ) : (
                 <Button
+                  key="game-not-scheduled"
                   onClick={handleGameSetupClick}
                   disabled={isSaving || gameStatus !== "waiting" || participants.length < 2}
                   className="w-full bg-red-600 hover:bg-red-700 text-white py-3 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
