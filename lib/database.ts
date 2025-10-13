@@ -3,28 +3,46 @@ import { Pool, QueryResult } from 'pg'
 
 // PostgreSQL 연결 풀 (싱글톤)
 let pool: Pool | null = null
+let isReconnecting = false
 
 function getPool(): Pool {
-  if (!pool) {
+  if (!pool || isReconnecting) {
     if (!process.env.DATABASE_URL) {
       throw new Error('DATABASE_URL 환경 변수가 설정되지 않았습니다.')
     }
+    
+    if (pool && !isReconnecting) {
+      try {
+        pool.end()
+      } catch (err) {
+        console.error('[DB] 풀 종료 중 오류:', err)
+      }
+    }
+    
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
       max: 10,
       min: 2,
-      idleTimeoutMillis: 60000,
+      idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
       allowExitOnIdle: false,
     })
 
     pool.on('error', (err) => {
-      console.error('[DB] 예기치 않은 오류:', err)
-      pool = null
+      console.error('[DB] 연결 오류 발생:', err.message)
+      if (!isReconnecting) {
+        isReconnecting = true
+        setTimeout(() => {
+          pool = null
+          isReconnecting = false
+          console.log('[DB] 재연결 준비 완료')
+        }, 1000)
+      }
     })
 
     pool.on('connect', () => {
       console.log('[DB] 새로운 연결 생성됨')
+      isReconnecting = false
     })
   }
   return pool
