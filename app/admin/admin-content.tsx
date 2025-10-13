@@ -360,12 +360,15 @@ export default function AdminContent() {
         throw new Error(data.error || "게임 예약 실패")
       }
 
-      setGameScheduled(true)
+      console.log("[Admin] 게임 예약 DB 저장 완료, 참가자 수:", participants.length)
+      
       setIsSaved(true)
       setLastSavedTime(new Date())
-      console.log("[Admin] 게임 예약 DB 저장 완료, 참가자 수:", participants.length)
-
       setGameMessage(`🎉 게임 예약이 완료되었습니다! 시작까지 ${timeMessage} 남았습니다.`)
+      
+      setTimeout(() => {
+        setGameScheduled(true)
+      }, 100)
     } catch (error: any) {
       console.error("[Admin] 게임 예약 실패:", error)
       setGameMessage(`❌ ${error.message || "게임 예약에 실패했습니다."}`)
