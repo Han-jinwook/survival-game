@@ -3,31 +3,37 @@ import { DatabaseService } from "@/lib/database"
 
 export async function POST(request: NextRequest) {
   try {
-    const { email } = await request.json()
+    const { naverId, nickname, lives } = await request.json()
 
-    if (!email || !email.includes("@")) {
-      return NextResponse.json({ error: "올바른 이메일 주소를 입력해주세요." }, { status: 400 })
+    if (!naverId || naverId.trim().length === 0) {
+      return NextResponse.json({ error: "네이버 ID를 입력해주세요." }, { status: 400 })
     }
+
+    const trimmedNaverId = naverId.trim()
 
     // 등록된 사용자 확인
-    const user = await DatabaseService.getUserByEmail(email)
+    let user = await DatabaseService.getUserByNaverId(trimmedNaverId)
 
     if (!user) {
-      return NextResponse.json(
-        { error: "등록되지 않은 회원입니다. 네이버 카페 운영자에게 문의해주세요." },
-        { status: 404 },
-      )
+      // 사용자가 없으면 새로 생성 (관리자가 등록한 참가자)
+      if (!nickname) {
+        return NextResponse.json(
+          { error: "등록되지 않은 회원입니다. 네이버 카페 운영자에게 문의해주세요." },
+          { status: 404 },
+        )
+      }
+      
+      user = await DatabaseService.createUser(trimmedNaverId, nickname)
     }
 
-    // 인증 성공 - 실제로는 JWT 토큰 생성
+    // 인증 성공
     return NextResponse.json({
       success: true,
       user: {
         id: user.id,
-        email: user.email,
+        naverId: user.naver_id,
         nickname: user.nickname,
-        total_games: user.total_games,
-        total_wins: user.total_wins,
+        lives: lives || 5, // 기본 목숨 5개
       },
     })
   } catch (error) {

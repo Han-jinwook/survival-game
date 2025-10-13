@@ -3,22 +3,33 @@ import { DatabaseService } from "@/lib/database"
 
 export async function GET() {
   try {
-    // 현재 활성 게임 세션 조회
     const activeSession = await DatabaseService.getActiveGameSession()
 
     if (!activeSession) {
-      // 새 게임 세션 생성
-      const newSession = await DatabaseService.createGameSession({
-        session_name: `서바이벌 게임 #${Date.now()}`,
-        max_players: 100,
-        min_players: 10,
-        initial_lives: 5,
-      })
-
-      return NextResponse.json({ session: newSession })
+      return NextResponse.json({ session: null })
     }
 
-    return NextResponse.json({ session: activeSession })
+    const participants = await DatabaseService.getParticipants(activeSession.id)
+
+    return NextResponse.json({
+      session: {
+        id: activeSession.id,
+        sessionName: activeSession.session_name,
+        status: activeSession.status,
+        initialLives: activeSession.initial_lives,
+        currentRound: activeSession.current_round,
+        startedAt: activeSession.started_at,
+        createdAt: activeSession.created_at,
+      },
+      participants: participants.map(p => ({
+        id: p.id,
+        userId: p.user_id,
+        nickname: p.nickname,
+        currentLives: p.current_lives,
+        status: p.status,
+        joinedAt: p.joined_at,
+      })),
+    })
   } catch (error) {
     console.error("Game session error:", error)
     return NextResponse.json({ error: "게임 세션을 불러올 수 없습니다." }, { status: 500 })
@@ -27,12 +38,38 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { action, sessionId, userId, nickname } = await request.json()
+    const { action, sessionId, userId, nickname, initialLives, updates } = await request.json()
 
     if (action === "join") {
-      // 게임 참가
-      const participant = await DatabaseService.addParticipant(sessionId, userId, nickname)
-      return NextResponse.json({ participant })
+      const participant = await DatabaseService.addParticipant(
+        sessionId, 
+        userId, 
+        nickname,
+        initialLives || 5
+      )
+      return NextResponse.json({ success: true, participant })
+    }
+
+    if (action === "start") {
+      const session = await DatabaseService.updateGameSession(sessionId, {
+        status: "in_progress",
+        started_at: new Date().toISOString(),
+      })
+      return NextResponse.json({ success: true, session })
+    }
+
+    if (action === "update") {
+      const session = await DatabaseService.updateGameSession(sessionId, updates)
+      return NextResponse.json({ success: true, session })
+    }
+
+    if (action === "complete") {
+      const session = await DatabaseService.updateGameSession(sessionId, {
+        status: "completed",
+        ended_at: new Date().toISOString(),
+        ...updates,
+      })
+      return NextResponse.json({ success: true, session })
     }
 
     return NextResponse.json({ error: "지원하지 않는 액션입니다." }, { status: 400 })
