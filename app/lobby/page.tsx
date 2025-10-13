@@ -30,6 +30,8 @@ export default function GameLobby() {
   const [lobbyOpenTime, setLobbyOpenTime] = useState<string>("")
   const [showRulesModal, setShowRulesModal] = useState(false)
   const [currentRuleCard, setCurrentRuleCard] = useState(0)
+  const [cafeName, setCafeName] = useState("썬드림 즐빛카페")
+  const [eventName, setEventName] = useState("가위바위보 하나빼기 이벤트")
 
   const minPlayers = 3
   const readyPlayers = players.filter((p) => p.status === "ready").length
@@ -38,6 +40,25 @@ export default function GameLobby() {
 
   useEffect(() => {
     console.log("[v0] Lobby page loaded, checking user info")
+    
+    // DB에서 카페명과 이벤트명 가져오기
+    const fetchEventInfo = async () => {
+      try {
+        const response = await fetch("/api/game/settings")
+        if (response.ok) {
+          const data = await response.json()
+          if (data.session) {
+            setCafeName(data.session.cafeName || "썬드림 즐빛카페")
+            setEventName(data.session.sessionName || "가위바위보 하나빼기 이벤트")
+          }
+        }
+      } catch (error) {
+        console.error("[Lobby] 이벤트 정보 로드 실패:", error)
+      }
+    }
+    
+    fetchEventInfo()
+    
     const userInfo = localStorage.getItem("userInfo")
     if (userInfo) {
       console.log("[v0] User info found:", userInfo)
@@ -493,6 +514,11 @@ export default function GameLobby() {
             <Badge variant="outline" className="border-yellow-600/50 text-yellow-300">
               {currentUser.nickname}
             </Badge>
+            <Link href="/">
+              <Button variant="outline" size="sm" className="bg-blue-600/20 text-blue-300 border-blue-600/50 hover:bg-blue-600/30">
+                홈으로
+              </Button>
+            </Link>
           </div>
         </div>
       </header>
@@ -666,7 +692,7 @@ export default function GameLobby() {
 
       <footer className="relative z-10 p-4 border-t border-red-800/30">
         <div className="max-w-6xl mx-auto text-center">
-          <p className="text-gray-500 text-sm">썬드림 즐빛카페 × 가위바위보 하나빼기 이벤트</p>
+          <p className="text-gray-500 text-sm">{cafeName} × {eventName}</p>
         </div>
       </footer>
 

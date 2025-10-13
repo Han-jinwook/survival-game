@@ -1,5 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { DatabaseService } from "@/lib/database"
+import { Pool } from "pg"
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL })
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,6 +29,20 @@ export async function POST(request: NextRequest) {
       user = await DatabaseService.createUser(trimmedNaverId, nickname)
     }
 
+    // DB에서 참가자 정보 조회 (행운권 개수)
+    let userLives = 5 // 기본값
+    try {
+      const result = await pool.query(
+        `SELECT initial_lives FROM game_participants WHERE user_id = $1 ORDER BY joined_at DESC LIMIT 1`,
+        [user.id]
+      )
+      if (result.rows.length > 0) {
+        userLives = result.rows[0].initial_lives
+      }
+    } catch (err) {
+      console.log("Participant info not found, using default lives:", err)
+    }
+
     // 인증 성공
     return NextResponse.json({
       success: true,
@@ -33,7 +50,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
         naverId: user.naver_id,
         nickname: user.nickname,
-        lives: lives || 5, // 기본 목숨 5개
+        lives: userLives,
       },
     })
   } catch (error) {
