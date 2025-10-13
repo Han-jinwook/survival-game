@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -32,6 +32,9 @@ interface GameRound {
 
 export default function FinalsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const isSpectator = searchParams.get('spectator') === 'true'
+  
   const [players, setPlayers] = useState<Player[]>([])
   const [gameRound, setGameRound] = useState<GameRound>({
     round: 1,
@@ -473,6 +476,46 @@ export default function FinalsPage() {
   }
 
   const getPlayerPositions = () => {
+    // 관전 모드: 결승 참가자 2~4명 전체를 화면에 배치 (본인 위치 없음)
+    if (isSpectator) {
+      const alivePlayers = players.filter((p) => p.lives > 0)
+      
+      if (alivePlayers.length === 2) {
+        // 2명: 상단 vs 하단
+        return {
+          positions: [
+            { player: alivePlayers[0], style: "top-0 left-1/2 -translate-x-1/2" },
+            { player: alivePlayers[1], style: "bottom-0 left-1/2 -translate-x-1/2" },
+          ],
+          userStyle: null,
+        }
+      } else if (alivePlayers.length === 3) {
+        // 3명: 삼각형 (상단 중앙, 하단 좌우)
+        return {
+          positions: [
+            { player: alivePlayers[0], style: "top-0 left-1/2 -translate-x-1/2" },
+            { player: alivePlayers[1], style: "bottom-0 left-1/4 -translate-x-1/2" },
+            { player: alivePlayers[2], style: "bottom-0 right-1/4 translate-x-1/2" },
+          ],
+          userStyle: null,
+        }
+      } else if (alivePlayers.length === 4) {
+        // 4명: 사각형 (동서남북)
+        return {
+          positions: [
+            { player: alivePlayers[0], style: "top-0 left-1/2 -translate-x-1/2" }, // North
+            { player: alivePlayers[1], style: "top-1/2 right-0 -translate-y-1/2" }, // East
+            { player: alivePlayers[2], style: "bottom-0 left-1/2 -translate-x-1/2" }, // South
+            { player: alivePlayers[3], style: "top-1/2 left-0 -translate-y-1/2" }, // West
+          ],
+          userStyle: null,
+        }
+      }
+      
+      return { positions: [], userStyle: null }
+    }
+    
+    // 참가자 모드: 기존 로직 (opponents + currentUser)
     const opponentCount = opponents.length
 
     if (opponentCount === 1) {
@@ -600,7 +643,14 @@ export default function FinalsPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <img src="/game-logo.png" alt="가위바위보 로고" className="w-15 h-15 rounded-full" />
-              <h1 className="text-xl font-bold">가위바위보 하나빼기</h1>
+              <div>
+                <h1 className="text-xl font-bold">가위바위보 하나빼기</h1>
+                {isSpectator && (
+                  <Badge variant="outline" className="text-xs bg-purple-600/20 text-purple-300 border-purple-600/50 mt-1">
+                    결승 관전 모드 👁️
+                  </Badge>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-3 ml-4">
               <Badge
@@ -651,7 +701,7 @@ export default function FinalsPage() {
         </Card>
 
         <div className="relative flex items-center justify-center min-h-[600px]">
-          {/* Opponents - Dynamic positions */}
+          {/* All Players - Dynamic positions (관전 모드에서는 모든 플레이어를 OpponentCard로 표시) */}
           {playerPositions.positions.map((pos, idx) => (
             <div key={pos.player.id} className={`absolute ${pos.style}`}>
               <OpponentCard
@@ -663,8 +713,8 @@ export default function FinalsPage() {
             </div>
           ))}
 
-          {/* Current User - Always at bottom (South) */}
-          {currentUser && currentUser.lives > 0 && (
+          {/* Current User - Only shown in participant mode (참가자 모드에서만 표시) */}
+          {!isSpectator && currentUser && currentUser.lives > 0 && (
             <div className={`absolute ${playerPositions.userStyle}`}>
               <CurrentUserCard
                 player={currentUser}
