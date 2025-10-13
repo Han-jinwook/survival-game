@@ -20,19 +20,23 @@ export async function POST(request: NextRequest) {
     // 기존 활성 세션 확인
     const activeSession = await DatabaseService.getActiveGameSession()
     
+    let session
     if (activeSession) {
-      return NextResponse.json(
-        { error: "이미 진행 중인 게임이 있습니다." }, 
-        { status: 409 }
+      // 기존 세션을 완료 처리하고 새 세션 생성
+      await DatabaseService.updateGameSession(activeSession.id, { status: 'completed' })
+      session = await DatabaseService.createGameSession(
+        sessionName,
+        initialLives,
+        gameStartTime
+      )
+    } else {
+      // 새 게임 세션 생성
+      session = await DatabaseService.createGameSession(
+        sessionName,
+        initialLives,
+        gameStartTime
       )
     }
-
-    // 새 게임 세션 생성 (gameStartTime이 있으면 started_at에 설정)
-    const session = await DatabaseService.createGameSession(
-      sessionName,
-      initialLives,
-      gameStartTime
-    )
 
     // 참가자 등록
     if (participants && Array.isArray(participants)) {

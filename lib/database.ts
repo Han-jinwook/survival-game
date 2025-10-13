@@ -11,13 +11,20 @@ function getPool(): Pool {
     }
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      max: 20, // 최대 연결 수
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      max: 10,
+      min: 2,
+      idleTimeoutMillis: 60000,
+      connectionTimeoutMillis: 10000,
+      allowExitOnIdle: false,
     })
 
     pool.on('error', (err) => {
       console.error('[DB] 예기치 않은 오류:', err)
+      pool = null
+    })
+
+    pool.on('connect', () => {
+      console.log('[DB] 새로운 연결 생성됨')
     })
   }
   return pool
