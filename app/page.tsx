@@ -8,13 +8,16 @@ import Link from "next/link"
 import AudioSystem from "@/components/audio-system"
 
 export default function GameLanding() {
-  const [playerCount, setPlayerCount] = useState(847)
-  const [spectatorCount] = useState(12)
+  const [playerCount, setPlayerCount] = useState(0)
+  const [totalVisitors, setTotalVisitors] = useState(0)
   const [eventInfo, setEventInfo] = useState({
+    cafeName: "",
     name: "2025 신년 특별 이벤트",
     prize: "아이폰 16 Pro Max",
     startTime: "2025-01-15T20:00",
   })
+  
+  const spectatorCount = Math.max(0, totalVisitors - playerCount)
 
   useEffect(() => {
     const loadEventInfo = async () => {
@@ -26,6 +29,7 @@ export default function GameLanding() {
           
           if (data.session) {
             setEventInfo({
+              cafeName: data.session.cafeName || "",
               name: data.session.sessionName || "2025 신년 특별 이벤트",
               prize: data.session.prize || "아이폰 16 Pro Max",
               startTime: data.session.startedAt || data.session.createdAt || "2025-01-15T20:00",
@@ -44,6 +48,22 @@ export default function GameLanding() {
     }
     
     loadEventInfo()
+    
+    const visitorKey = "game_visitor_count"
+    const userVisitKey = "game_user_visited"
+    
+    if (!localStorage.getItem(userVisitKey)) {
+      const currentCount = parseInt(localStorage.getItem(visitorKey) || "847", 10)
+      const newCount = currentCount + 1
+      localStorage.setItem(visitorKey, newCount.toString())
+      localStorage.setItem(userVisitKey, "true")
+      setTotalVisitors(newCount)
+      console.log("[Home] 신규 방문자, 총 방문자:", newCount)
+    } else {
+      const currentCount = parseInt(localStorage.getItem(visitorKey) || "847", 10)
+      setTotalVisitors(currentCount)
+      console.log("[Home] 재방문자, 총 방문자:", currentCount)
+    }
   }, [])
 
   const formatDateTime = (dateTimeStr: string) => {
@@ -95,6 +115,9 @@ export default function GameLanding() {
           <Card className="bg-gradient-to-r from-red-950/80 to-orange-950/80 border-red-600/50 p-8 mb-12">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex-1 text-left">
+                {eventInfo.cafeName && (
+                  <p className="text-sm text-gray-400 mb-1">카페명: {eventInfo.cafeName}</p>
+                )}
                 <h3 className="text-2xl font-bold text-white mb-2">{eventInfo.name}</h3>
                 <p className="text-xl text-yellow-300 font-semibold mb-1">🎁 상품: {eventInfo.prize}</p>
                 <p className="text-lg text-red-200">📅 게임 시작: {formatDateTime(eventInfo.startTime)}</p>
