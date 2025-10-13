@@ -58,13 +58,28 @@
    - Connection Pool 기반 안전한 DB 연결 관리
    - CRUD 함수 11개 구현 (에러 처리 완료)
 
-#### ⏳ 진행 예정 작업
-1. **서버 기능 구현** (다음 단계)
-   - API Routes 구현 (app/api/)
-   - 게임 로직 서버사이드 처리
-   - WebSocket/Server-Sent Events for 실시간
+6. **서버 API 구현 완료 (2025-10-13)** ✅
+   - **6개 핵심 API Routes** 구현 및 Architect 승인
+   - `/api/auth`: 네이버 ID 기반 인증 (신규 사용자 자동 생성)
+   - `/api/game/settings`: 게임 설정 + 세션 생성 (중복 방지)
+   - `/api/game/session`: 세션 관리 (join/start/update/complete)
+   - `/api/game/round`: 라운드 진행 (create/update + 선택 집계)
+   - `/api/game/choice`: 플레이어 선택 저장/조회 (UPSERT)
+   - `/api/game/state`: 실시간 상태 조회 (세션+참가자+라운드+선택)
+   - TypeScript 타입 안전성 ✅ | LSP 에러 없음 ✅ | 에러 처리 완료 ✅
 
-3. **네이버 카페 인증**
+#### ⏳ 진행 예정 작업
+1. **프론트엔드 API 연동** (다음 단계)
+   - localStorage → API 호출 마이그레이션
+   - 실시간 데이터 동기화 (폴링/SSE)
+   - 에러 핸들링 및 로딩 상태 처리
+
+2. **게임 로직 서버사이드 처리**
+   - 라운드 진행 자동화
+   - 승패 판정 로직
+   - 탈락자 처리
+
+3. **네이버 카페 인증 고도화**
    - 네이버 OAuth 연동 고려
    - 회원 검증 로직
 
@@ -82,8 +97,13 @@ app/
 ├── result/page.tsx       # 최종 결과
 ├── admin/page.tsx        # 관리자
 └── api/
-    ├── auth/route.ts     # 인증 API
-    └── game/session/route.ts
+    ├── auth/route.ts           # 네이버 ID 인증
+    └── game/
+        ├── settings/route.ts   # 게임 설정
+        ├── session/route.ts    # 세션 관리
+        ├── round/route.ts      # 라운드 진행
+        ├── choice/route.ts     # 플레이어 선택
+        └── state/route.ts      # 실시간 상태
 
 lib/
 ├── database.ts           # PostgreSQL DB 연결 및 CRUD (pg 라이브러리)
@@ -136,8 +156,12 @@ scripts/
 
 ### 다음 단계
 1. ✅ ~~DB 연동 완료~~ (Replit PostgreSQL)
-2. API Routes 구현 (app/api/)
-3. localStorage → DB 마이그레이션
+2. ✅ ~~API Routes 구현~~ (app/api/)
+3. **프론트엔드 API 연동** (현재 단계)
+   - 인증 페이지: `/api/auth` 호출
+   - 관리자 페이지: `/api/game/settings` 호출
+   - 로비/게임 페이지: `/api/game/session`, `/api/game/state` 호출
+   - 게임 진행: `/api/game/round`, `/api/game/choice` 호출
 4. 실시간 게임 로직 서버 구현
 5. 테스트 및 디버깅
 6. 프로덕션 배포
