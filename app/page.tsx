@@ -176,10 +176,7 @@ export default function GameLanding() {
             </div>
           </Card>
 
-          <h2 className="text-6xl font-bold mb-6 text-balance bg-gradient-to-r from-white via-red-200 to-red-400 bg-clip-text text-transparent">
-            가위바위보 하나빼기 최종 승자는?
-          </h2>
-          <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto text-pretty">
+          <p className="text-3xl font-semibold text-gray-200 mb-12 max-w-4xl mx-auto text-balance leading-relaxed">
             전통 가위바위보 하나빼기 게임이 생존 게임으로 돌아왔습니다. 행운권이 곧 당신의 목숨입니다.
           </p>
 
