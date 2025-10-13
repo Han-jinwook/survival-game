@@ -177,27 +177,11 @@ export default function GameLanding() {
           </Card>
 
           <h2 className="text-6xl font-bold mb-6 text-balance bg-gradient-to-r from-white via-red-200 to-red-400 bg-clip-text text-transparent">
-            생존자가 되어라
+            가위바위보 하나빼기 최종 승자는?
           </h2>
-          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto text-pretty">
+          <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto text-pretty">
             전통 가위바위보 하나빼기 게임이 생존 게임으로 돌아왔습니다. 행운권이 곧 당신의 목숨입니다.
           </p>
-
-          {/* Game Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <Card className="bg-black/40 border-red-800/30 p-6">
-              <div className="text-3xl font-bold text-red-400 mb-2">{playerCount}</div>
-              <div className="text-gray-400">현재 참가자</div>
-            </Card>
-            <Card className="bg-black/40 border-red-800/30 p-6">
-              <div className="text-3xl font-bold text-yellow-400 mb-2">1-10</div>
-              <div className="text-gray-400">행운권 (목숨)</div>
-            </Card>
-            <Card className="bg-black/40 border-red-800/30 p-6">
-              <div className="text-3xl font-bold text-green-400 mb-2">1</div>
-              <div className="text-gray-400">최종 생존자</div>
-            </Card>
-          </div>
 
           {/* Game Rules */}
           <Card className="bg-black/60 border-red-800/50 p-8 mb-12 text-left">
