@@ -3,20 +3,11 @@ import { Pool, QueryResult } from 'pg'
 
 // PostgreSQL 연결 풀 (싱글톤)
 let pool: Pool | null = null
-let isReconnecting = false
 
 function getPool(): Pool {
-  if (!pool || isReconnecting) {
+  if (!pool) {
     if (!process.env.DATABASE_URL) {
       throw new Error('DATABASE_URL 환경 변수가 설정되지 않았습니다.')
-    }
-    
-    if (pool && !isReconnecting) {
-      try {
-        pool.end()
-      } catch (err) {
-        console.error('[DB] 풀 종료 중 오류:', err)
-      }
     }
     
     pool = new Pool({
@@ -24,28 +15,54 @@ function getPool(): Pool {
       max: 10,
       min: 2,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
+      connectionTimeoutMillis: 15000,
       allowExitOnIdle: false,
     })
 
     pool.on('error', (err) => {
-      console.error('[DB] 연결 오류 발생:', err.message)
-      if (!isReconnecting) {
-        isReconnecting = true
-        setTimeout(() => {
-          pool = null
-          isReconnecting = false
-          console.log('[DB] 재연결 준비 완료')
-        }, 1000)
-      }
+      console.error('[DB] 풀 에러:', err.message)
     })
 
     pool.on('connect', () => {
       console.log('[DB] 새로운 연결 생성됨')
-      isReconnecting = false
     })
   }
   return pool
+}
+
+async function executeWithRetry<T>(
+  operation: () => Promise<T>,
+  retries = 3,
+  delay = 500
+): Promise<T> {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await operation()
+    } catch (err: any) {
+      const isLastAttempt = attempt === retries
+      const shouldRetry = 
+        err.message?.includes('Connection terminated') ||
+        err.message?.includes('timeout') ||
+        err.code === '57P01'
+
+      if (isLastAttempt || !shouldRetry) {
+        throw err
+      }
+
+      console.log(`[DB] 재시도 ${attempt}/${retries} (${delay}ms 대기)`)
+      
+      if (pool && shouldRetry) {
+        try {
+          await pool.end()
+        } catch {}
+        pool = null
+      }
+
+      await new Promise(resolve => setTimeout(resolve, delay * attempt))
+    }
+  }
+  
+  throw new Error('Max retries reached')
 }
 
 // 타입 정의
@@ -152,11 +169,13 @@ export class DatabaseService {
   }
 
   static async getActiveGameSession(): Promise<GameSession | null> {
-    const db = getPool()
-    const result = await db.query<GameSession>(
-      "SELECT * FROM game_sessions WHERE status IN ('waiting', 'in_progress') ORDER BY created_at DESC LIMIT 1"
-    )
-    return result.rows[0] || null
+    return executeWithRetry(async () => {
+      const db = getPool()
+      const result = await db.query<GameSession>(
+        "SELECT * FROM game_sessions WHERE status IN ('waiting', 'in_progress') ORDER BY created_at DESC LIMIT 1"
+      )
+      return result.rows[0] || null
+    })
   }
 
   static async getGameSession(sessionId: string): Promise<GameSession | null> {
@@ -222,16 +241,18 @@ export class DatabaseService {
   }
 
   static async getParticipants(sessionId: string): Promise<GameParticipant[]> {
-    const db = getPool()
-    const result = await db.query<GameParticipant & {naver_id: string}>(
-      `SELECT gp.*, u.naver_id 
-       FROM game_participants gp 
-       JOIN users u ON gp.user_id = u.id 
-       WHERE gp.game_session_id = $1 
-       ORDER BY gp.joined_at`,
-      [sessionId]
-    )
-    return result.rows
+    return executeWithRetry(async () => {
+      const db = getPool()
+      const result = await db.query<GameParticipant & {naver_id: string}>(
+        `SELECT gp.*, u.naver_id 
+         FROM game_participants gp 
+         JOIN users u ON gp.user_id = u.id 
+         WHERE gp.game_session_id = $1 
+         ORDER BY gp.joined_at`,
+        [sessionId]
+      )
+      return result.rows
+    })
   }
 
   static async updateParticipant(
@@ -285,12 +306,14 @@ export class DatabaseService {
   }
 
   static async getCurrentRound(sessionId: string): Promise<GameRound | null> {
-    const db = getPool()
-    const result = await db.query<GameRound>(
-      'SELECT * FROM game_rounds WHERE game_session_id = $1 ORDER BY round_number DESC LIMIT 1',
-      [sessionId]
-    )
-    return result.rows[0] || null
+    return executeWithRetry(async () => {
+      const db = getPool()
+      const result = await db.query<GameRound>(
+        'SELECT * FROM game_rounds WHERE game_session_id = $1 ORDER BY round_number DESC LIMIT 1',
+        [sessionId]
+      )
+      return result.rows[0] || null
+    })
   }
 
   static async updateRound(
