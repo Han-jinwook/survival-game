@@ -49,14 +49,14 @@ export default function AdminContent() {
 
   useEffect(() => {
     if (saveMessage) {
-      const timer = setTimeout(() => setSaveMessage(""), saveMessage.includes("❌") ? 5000 : 3000)
+      const timer = setTimeout(() => setSaveMessage(""), saveMessage.includes("❌") ? 5000 : 5000)
       return () => clearTimeout(timer)
     }
   }, [saveMessage])
 
   useEffect(() => {
     if (gameMessage) {
-      const timer = setTimeout(() => setGameMessage(""), gameMessage.includes("❌") ? 5000 : 3000)
+      const timer = setTimeout(() => setGameMessage(""), gameMessage.includes("❌") ? 5000 : 5000)
       return () => clearTimeout(timer)
     }
   }, [gameMessage])
