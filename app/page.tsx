@@ -10,6 +10,7 @@ import AudioSystem from "@/components/audio-system"
 export default function GameLanding() {
   const [playerCount, setPlayerCount] = useState(0)
   const [spectatorCount, setSpectatorCount] = useState(0)
+  const [visitorId] = useState(() => `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
   const [eventInfo, setEventInfo] = useState({
     cafeName: "",
     name: "2025 신년 특별 이벤트",
@@ -46,23 +47,67 @@ export default function GameLanding() {
     }
     
     loadEventInfo()
-    
-    const visitorKey = "game_visitor_count"
-    const userVisitKey = "game_user_visited"
-    
-    if (!localStorage.getItem(userVisitKey)) {
-      const currentCount = parseInt(localStorage.getItem(visitorKey) || "847", 10)
-      const newCount = currentCount + 1
-      localStorage.setItem(visitorKey, newCount.toString())
-      localStorage.setItem(userVisitKey, "true")
-      setSpectatorCount(newCount)
-      console.log("[Home] 신규 방문자, 총 관람자:", newCount)
-    } else {
-      const currentCount = parseInt(localStorage.getItem(visitorKey) || "847", 10)
-      setSpectatorCount(currentCount)
-      console.log("[Home] 재방문자, 총 관람자:", currentCount)
-    }
   }, [])
+
+  useEffect(() => {
+    const sendHeartbeat = async () => {
+      try {
+        const response = await fetch("/api/visitors", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ visitorId }),
+        })
+        
+        if (response.ok) {
+          const data = await response.json()
+          setSpectatorCount(data.count)
+          console.log("[Home] 실시간 접속자:", data.count)
+        }
+      } catch (error) {
+        console.error("[Home] Heartbeat 전송 실패:", error)
+      }
+    }
+
+    const fetchVisitorCount = async () => {
+      try {
+        const response = await fetch("/api/visitors")
+        if (response.ok) {
+          const data = await response.json()
+          setSpectatorCount(data.count)
+        }
+      } catch (error) {
+        console.error("[Home] 접속자 수 조회 실패:", error)
+      }
+    }
+
+    sendHeartbeat()
+    fetchVisitorCount()
+
+    const heartbeatInterval = setInterval(sendHeartbeat, 5000)
+    const countInterval = setInterval(fetchVisitorCount, 5000)
+
+    const handleBeforeUnload = async () => {
+      try {
+        await fetch("/api/visitors", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ visitorId }),
+          keepalive: true,
+        })
+      } catch (error) {
+        console.error("[Home] 접속 종료 알림 실패:", error)
+      }
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+
+    return () => {
+      clearInterval(heartbeatInterval)
+      clearInterval(countInterval)
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+      handleBeforeUnload()
+    }
+  }, [visitorId])
 
   const formatDateTime = (dateTimeStr: string) => {
     try {
