@@ -1,0 +1,217 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
+import AudioSystem from "@/components/audio-system"
+
+export default function GameLanding() {
+  const [playerCount, setPlayerCount] = useState(847)
+  const [spectatorCount] = useState(12)
+  const [eventInfo, setEventInfo] = useState({
+    name: "2025 신년 특별 이벤트",
+    prize: "아이폰 16 Pro Max",
+    startTime: "2025-01-15T20:00",
+  })
+
+  useEffect(() => {
+    const savedSettings = localStorage.getItem("gameSettings")
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings)
+        setEventInfo({
+          name: settings.eventName || "2025 신년 특별 이벤트",
+          prize: settings.prize || "아이폰 16 Pro Max",
+          startTime: settings.gameStartTime || "2025-01-15T20:00",
+        })
+        setPlayerCount(settings.participants?.length || 847)
+      } catch (error) {
+        console.error("[v0] Failed to load settings:", error)
+      }
+    }
+  }, [])
+
+  const formatDateTime = (dateTimeStr: string) => {
+    try {
+      const date = new Date(dateTimeStr)
+      return date.toLocaleString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    } catch {
+      return dateTimeStr
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-red-950 to-black text-white">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[url('/abstract-geometric-pattern.png')] opacity-5"></div>
+
+      {/* Header */}
+      <header className="relative z-10 p-6 border-b border-red-800/30">
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <img src="/game-logo.png" alt="가위바위보 로고" className="w-15 h-15 rounded-full" />
+            <h1 className="text-2xl font-bold text-balance">가위바위보 하나빼기</h1>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <Badge variant="destructive" className="bg-red-600/20 text-red-300 border-red-600/50">
+                로비 대기중 {playerCount}명
+              </Badge>
+              <Badge variant="outline" className="bg-blue-600/20 text-blue-300 border-blue-600/50">
+                관람자 {spectatorCount}명
+              </Badge>
+            </div>
+            <Link href="/admin" className="text-sm text-gray-400 hover:text-white transition-colors">
+              운영자 입장
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="relative z-10 max-w-6xl mx-auto px-6 py-12">
+        <div className="text-center mb-16">
+          <Card className="bg-gradient-to-r from-red-950/80 to-orange-950/80 border-red-600/50 p-8 mb-12">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex-1 text-left">
+                <h3 className="text-2xl font-bold text-white mb-2">{eventInfo.name}</h3>
+                <p className="text-xl text-yellow-300 font-semibold mb-1">🎁 상품: {eventInfo.prize}</p>
+                <p className="text-lg text-red-200">📅 게임 시작: {formatDateTime(eventInfo.startTime)}</p>
+              </div>
+              <div className="bg-red-600/30 border-2 border-red-500 rounded-lg p-6 min-w-[280px]">
+                <p className="text-sm text-red-200 mb-2 font-semibold">⚠️ 중요 안내</p>
+                <p className="text-white font-bold text-lg">
+                  게임 시작 1분 전까지
+                  <br />
+                  모든 참가자는 입장 완료 필수!
+                </p>
+              </div>
+            </div>
+          </Card>
+
+          <h2 className="text-6xl font-bold mb-6 text-balance bg-gradient-to-r from-white via-red-200 to-red-400 bg-clip-text text-transparent">
+            생존자가 되어라
+          </h2>
+          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto text-pretty">
+            전통 가위바위보 하나빼기 게임이 생존 게임으로 돌아왔습니다. 행운권이 곧 당신의 목숨입니다.
+          </p>
+
+          {/* Game Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <Card className="bg-black/40 border-red-800/30 p-6">
+              <div className="text-3xl font-bold text-red-400 mb-2">{playerCount}</div>
+              <div className="text-gray-400">현재 참가자</div>
+            </Card>
+            <Card className="bg-black/40 border-red-800/30 p-6">
+              <div className="text-3xl font-bold text-yellow-400 mb-2">1-10</div>
+              <div className="text-gray-400">행운권 (목숨)</div>
+            </Card>
+            <Card className="bg-black/40 border-red-800/30 p-6">
+              <div className="text-3xl font-bold text-green-400 mb-2">1</div>
+              <div className="text-gray-400">최종 생존자</div>
+            </Card>
+          </div>
+
+          {/* Game Rules */}
+          <Card className="bg-black/60 border-red-800/50 p-8 mb-12 text-left">
+            <h3 className="text-2xl font-bold mb-6 text-red-300">게임 규칙</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h4 className="font-semibold text-white mb-3">기본 규칙</h4>
+                <ul className="space-y-2 text-gray-300">
+                  <li>• 모든 참가자는 1~10개의 행운권(목숨)으로 시작</li>
+                  <li>• 가위/바위/보 중 2개를 선택 후 하나빼기</li>
+                  <li>• 패배 시 행운권 1개 차감</li>
+                  <li>• 행운권이 0개가 되면 게임 종료</li>
+                  <li className="text-yellow-300 font-semibold">• 시간 내 선택하지 않으면 즉시 탈락</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold text-white mb-3">승패 결정</h4>
+                <ul className="space-y-2 text-gray-300">
+                  <li>• 가장 적은 인원이 선택한 무기가 패배</li>
+                  <li className="text-red-300 font-semibold">
+                    • 동점 최소인 경우 모두 패배 (예: 3-1-1 → 1명씩 선택한 2개 무기 모두 패배)
+                  </li>
+                  <li>• 모든 무기가 동일 인원이면 무승부</li>
+                  <li>• 최후의 1인이 될 때까지 생존</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold text-white mb-3">게임 모드</h4>
+                <ul className="space-y-2 text-gray-300">
+                  <li>
+                    • <span className="text-yellow-400 font-semibold">예선전</span>: 로비 입장자 5명 이상일 때
+                  </li>
+                  <li>• 예선전에서 4명 이하로 줄어들면 결승전 진입</li>
+                  <li>
+                    • <span className="text-red-400 font-semibold">결승전</span>: 로비 입장자 4명 이하일 때
+                  </li>
+                  <li>• 결승전은 최종 1명이 남을 때까지 진행</li>
+                </ul>
+              </div>
+              <div>
+                <h4 className="font-semibold text-white mb-3">중요 안내</h4>
+                <ul className="space-y-2 text-gray-300">
+                  <li>• 참가예정자가 100명이어도 로비 입장자가 4명이면 바로 결승전</li>
+                  <li>• 게임 시작 시간 내에 로비 입장 필수</li>
+                  <li>• 입장하지 않은 참가예정자는 게임 불참 처리</li>
+                  <li>• 게임 중 퇴장 시 자동 패배 처리</li>
+                </ul>
+              </div>
+            </div>
+          </Card>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Button
+              size="lg"
+              className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 text-lg font-semibold min-w-48"
+              asChild
+            >
+              <Link href="/auth">게임 참가하기</Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-blue-600/50 text-blue-300 hover:bg-blue-600/10 px-8 py-4 text-lg min-w-48 bg-transparent"
+              asChild
+            >
+              <Link href="/viewer">실시간 관전하기</Link>
+            </Button>
+          </div>
+        </div>
+
+        {/* Warning Notice */}
+        <Card className="bg-red-950/50 border-red-600/50 p-6 text-center">
+          <div className="flex items-center justify-center gap-3 mb-3">
+            <div className="w-6 h-6 bg-red-600 rounded-full flex items-center justify-center">
+              <span className="text-white text-xs">!</span>
+            </div>
+            <h4 className="text-lg font-semibold text-red-300">주의사항</h4>
+          </div>
+          <p className="text-gray-300 text-pretty">
+            이 게임은 긴장감 있는 서바이벌 게임입니다. 네이버 카페 회원 인증 후 참가 가능하며, 게임 중 퇴장 시 자동 패배
+            처리됩니다.
+          </p>
+        </Card>
+      </main>
+
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-red-800/30 p-6 text-center text-gray-400">
+        <p>© 2025 가위바위보 하나빼기 • 네이버 카페 전용 게임</p>
+      </footer>
+
+      {/* Audio System */}
+      <AudioSystem page="landing" autoPlay={false} showControls={false} />
+    </div>
+  )
+}
