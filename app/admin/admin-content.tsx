@@ -38,7 +38,6 @@ export default function AdminContent() {
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState("")
   const [gameMessage, setGameMessage] = useState("")
-  const [aiMessage, setAiMessage] = useState("")
   const isInitialMount = useRef(true)
 
   // 자동 로그인 제거 (보안 강화)
@@ -56,13 +55,6 @@ export default function AdminContent() {
       return () => clearTimeout(timer)
     }
   }, [gameMessage])
-
-  useEffect(() => {
-    if (aiMessage) {
-      const timer = setTimeout(() => setAiMessage(""), aiMessage.includes("❌") ? 5000 : 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [aiMessage])
 
   const calculateTimeRemaining = () => {
     if (!gameStartTime) return ""
@@ -355,105 +347,6 @@ export default function AdminContent() {
     }
   }
 
-  const aiAutoLobbyEntry = async () => {
-    try {
-      // DB에서 최신 참가자 상태 가져오기
-      const response = await fetch("/api/game/settings")
-      if (!response.ok) {
-        setAiMessage("❌ 참가자 데이터 로드 실패")
-        return
-      }
-
-      const data = await response.json()
-      const waitingParticipants = data.participants?.filter((p: any) => p.status === "waiting") || []
-
-      // 최소 인원 검증 (2명 이상)
-      if (waitingParticipants.length < 2) {
-        setAiMessage("❌ 최소 2명 이상 필요합니다 (현재: " + waitingParticipants.length + "명)")
-        return
-      }
-
-      if (waitingParticipants.length === 0) {
-        setAiMessage("⚠️ 대기 중인 참가자가 없습니다")
-        return
-      }
-
-      console.log("[Admin] AI 자동 입장 시작:", waitingParticipants.length, "명")
-      setAiMessage("⏳ AI 자동 입장 중...")
-
-      // 모든 waiting 참가자를 playing으로 변경
-      const results = await Promise.all(
-        waitingParticipants.map(async (p: any) => {
-          try {
-            const res = await fetch("/api/game/session", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                action: "enter_lobby",
-                participantId: p.id,
-              }),
-            })
-            return res.ok
-          } catch {
-            return false
-          }
-        })
-      )
-
-      const successCount = results.filter(r => r).length
-      
-      if (successCount === waitingParticipants.length) {
-        // 참가자 수에 따라 게임 페이지 결정
-        const totalPlayers = successCount
-        let gameUrl = ""
-        let gameMessage = ""
-
-        if (totalPlayers >= 5) {
-          // 5명 이상: 예선전
-          gameUrl = "/game"
-          gameMessage = `✅ ${totalPlayers}명 입장 완료! 예선전으로 이동합니다...`
-        } else if (totalPlayers >= 2 && totalPlayers <= 4) {
-          // 2~4명: 본선(결승) 직행
-          gameUrl = "/finals"
-          gameMessage = `✅ ${totalPlayers}명 입장 완료! 본선으로 바로 이동합니다...`
-        }
-
-        setAiMessage(gameMessage)
-        console.log("[Admin] AI 자동 입장 완료:", successCount, "명 →", gameUrl)
-
-        // 1.5초 후 게임 페이지로 이동
-        setTimeout(() => {
-          window.location.href = gameUrl
-        }, 1500)
-      } else {
-        setAiMessage(`⚠️ 부분 성공: ${successCount}/${waitingParticipants.length}명 입장`)
-        console.log("[Admin] AI 자동 입장 부분 성공:", successCount, "/", waitingParticipants.length)
-      }
-
-      // 데이터 새로고침
-      setTimeout(async () => {
-        const refreshRes = await fetch("/api/game/settings")
-        if (refreshRes.ok) {
-          const refreshData = await refreshRes.json()
-          if (refreshData.participants) {
-            const loadedParticipants = refreshData.participants.map((p: any) => ({
-              id: p.id,
-              naverId: p.naverId || "",
-              nickname: p.nickname,
-              lives: p.currentLives,
-              status: p.status,
-            }))
-            setParticipants(loadedParticipants)
-          }
-        }
-      }, 500)
-
-    } catch (error) {
-      console.error("[Admin] AI 자동 입장 에러:", error)
-      setAiMessage("❌ AI 자동 입장 실패")
-    }
-  }
-
 
   if (!isAuthenticated) {
     return (
@@ -732,39 +625,6 @@ export default function AdminContent() {
               </div>
             </div>
           </div>
-
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mb-6 p-4 bg-purple-950/20 border border-purple-600/30 rounded-lg">
-              <h4 className="font-semibold mb-3 text-purple-300">🤖 AI 테스트 모드</h4>
-              <p className="text-sm text-gray-400 mb-3">
-                모든 대기 중인 참가자를 자동으로 로비에 입장시키고 게임을 시작합니다
-              </p>
-              <div className="text-xs text-gray-500 space-y-1 mb-3">
-                <div>• 최소 2명 이상 필요</div>
-                <div>• 2~4명: 본선(결승)으로 직행</div>
-                <div>• 5명 이상: 예선전 진행</div>
-              </div>
-              <div className="space-y-3">
-                <Button 
-                  onClick={aiAutoLobbyEntry} 
-                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold"
-                >
-                  🤖 AI 자동 입장
-                </Button>
-                {aiMessage && (
-                  <div className={`p-3 rounded-lg text-sm text-center ${
-                    aiMessage.includes("✅") 
-                      ? "bg-green-900/50 border border-green-600/50 text-green-300" 
-                      : aiMessage.includes("❌") 
-                      ? "bg-red-900/50 border border-red-600/50 text-red-300"
-                      : "bg-yellow-900/50 border border-yellow-600/50 text-yellow-300"
-                  }`}>
-                    {aiMessage}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
