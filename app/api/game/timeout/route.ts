@@ -3,10 +3,10 @@ import DatabaseService from "@/lib/database"
 
 export async function GET() {
   try {
-    const timedOutPlayers = await DatabaseService.checkAndTimeoutInactivePlayers(3)
+    const timedOutPlayers = await DatabaseService.checkAndTimeoutInactivePlayers(10)
     
     if (timedOutPlayers.length > 0) {
-      console.log(`[Timeout] ${timedOutPlayers.length}명 타임아웃 처리:`, 
+      console.log(`[Timeout] ${timedOutPlayers.length}명 타임아웃 처리 (10초):`, 
         timedOutPlayers.map(p => p.nickname).join(', '))
     }
 
