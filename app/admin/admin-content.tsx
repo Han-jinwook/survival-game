@@ -224,6 +224,8 @@ export default function AdminContent() {
     setSaveMessage("")
     
     try {
+      // 재등록 모드: 항상 새 세션 생성 (currentSessionId는 참고용)
+      // isReadOnlyMode에서 수정 버튼을 누르면 새로운 세션으로 재등록
       const response = await fetch("/api/game/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -238,6 +240,7 @@ export default function AdminContent() {
             nickname: p.nickname,
             lives: p.lives,
           })),
+          isReregistration: currentSessionId ? true : false, // 재등록 플래그
         }),
       })
 
@@ -249,6 +252,20 @@ export default function AdminContent() {
       setIsSaved(true)
       setLastSavedTime(new Date())
       setIsEditing(false)
+      
+      // 재등록 모드 초기화 및 세션 목록 갱신
+      if (currentSessionId) {
+        setCurrentSessionId("")
+        setIsReadOnlyMode(false)
+        setSelectedSessionId("")
+        
+        // 세션 목록 다시 로드
+        const sessionsResponse = await fetch("/api/game/sessions")
+        if (sessionsResponse.ok) {
+          const sessionsData = await sessionsResponse.json()
+          setPastSessions(sessionsData.sessions || [])
+        }
+      }
       
       if (gameStartTime) {
         setGameScheduled(true)
