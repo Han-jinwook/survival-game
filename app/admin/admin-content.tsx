@@ -38,6 +38,7 @@ export default function AdminContent() {
   const [isSaving, setIsSaving] = useState(false)
   const [saveMessage, setSaveMessage] = useState("")
   const [gameMessage, setGameMessage] = useState("")
+  const [aiMessage, setAiMessage] = useState("")
   const isInitialMount = useRef(true)
 
   useEffect(() => {
@@ -60,6 +61,13 @@ export default function AdminContent() {
       return () => clearTimeout(timer)
     }
   }, [gameMessage])
+
+  useEffect(() => {
+    if (aiMessage) {
+      const timer = setTimeout(() => setAiMessage(""), aiMessage.includes("❌") ? 5000 : 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [aiMessage])
 
   const calculateTimeRemaining = () => {
     if (!gameStartTime) return ""
@@ -351,6 +359,79 @@ export default function AdminContent() {
     }
   }
 
+  const aiAutoLobbyEntry = async () => {
+    try {
+      // DB에서 최신 참가자 상태 가져오기
+      const response = await fetch("/api/game/settings")
+      if (!response.ok) {
+        setAiMessage("❌ 참가자 데이터 로드 실패")
+        return
+      }
+
+      const data = await response.json()
+      const waitingParticipants = data.participants?.filter((p: any) => p.status === "waiting") || []
+
+      if (waitingParticipants.length === 0) {
+        setAiMessage("⚠️ 대기 중인 참가자가 없습니다")
+        return
+      }
+
+      console.log("[Admin] AI 자동 입장 시작:", waitingParticipants.length, "명")
+      setAiMessage("⏳ AI 자동 입장 중...")
+
+      // 모든 waiting 참가자를 playing으로 변경
+      const results = await Promise.all(
+        waitingParticipants.map(async (p: any) => {
+          try {
+            const res = await fetch("/api/game/session", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "enter_lobby",
+                participantId: p.id,
+              }),
+            })
+            return res.ok
+          } catch {
+            return false
+          }
+        })
+      )
+
+      const successCount = results.filter(r => r).length
+      
+      if (successCount === waitingParticipants.length) {
+        setAiMessage(`✅ AI 자동 입장 완료! ${successCount}명이 로비에 입장했습니다`)
+        console.log("[Admin] AI 자동 입장 완료:", successCount, "명")
+      } else {
+        setAiMessage(`⚠️ 부분 성공: ${successCount}/${waitingParticipants.length}명 입장`)
+        console.log("[Admin] AI 자동 입장 부분 성공:", successCount, "/", waitingParticipants.length)
+      }
+
+      // 데이터 새로고침
+      setTimeout(async () => {
+        const refreshRes = await fetch("/api/game/settings")
+        if (refreshRes.ok) {
+          const refreshData = await refreshRes.json()
+          if (refreshData.participants) {
+            const loadedParticipants = refreshData.participants.map((p: any) => ({
+              id: p.id,
+              naverId: p.naverId || "",
+              nickname: p.nickname,
+              lives: p.currentLives,
+              status: p.status,
+            }))
+            setParticipants(loadedParticipants)
+          }
+        }
+      }, 500)
+
+    } catch (error) {
+      console.error("[Admin] AI 자동 입장 에러:", error)
+      setAiMessage("❌ AI 자동 입장 실패")
+    }
+  }
+
 
   if (!isAuthenticated) {
     return (
@@ -627,6 +708,32 @@ export default function AdminContent() {
                   초기화
                 </Button>
               </div>
+            </div>
+          </div>
+
+          <div className="mb-6 p-4 bg-purple-950/20 border border-purple-600/30 rounded-lg">
+            <h4 className="font-semibold mb-3 text-purple-300">🤖 AI 테스트 모드</h4>
+            <p className="text-sm text-gray-400 mb-3">
+              테스트를 위해 모든 대기 중인 참가자를 자동으로 로비에 입장시킵니다
+            </p>
+            <div className="space-y-3">
+              <Button 
+                onClick={aiAutoLobbyEntry} 
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold"
+              >
+                🤖 AI 자동 입장
+              </Button>
+              {aiMessage && (
+                <div className={`p-3 rounded-lg text-sm text-center ${
+                  aiMessage.includes("✅") 
+                    ? "bg-green-900/50 border border-green-600/50 text-green-300" 
+                    : aiMessage.includes("❌") 
+                    ? "bg-red-900/50 border border-red-600/50 text-red-300"
+                    : "bg-yellow-900/50 border border-yellow-600/50 text-yellow-300"
+                }`}>
+                  {aiMessage}
+                </div>
+              )}
             </div>
           </div>
 
