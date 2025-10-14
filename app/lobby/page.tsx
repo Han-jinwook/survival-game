@@ -234,6 +234,7 @@ export default function GameLobby() {
         const isGameStarting = sessionStorage.getItem('gameStarting')
         if (isGameStarting === 'true') {
           console.log('[Lobby] 게임 시작 중 - beforeunload 퇴장 건너뛰기')
+          sessionStorage.removeItem('gameStarting') // 플래그 리셋
           return
         }
         exitLobby()
@@ -250,6 +251,7 @@ export default function GameLobby() {
         const isGameStarting = sessionStorage.getItem('gameStarting')
         if (isGameStarting === 'true') {
           console.log('[Lobby] 게임 시작 중 - 로비 퇴장 건너뛰기')
+          sessionStorage.removeItem('gameStarting') // 플래그 리셋
           return
         }
         
@@ -283,7 +285,15 @@ export default function GameLobby() {
       console.log("[Lobby] Countdown finished, redirecting to:", gameDestination)
       window.location.href = gameDestination
     }
-  }, [gameStartCountdown])
+    
+    // countdown이 취소되면 플래그 리셋
+    return () => {
+      if (gameStartCountdown === null) {
+        sessionStorage.removeItem('gameStarting')
+        console.log('[Lobby] Countdown 취소 - gameStarting 플래그 리셋')
+      }
+    }
+  }, [gameStartCountdown, gameDestination])
 
   const currentUserStatus = players.find((p) => p.naverId === currentUser?.naverId)?.status || "waiting"
   const totalLives = players.reduce((sum, player) => sum + player.lives, 0)
