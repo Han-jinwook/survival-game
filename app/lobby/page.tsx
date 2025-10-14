@@ -38,8 +38,34 @@ export default function GameLobby() {
   const totalPlayers = players.length
   const lobbyPlayers = players.filter((p) => p.isInLobby).length
 
+  // 로비 입장 처리
+  const enterLobby = async (participantId: string) => {
+    try {
+      const response = await fetch("/api/game/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "enter_lobby",
+          participantId: participantId,
+        }),
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log("[Lobby] 로비 입장 완료:", data.participant)
+        return true
+      } else {
+        console.error("[Lobby] 로비 입장 실패:", response.status)
+        return false
+      }
+    } catch (error) {
+      console.error("[Lobby] 로비 입장 에러:", error)
+      return false
+    }
+  }
+
   // 실시간 게임 데이터 가져오기
-  const fetchGameData = async () => {
+  const fetchGameData = async (autoEnter = false) => {
     try {
       const response = await fetch("/api/game/state")
       if (response.ok) {
@@ -71,21 +97,36 @@ export default function GameLobby() {
         
         // 참가자 데이터 설정
         if (data.participants && Array.isArray(data.participants)) {
-          const dbPlayers: Player[] = data.participants.map((p: any, index: number) => ({
+          // 현재 사용자가 waiting 상태면 자동 입장
+          if (autoEnter && currentUser) {
+            const myParticipant = data.participants.find(
+              (p: any) => p.userId === currentUser.id || p.nickname === currentUser.nickname
+            )
+            
+            if (myParticipant && myParticipant.status === "waiting") {
+              console.log("[Lobby] 자동 로비 입장 시도:", myParticipant)
+              await enterLobby(myParticipant.id)
+              // 입장 후 데이터 재로드 (자동 입장은 한 번만)
+              setTimeout(() => fetchGameData(false), 500)
+              return
+            }
+          }
+          
+          const dbPlayers: Player[] = data.participants.map((p: any) => ({
             id: p.id,
-            naverId: p.naverId || p.userId, // naverId가 없으면 userId 사용
+            naverId: p.naverId || p.userId,
             nickname: p.nickname,
             lives: p.currentLives,
-            status: p.status === "eliminated" ? "disconnected" : (p.status === "active" ? "ready" : "waiting"),
+            status: p.status === "eliminated" ? "disconnected" : (p.status === "playing" ? "ready" : "waiting"),
             joinTime: new Date(p.joinedAt),
-            // waiting, active 모두 로비에 표시 (eliminated는 제외)
-            isInLobby: p.status !== "eliminated",
+            // playing 상태만 로비에 표시 (실제 입장자)
+            isInLobby: p.status === "playing",
           }))
           setPlayers(dbPlayers)
           
           // 로비 입장자만 저장
           const lobbyPlayers = dbPlayers.filter((p) => p.isInLobby)
-          console.log("[Lobby] 로비 입장자 저장:", lobbyPlayers)
+          console.log("[Lobby] 로비 입장자:", lobbyPlayers.length, "명")
           localStorage.setItem("lobbyPlayers", JSON.stringify(lobbyPlayers))
         }
       } else {
@@ -105,11 +146,11 @@ export default function GameLobby() {
       setCurrentUser(user)
       console.log("[Lobby] 사용자 정보:", user)
       
-      // 초기 데이터 로드
-      fetchGameData()
+      // 초기 데이터 로드 (자동 입장 활성화)
+      fetchGameData(true)
       
-      // 5초마다 실시간 데이터 갱신
-      const interval = setInterval(fetchGameData, 5000)
+      // 5초마다 실시간 데이터 갱신 (자동 입장은 첫 로드에만)
+      const interval = setInterval(() => fetchGameData(false), 5000)
       
       return () => clearInterval(interval)
     } else {
