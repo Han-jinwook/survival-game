@@ -87,6 +87,8 @@ export default function AdminContent() {
   }
 
   useEffect(() => {
+    if (!isAuthenticated) return
+    
     console.log("[Admin] 초기 로드 시작 - DB에서 데이터를 불러옵니다")
     
     const loadSettings = async () => {
@@ -129,7 +131,7 @@ export default function AdminContent() {
     }
     
     loadSettings()
-  }, [])
+  }, [isAuthenticated])
 
   useEffect(() => {
     if (!gameScheduled || !gameStartTime) return
