@@ -603,6 +603,10 @@ export default function GameLobby() {
     },
   ]
 
+  // ========================================
+  // 개발 테스트용 함수 (프로덕션에서 제거 예정)
+  // 로컬 테스트: "나"만 로비 입장 → 테스트 시작 → AI가 나머지 플레이어 역할
+  // ========================================
   const handleTestStart = async () => {
     // 로비 입장자 수 확인 (playing 상태만)
     const lobbyPlayerCount = players.filter((p) => p.isInLobby).length
@@ -765,6 +769,7 @@ export default function GameLobby() {
               {gameStartCountdown === null ? (
                 <div>
                   <div className="text-xl md:text-2xl font-bold text-purple-400 mb-3 md:mb-4">대기중</div>
+                  {/* 개발 테스트용 버튼 (프로덕션에서 제거 예정) */}
                   <Button
                     onClick={handleTestStart}
                     className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base"
