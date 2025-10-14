@@ -4,7 +4,12 @@
 
 ### 마지막 업데이트
 - 날짜: 2025-10-14
-- **타임아웃 시스템 완전 제거** ✅ (LATEST)
+- **로컬 테스트 참가자 누락 버그 수정** ✅ (LATEST)
+  - 로비 cleanup 시 게임 시작 중이면 exitLobby 건너뛰기
+  - sessionStorage 플래그로 게임 시작 상태 추적
+  - handleTestStart에 sessionId 전달 추가
+  - 현재 사용자가 게임에 정상 참여하도록 수정
+- **타임아웃 시스템 완전 제거** ✅
   - `/api/game/timeout` API 삭제
   - Heartbeat 시스템 제거
   - 실시간 SSE + 즉시 퇴장 시스템만 사용
