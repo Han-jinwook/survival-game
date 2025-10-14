@@ -180,100 +180,116 @@ export default function GameInterface() {
   }, [])
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search)
-    const isTestMode = searchParams.get("test") === "finals"
+    const loadGameData = async () => {
+      const searchParams = new URLSearchParams(window.location.search)
+      const isTestMode = searchParams.get("test") === "finals"
 
-    if (isTestMode) {
-      const testPlayers: Player[] = [
-        {
-          id: "test-user",
-          nickname: "나",
-          lives: 2,
-          isCurrentUser: true,
-        },
-        {
-          id: "test-opponent",
-          nickname: "상대방",
-          lives: 2,
-          isCurrentUser: false,
-        },
-      ]
+      if (isTestMode) {
+        const testPlayers: Player[] = [
+          {
+            id: "test-user",
+            nickname: "나",
+            lives: 2,
+            isCurrentUser: true,
+          },
+          {
+            id: "test-opponent",
+            nickname: "상대방",
+            lives: 2,
+            isCurrentUser: false,
+          },
+        ]
 
-      setPlayers(testPlayers)
-      setGameMode("final")
-      setGameRound({ round: 1, phase: "waiting", timeLeft: 0, survivors: 2 })
-      setGameMessage("결승전 1라운드를 시작합니다")
+        setPlayers(testPlayers)
+        setGameMode("final")
+        setGameRound({ round: 1, phase: "waiting", timeLeft: 0, survivors: 2 })
+        setGameMessage("결승전 1라운드를 시작합니다")
 
-      setTimeout(() => {
-        speak("결승전 1라운드를 시작합니다", {
+        setTimeout(() => {
+          speak("결승전 1라운드를 시작합니다", {
+            onComplete: () => {
+              setGameRound({
+                round: 1,
+                phase: "selectTwo",
+                timeLeft: 10,
+                survivors: testPlayers.length,
+              })
+            },
+          })
+        }, 2000)
+
+        return
+      }
+
+      // Get current user
+      const userInfoData = localStorage.getItem("userInfo")
+      let currentUserNaverId = ""
+      if (userInfoData) {
+        const userInfo = JSON.parse(userInfoData)
+        currentUserNaverId = userInfo.naverId
+        console.log("[v0] Current user naverId:", currentUserNaverId)
+      }
+
+      try {
+        // DB에서 직접 플레이어 데이터 가져오기
+        console.log("[v0] Loading game data from DB...")
+        const response = await fetch("/api/game/state")
+        if (!response.ok) {
+          console.error("[v0] Failed to load game data:", response.status)
+          return
+        }
+
+        const data = await response.json()
+        console.log("[v0] DB game data:", data)
+
+        // playing 상태인 참가자만 게임에 참여
+        const lobbyPlayers = data.participants?.filter((p: any) => p.status === "playing") || []
+        console.log("[v0] Playing participants:", lobbyPlayers)
+
+        const gamePlayers: Player[] = lobbyPlayers.map((p: any) => {
+          const player = {
+            id: p.id,
+            nickname: p.nickname,
+            lives: p.currentLives || 0,
+            isCurrentUser: p.naverId === currentUserNaverId,
+          }
+          console.log("[v0] Created game player:", player)
+          return player
+        })
+
+        console.log("[v0] All game players:", gamePlayers)
+        setPlayers(gamePlayers)
+
+        setGameMode(gamePlayers.length > 4 ? "preliminary" : "final")
+        setGameRound((prev) => ({ ...prev, survivors: gamePlayers.length }))
+
+        setGameLog((prev) => ({
+          ...prev,
+          totalPlayers: gamePlayers.length,
+        }))
+
+        const totalPlayers = gamePlayers.length
+        const totalLives = gamePlayers.reduce((sum, p) => sum + p.lives, 0)
+        const modeText = gamePlayers.length > 4 ? "예선" : "결승"
+
+        const startMessage = `이제 총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} 1라운드를 시작합니다`
+        setGameMessage(startMessage)
+        speak(startMessage, {
           onComplete: () => {
             setGameRound({
               round: 1,
               phase: "selectTwo",
               timeLeft: 10,
-              survivors: testPlayers.length,
+              survivors: gamePlayers.length,
             })
           },
         })
-      }, 2000)
-
-      return
+      } catch (error) {
+        console.error("[v0] Error loading game data:", error)
+      }
     }
 
-    // Original code for normal mode
-    const userInfoData = localStorage.getItem("userInfo")
-    let currentUserNaverId = ""
-    if (userInfoData) {
-      const userInfo = JSON.parse(userInfoData)
-      currentUserNaverId = userInfo.naverId
-      console.log("[v0] Current user naverId:", currentUserNaverId)
-    }
-
-    const lobbyPlayersData = localStorage.getItem("lobbyPlayers")
-    console.log("[v0] Loading lobby players from localStorage:", lobbyPlayersData)
-    if (lobbyPlayersData) {
-      const lobbyPlayers = JSON.parse(lobbyPlayersData)
-      console.log("[v0] Parsed lobby players:", lobbyPlayers)
-
-      const gamePlayers: Player[] = lobbyPlayers.map((p: any) => {
-        const player = {
-          id: p.id,
-          nickname: p.nickname,
-          lives: p.lives || 0,
-          isCurrentUser: p.naverId === currentUserNaverId,
-        }
-        console.log("[v0] Created game player:", player)
-        return player
-      })
-
-      console.log("[v0] All game players:", gamePlayers)
-      setPlayers(gamePlayers)
-
-      setGameMode(gamePlayers.length > 4 ? "preliminary" : "final")
-      setGameRound((prev) => ({ ...prev, survivors: gamePlayers.length }))
-
-      setGameLog((prev) => ({
-        ...prev,
-        totalPlayers: gamePlayers.length,
-      }))
-
-      const totalPlayers = gamePlayers.length
-      const totalLives = gamePlayers.reduce((sum, p) => sum + p.lives, 0)
-      const modeText = gamePlayers.length > 4 ? "예선" : "결승"
-
-      const startMessage = `이제 총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} 1라운드를 시작합니다`
-      setGameMessage(startMessage)
-      speak(startMessage, {
-        onComplete: () => {
-          setGameRound({
-            round: 1,
-            phase: "selectTwo",
-            timeLeft: 10,
-            survivors: gamePlayers.length,
-          })
-        },
-      })
-    }
+    loadGameData()
   }, [])
 
   useEffect(() => {
