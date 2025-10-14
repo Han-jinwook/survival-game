@@ -32,6 +32,7 @@ export default function GameLobby() {
   const [currentRuleCard, setCurrentRuleCard] = useState(0)
   const [cafeName, setCafeName] = useState("썬드림 즐빛카페")
   const [eventName, setEventName] = useState("가위바위보 하나빼기 이벤트")
+  const [startErrorMessage, setStartErrorMessage] = useState<string>("")
 
   const minPlayers = 3
   const readyPlayers = players.filter((p) => p.status === "ready").length
@@ -474,7 +475,29 @@ export default function GameLobby() {
   ]
 
   const handleTestStart = () => {
-    setGameStartCountdown(10)
+    // 로비 입장자 수 확인 (playing 상태만)
+    const lobbyPlayerCount = players.filter((p) => p.isInLobby).length
+    
+    // 최소 인원 검증 (2명 이상)
+    if (lobbyPlayerCount < 2) {
+      setStartErrorMessage("❌ 최소 2명 이상이어야 게임을 시작할 수 있습니다 (현재: " + lobbyPlayerCount + "명)")
+      setTimeout(() => setStartErrorMessage(""), 3000)
+      return
+    }
+    
+    // 참가자 수에 따라 게임 페이지 결정
+    if (lobbyPlayerCount >= 5) {
+      // 5명 이상: 예선전
+      console.log("[Lobby] 예선전 시작:", lobbyPlayerCount, "명")
+      setGameStartCountdown(10)
+    } else if (lobbyPlayerCount >= 2 && lobbyPlayerCount <= 4) {
+      // 2~4명: 본선(결승) 직행
+      console.log("[Lobby] 본선 직행:", lobbyPlayerCount, "명")
+      setStartErrorMessage("✅ " + lobbyPlayerCount + "명 입장! 본선으로 바로 이동합니다...")
+      setTimeout(() => {
+        window.location.href = "/finals"
+      }, 1500)
+    }
   }
 
   if (!currentUser) {
@@ -594,6 +617,15 @@ export default function GameLobby() {
                   >
                     테스트 시작
                   </Button>
+                  {startErrorMessage && (
+                    <div className={`mt-3 p-3 rounded-lg text-sm text-center ${
+                      startErrorMessage.includes("✅") 
+                        ? "bg-green-900/50 border border-green-600/50 text-green-300" 
+                        : "bg-red-900/50 border border-red-600/50 text-red-300"
+                    }`}>
+                      {startErrorMessage}
+                    </div>
+                  )}
                   {lobbyOpenTime && (
                     <div className="text-xs text-gray-500 mt-4">
                       게임 시작 3분 전인 {lobbyOpenTime}에 게임장 오픈되오니, 시간 착오 없으시기 바랍니다.
