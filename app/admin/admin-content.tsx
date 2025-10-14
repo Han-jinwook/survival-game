@@ -550,7 +550,7 @@ export default function AdminContent() {
                 <Input
                   value={cafeName}
                   onChange={(e) => setCafeName(e.target.value)}
-                  className="bg-black/40 border-red-800/50 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="bg-black/40 border-red-800/50 text-white disabled:opacity-100 disabled:cursor-not-allowed"
                   placeholder="카페 이름을 입력하세요"
                   disabled={!isEditing}
                 />
@@ -560,7 +560,7 @@ export default function AdminContent() {
                 <Input
                   value={eventName}
                   onChange={(e) => setEventName(e.target.value)}
-                  className="bg-black/40 border-red-800/50 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="bg-black/40 border-red-800/50 text-white disabled:opacity-100 disabled:cursor-not-allowed"
                   placeholder="이벤트 이름을 입력하세요"
                   disabled={!isEditing}
                 />
@@ -570,7 +570,7 @@ export default function AdminContent() {
                 <Input
                   value={prize}
                   onChange={(e) => setPrize(e.target.value)}
-                  className="bg-black/40 border-red-800/50 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  className="bg-black/40 border-red-800/50 text-white disabled:opacity-100 disabled:cursor-not-allowed"
                   placeholder="상품을 입력하세요 (예: 아이폰 16 Pro Max)"
                   disabled={!isEditing}
                 />
@@ -582,7 +582,7 @@ export default function AdminContent() {
                   value={gameStartTime || ""}
                   onChange={(e) => setGameStartTime(e.target.value)}
                   disabled={!isEditing}
-                  className="w-full bg-black/40 border-red-800/50 text-white disabled:opacity-60 text-base p-3 h-12"
+                  className="w-full bg-black/40 border-red-800/50 text-white disabled:opacity-100 text-base p-3 h-12"
                   style={{ colorScheme: 'dark' }}
                 />
                 {gameStartTime && (
