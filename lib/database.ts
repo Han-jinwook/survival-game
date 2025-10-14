@@ -4,7 +4,7 @@ import { Pool, QueryResult } from 'pg'
 // PostgreSQL 연결 풀 (싱글톤)
 let pool: Pool | null = null
 
-export function getPool(): Pool {
+function getPool(): Pool {
   if (!pool) {
     if (!process.env.DATABASE_URL) {
       throw new Error('DATABASE_URL 환경 변수가 설정되지 않았습니다.')

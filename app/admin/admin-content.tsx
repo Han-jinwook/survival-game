@@ -359,27 +359,6 @@ export default function AdminContent() {
     }
   }
 
-  const handleCancelEdit = async () => {
-    setIsEditing(false)
-    setIsSaved(true)
-    setSaveMessage("")
-    console.log("[Admin] 수정 취소 - 변경사항 되돌림")
-    try {
-      const response = await fetch("/api/game/settings")
-      if (response.ok) {
-        const data = await response.json()
-        if (data.session) {
-          setCafeName(data.session.cafeName || "")
-          setEventName(data.session.sessionName || "")
-          setPrize(data.session.prize || "")
-          setGameStartTime(data.session.startedAt?.slice(0, 16) || "")
-        }
-      }
-    } catch (error) {
-      console.error("[Admin] 데이터 복원 실패:", error)
-    }
-  }
-
   const aiAutoLobbyEntry = async () => {
     try {
       // DB에서 최신 참가자 상태 가져오기
@@ -456,22 +435,21 @@ export default function AdminContent() {
       }
 
       // 데이터 새로고침
-      setTimeout(() => {
-        fetch("/api/game/settings")
-          .then(refreshRes => refreshRes.ok ? refreshRes.json() : null)
-          .then(refreshData => {
-            if (refreshData?.participants) {
-              const loadedParticipants = refreshData.participants.map((p: any) => ({
-                id: p.id,
-                naverId: p.naverId || "",
-                nickname: p.nickname,
-                lives: p.currentLives,
-                status: p.status,
-              }))
-              setParticipants(loadedParticipants)
-            }
-          })
-          .catch(err => console.error("[Admin] 데이터 새로고침 실패:", err))
+      setTimeout(async () => {
+        const refreshRes = await fetch("/api/game/settings")
+        if (refreshRes.ok) {
+          const refreshData = await refreshRes.json()
+          if (refreshData.participants) {
+            const loadedParticipants = refreshData.participants.map((p: any) => ({
+              id: p.id,
+              naverId: p.naverId || "",
+              nickname: p.nickname,
+              lives: p.currentLives,
+              status: p.status,
+            }))
+            setParticipants(loadedParticipants)
+          }
+        }
       }, 500)
 
     } catch (error) {
@@ -566,7 +544,6 @@ export default function AdminContent() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card className="bg-black/60 border-red-800/50 p-6">
             <h3 className="text-xl font-bold mb-4 text-red-300">이벤트 설정</h3>
-            
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">카페명</label>
@@ -637,7 +614,26 @@ export default function AdminContent() {
                     {isSaving ? "⏳ 저장 중..." : "💾 저장"}
                   </Button>
                   <Button
-                    onClick={handleCancelEdit}
+                    onClick={async () => {
+                      setIsEditing(false)
+                      setIsSaved(true)
+                      setSaveMessage("")
+                      console.log("[Admin] 수정 취소 - 변경사항 되돌림")
+                      try {
+                        const response = await fetch("/api/game/settings")
+                        if (response.ok) {
+                          const data = await response.json()
+                          if (data.session) {
+                            setCafeName(data.session.cafeName || "")
+                            setEventName(data.session.sessionName || "")
+                            setPrize(data.session.prize || "")
+                            setGameStartTime(data.session.startedAt?.slice(0, 16) || "")
+                          }
+                        }
+                      } catch (error) {
+                        console.error("[Admin] 데이터 복원 실패:", error)
+                      }
+                    }}
                     variant="outline"
                     className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
                   >
