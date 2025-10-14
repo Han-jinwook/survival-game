@@ -543,21 +543,22 @@ export default function AdminContent() {
       }
 
       // 데이터 새로고침
-      setTimeout(async () => {
-        const refreshRes = await fetch("/api/game/settings")
-        if (refreshRes.ok) {
-          const refreshData = await refreshRes.json()
-          if (refreshData.participants) {
-            const loadedParticipants = refreshData.participants.map((p: any) => ({
-              id: p.id,
-              naverId: p.naverId || "",
-              nickname: p.nickname,
-              lives: p.currentLives,
-              status: p.status,
-            }))
-            setParticipants(loadedParticipants)
-          }
-        }
+      setTimeout(() => {
+        fetch("/api/game/settings")
+          .then(refreshRes => refreshRes.ok ? refreshRes.json() : null)
+          .then(refreshData => {
+            if (refreshData?.participants) {
+              const loadedParticipants = refreshData.participants.map((p: any) => ({
+                id: p.id,
+                naverId: p.naverId || "",
+                nickname: p.nickname,
+                lives: p.currentLives,
+                status: p.status,
+              }))
+              setParticipants(loadedParticipants)
+            }
+          })
+          .catch(err => console.error("[Admin] 데이터 새로고침 실패:", err))
       }, 500)
 
     } catch (error) {
