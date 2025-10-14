@@ -230,13 +230,19 @@ export default function GameLobby() {
       
       // beforeunload: 브라우저 닫을 때
       const handleBeforeUnload = () => {
-        // 게임 시작 중이면 퇴장하지 않음
-        const isGameStarting = sessionStorage.getItem('gameStarting')
-        if (isGameStarting === 'true') {
-          console.log('[Lobby] 게임 시작 중 - beforeunload 퇴장 건너뛰기')
-          sessionStorage.removeItem('gameStarting') // 플래그 리셋
+        const gameStartingFlag = sessionStorage.getItem('gameStarting')
+        
+        // countdown 정상 완료 → exitLobby 건너뛰기 (플래그는 cleanup에서 제거)
+        if (gameStartingFlag === 'completed') {
+          console.log('[Lobby] 게임 시작 완료 - beforeunload 퇴장 건너뛰기')
           return
         }
+        
+        // countdown 진행 중 취소 또는 일반 퇴장 → exitLobby 실행
+        if (gameStartingFlag === 'true') {
+          console.log('[Lobby] Countdown 취소 - beforeunload exitLobby 실행')
+        }
+        
         exitLobby()
       }
       
@@ -247,15 +253,21 @@ export default function GameLobby() {
         eventSource.close()
         window.removeEventListener("beforeunload", handleBeforeUnload)
         
-        // 게임 시작 중이면 로비 퇴장하지 않음 (게임 페이지로 이동)
-        const isGameStarting = sessionStorage.getItem('gameStarting')
-        if (isGameStarting === 'true') {
-          console.log('[Lobby] 게임 시작 중 - 로비 퇴장 건너뛰기')
-          sessionStorage.removeItem('gameStarting') // 플래그 리셋
+        const gameStartingFlag = sessionStorage.getItem('gameStarting')
+        
+        // countdown 정상 완료 → exitLobby 건너뛰기
+        if (gameStartingFlag === 'completed') {
+          console.log('[Lobby] 게임 시작 완료 - cleanup 퇴장 건너뛰기')
+          sessionStorage.removeItem('gameStarting')
           return
         }
         
-        // 그 외의 경우 (홈으로 이동, 브라우저 닫기 등) 로비 퇴장
+        // countdown 진행 중 취소 또는 일반 퇴장 → exitLobby 실행
+        if (gameStartingFlag === 'true') {
+          console.log('[Lobby] Countdown 취소 - cleanup exitLobby 실행')
+          sessionStorage.removeItem('gameStarting')
+        }
+        
         exitLobby()
       }
     } else {
@@ -283,15 +295,9 @@ export default function GameLobby() {
       return () => clearTimeout(timer)
     } else if (gameStartCountdown === 0) {
       console.log("[Lobby] Countdown finished, redirecting to:", gameDestination)
+      // 정상 완료 표시 (beforeunload에서 exitLobby 실행 방지)
+      sessionStorage.setItem('gameStarting', 'completed')
       window.location.href = gameDestination
-    }
-    
-    // countdown이 취소되면 플래그 리셋
-    return () => {
-      if (gameStartCountdown === null) {
-        sessionStorage.removeItem('gameStarting')
-        console.log('[Lobby] Countdown 취소 - gameStarting 플래그 리셋')
-      }
     }
   }, [gameStartCountdown, gameDestination])
 
