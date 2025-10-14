@@ -98,6 +98,7 @@ export interface GameParticipant {
   status: "waiting" | "playing" | "eliminated" | "winner"
   joined_at: string
   eliminated_at?: string
+  last_active_at?: string
 }
 
 export interface GameRound {
@@ -407,6 +408,34 @@ export class DatabaseService {
         client.release()
       })
     }
+  }
+
+  // 참가자 활동 시간 업데이트 (heartbeat)
+  static async updateParticipantActivity(participantId: string): Promise<void> {
+    return executeWithRetry(async () => {
+      const db = getPool()
+      await db.query(
+        `UPDATE game_participants 
+         SET last_active_at = NOW() 
+         WHERE id = $1`,
+        [participantId]
+      )
+    })
+  }
+
+  // 비활성 참가자 타임아웃 처리 (3분)
+  static async checkAndTimeoutInactivePlayers(timeoutMinutes: number = 3): Promise<GameParticipant[]> {
+    return executeWithRetry(async () => {
+      const db = getPool()
+      const result = await db.query<GameParticipant>(
+        `UPDATE game_participants
+         SET status = 'waiting'
+         WHERE status = 'playing' 
+         AND last_active_at < NOW() - INTERVAL '${timeoutMinutes} minutes'
+         RETURNING *`
+      )
+      return result.rows
+    })
   }
 
   // 연결 종료
