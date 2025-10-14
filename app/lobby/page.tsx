@@ -581,6 +581,24 @@ export default function GameLobby() {
       return
     }
     
+    // 세션 ID 가져오기
+    let sessionId: string | null = null
+    try {
+      const stateResponse = await fetch("/api/game/state")
+      if (stateResponse.ok) {
+        const stateData = await stateResponse.json()
+        sessionId = stateData.session?.id
+      }
+    } catch (error) {
+      console.error("[Lobby] 세션 ID 가져오기 실패:", error)
+    }
+    
+    if (!sessionId) {
+      setStartErrorMessage("❌ 게임 세션을 찾을 수 없습니다")
+      setTimeout(() => setStartErrorMessage(""), 3000)
+      return
+    }
+    
     // 세션 상태를 'in-progress'로 업데이트
     try {
       const response = await fetch("/api/game/session", {
@@ -588,6 +606,7 @@ export default function GameLobby() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "start",
+          sessionId: sessionId,
         }),
       })
       
