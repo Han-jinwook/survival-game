@@ -516,65 +516,65 @@ export default function GameLobby() {
       <div className="absolute inset-0 bg-[url('/abstract-geometric-pattern.png')] opacity-5"></div>
 
       {showWelcomeMessage && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
-          <Card className="bg-black/90 border-red-600/50 p-8 max-w-md w-full mx-4 text-center">
-            <div className="w-16 h-16 bg-red-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-red-400 text-2xl">⚡</span>
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center px-4">
+          <Card className="bg-black/90 border-red-600/50 p-6 md:p-8 max-w-md w-full text-center">
+            <div className="w-12 h-12 md:w-16 md:h-16 bg-red-600/20 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+              <span className="text-red-400 text-xl md:text-2xl">⚡</span>
             </div>
-            <h2 className="text-2xl font-bold text-red-300 mb-4">로비 입장 완료</h2>
-            <div className="bg-red-950/50 border border-red-600/50 rounded-lg p-4">
-              <p className="text-red-300 font-semibold mb-2">"{currentUser.nickname}" 참가자님</p>
-              <p className="text-gray-300 text-sm mb-3">
+            <h2 className="text-xl md:text-2xl font-bold text-red-300 mb-3 md:mb-4">로비 입장 완료</h2>
+            <div className="bg-red-950/50 border border-red-600/50 rounded-lg p-3 md:p-4">
+              <p className="text-red-300 font-semibold text-sm md:text-base mb-2">"{currentUser.nickname}" 참가자님</p>
+              <p className="text-gray-300 text-xs md:text-sm mb-2 md:mb-3">
                 행운권 <span className="text-yellow-400 font-bold">{currentUser.lives}장</span>이
               </p>
-              <p className="text-red-400 font-bold text-lg">목숨 {currentUser.lives}개로 변환되었습니다.</p>
+              <p className="text-red-400 font-bold text-base md:text-lg">목숨 {currentUser.lives}개로 변환되었습니다.</p>
             </div>
           </Card>
         </div>
       )}
 
-      <header className="relative z-10 p-6 border-b border-red-800/30">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <img src="/game-logo.png" alt="가위바위보 로고" className="w-15 h-15 rounded-full" />
-            <h1 className="text-2xl font-bold">가위바위보 하나빼기</h1>
+      <header className="relative z-10 p-4 md:p-6 border-b border-red-800/30">
+        <div className="max-w-6xl mx-auto flex justify-between items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 md:gap-3 hover:opacity-80 transition-opacity">
+            <img src="/game-logo.png" alt="가위바위보 로고" className="w-10 h-10 md:w-15 md:h-15 rounded-full" />
+            <h1 className="text-base md:text-2xl font-bold">가위바위보 하나빼기</h1>
           </Link>
-          <div className="flex items-center gap-4">
-            <Badge variant="destructive" className="bg-green-600/20 text-green-300 border-green-600/50">
+          <div className="flex items-center gap-1 md:gap-4">
+            <Badge variant="destructive" className="bg-green-600/20 text-green-300 border-green-600/50 text-xs md:text-sm hidden sm:inline-flex">
               로비 대기중
             </Badge>
-            <Badge variant="outline" className="border-yellow-600/50 text-yellow-300">
+            <Badge variant="outline" className="border-yellow-600/50 text-yellow-300 text-xs md:text-sm">
               {currentUser.nickname}
             </Badge>
             <Link href="/">
-              <Button variant="outline" size="sm" className="bg-blue-600/20 text-blue-300 border-blue-600/50 hover:bg-blue-600/30">
-                홈으로
+              <Button variant="outline" size="sm" className="bg-blue-600/20 text-blue-300 border-blue-600/50 hover:bg-blue-600/30 text-xs md:text-sm px-2 md:px-3">
+                홈
               </Button>
             </Link>
           </div>
         </div>
       </header>
 
-      <main className="relative z-10 max-w-6xl mx-auto px-6 py-8">
-        <Card className="bg-red-950/30 border-red-600/30 p-6 mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="text-lg font-semibold text-red-300">게임 시작 전 확인사항</h4>
+      <main className="relative z-10 max-w-6xl mx-auto px-4 md:px-6 py-4 md:py-8">
+        <Card className="bg-red-950/30 border-red-600/30 p-4 md:p-6 mb-4 md:mb-8">
+          <div className="flex items-center justify-between mb-3 md:mb-4">
+            <h4 className="text-sm md:text-lg font-semibold text-red-300">게임 시작 전 확인사항</h4>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setShowRulesModal(true)}
-              className="bg-purple-600/20 text-purple-300 border-purple-600/50 hover:bg-purple-600/30"
+              className="bg-purple-600/20 text-purple-300 border-purple-600/50 hover:bg-purple-600/30 text-xs md:text-sm px-2 md:px-3"
             >
-              📖 게임 규칙 보기
+              📖 규칙
             </Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
-            <ul className="space-y-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 text-xs md:text-sm text-gray-300">
+            <ul className="space-y-1 md:space-y-2">
               <li>• 게임 시작 후 중도 퇴장 시 자동 패배</li>
               <li>• 목숨 0개 시 즉시 게임 종료</li>
               <li>• 네트워크 연결 상태를 확인하세요</li>
             </ul>
-            <ul className="space-y-2">
+            <ul className="space-y-1 md:space-y-2">
               <li>• 최후의 1인까지 진행됩니다</li>
               <li>• 실시간 대전으로 지연 시간 주의</li>
               <li>• 카페 활동지수에 따른 개별 목숨 시스템</li>
@@ -582,26 +582,26 @@ export default function GameLobby() {
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <Card className="bg-black/60 border-red-800/50 p-6">
-            <h3 className="text-lg font-semibold text-red-300 mb-4">참가자 현황</h3>
-            <div className="space-y-3 text-gray-300">
-              <div className="flex items-center gap-2">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-8">
+          <Card className="bg-black/60 border-red-800/50 p-4 md:p-6">
+            <h3 className="text-base md:text-lg font-semibold text-red-300 mb-3 md:mb-4">참가자 현황</h3>
+            <div className="space-y-2 md:space-y-3 text-gray-300">
+              <div className="flex items-center gap-2 text-xs md:text-base">
                 <span className="text-white font-semibold">참가예정자 총 {totalPlayers}명 중</span>
                 <span className="text-green-400 font-semibold">로비 대기자 {lobbyPlayers}명</span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 text-xs md:text-base">
                 <span className="text-white font-semibold">총 목숨:</span>
                 <span className="text-yellow-400 font-semibold">{totalLives}개</span>
-                <span className="text-gray-400 text-sm">
+                <span className="text-gray-400 text-xs md:text-sm">
                   (평균 {totalPlayers > 0 ? (totalLives / totalPlayers).toFixed(1) : 0}개/인)
                 </span>
               </div>
             </div>
           </Card>
 
-          <Card className="bg-black/60 border-purple-800/50 p-6">
-            <h3 className="text-lg font-semibold text-purple-300 mb-4">게임장 입장 안내</h3>
+          <Card className="bg-black/60 border-purple-800/50 p-4 md:p-6">
+            <h3 className="text-base md:text-lg font-semibold text-purple-300 mb-3 md:mb-4">게임장 입장 안내</h3>
             <div className="text-center">
               {gameStartTime && (
                 <div className="text-sm text-purple-300 mb-3">
@@ -610,15 +610,15 @@ export default function GameLobby() {
               )}
               {gameStartCountdown === null ? (
                 <div>
-                  <div className="text-2xl font-bold text-purple-400 mb-4">대기중</div>
+                  <div className="text-xl md:text-2xl font-bold text-purple-400 mb-3 md:mb-4">대기중</div>
                   <Button
                     onClick={handleTestStart}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-8 py-3"
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base"
                   >
                     테스트 시작
                   </Button>
                   {startErrorMessage && (
-                    <div className={`mt-3 p-3 rounded-lg text-sm text-center ${
+                    <div className={`mt-2 md:mt-3 p-2 md:p-3 rounded-lg text-xs md:text-sm text-center ${
                       startErrorMessage.includes("✅") 
                         ? "bg-green-900/50 border border-green-600/50 text-green-300" 
                         : "bg-red-900/50 border border-red-600/50 text-red-300"
@@ -627,15 +627,15 @@ export default function GameLobby() {
                     </div>
                   )}
                   {lobbyOpenTime && (
-                    <div className="text-xs text-gray-500 mt-4">
+                    <div className="text-xs text-gray-500 mt-3 md:mt-4">
                       게임 시작 3분 전인 {lobbyOpenTime}에 게임장 오픈되오니, 시간 착오 없으시기 바랍니다.
                     </div>
                   )}
                 </div>
               ) : (
                 <div>
-                  <div className="text-4xl font-bold text-purple-400 mb-2">{gameStartCountdown}</div>
-                  <div className="text-sm text-gray-300 mb-3">초 후 게임장 입장</div>
+                  <div className="text-3xl md:text-4xl font-bold text-purple-400 mb-2">{gameStartCountdown}</div>
+                  <div className="text-xs md:text-sm text-gray-300 mb-3">초 후 게임장 입장</div>
                   <Progress value={((10 - gameStartCountdown) / 10) * 100} className="h-2" />
                   {lobbyOpenTime && (
                     <div className="text-xs text-gray-500 mt-3">(실제 운영 시: {lobbyOpenTime}에 게임장 오픈)</div>
