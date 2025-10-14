@@ -41,12 +41,7 @@ export default function AdminContent() {
   const [aiMessage, setAiMessage] = useState("")
   const isInitialMount = useRef(true)
 
-  useEffect(() => {
-    const savedAuth = localStorage.getItem("admin_authenticated")
-    if (savedAuth === "true") {
-      setIsAuthenticated(true)
-    }
-  }, [])
+  // 자동 로그인 제거 (보안 강화)
 
   useEffect(() => {
     if (saveMessage) {
@@ -178,9 +173,8 @@ export default function AdminContent() {
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault()
-    if (adminPassword === "1") {
+    if (adminPassword === "admin123") {
       setIsAuthenticated(true)
-      localStorage.setItem("admin_authenticated", "true")
     } else {
       alert("잘못된 관리자 비밀번호입니다.")
     }
