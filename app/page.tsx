@@ -37,7 +37,9 @@ export default function GameLanding() {
             })
             
             if (data.participants) {
-              setPlayerCount(data.participants.length)
+              // 로비 대기중 = playing 상태인 참가자만
+              const playingCount = data.participants.filter((p: any) => p.status === 'playing').length
+              setPlayerCount(playingCount)
             }
           }
         } else {
