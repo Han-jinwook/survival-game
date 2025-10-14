@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
-import { pool } from "@/lib/database"
+import { getPool } from "@/lib/database"
 
 // GET /api/game/sessions - 모든 게임 세션 목록 조회
 export async function GET(request: NextRequest) {
   try {
+    const pool = getPool()
     const client = await pool.connect()
     
     try {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
       
       // 각 세션의 참가자 수 조회
       const sessionsWithParticipants = await Promise.all(
-        sessionsResult.rows.map(async (session) => {
+        sessionsResult.rows.map(async (session: any) => {
           const participantsResult = await client.query(
             `SELECT COUNT(*) as count FROM game_participants WHERE game_session_id = $1`,
             [session.id]
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest) {
 // GET /api/game/sessions?id=xxx - 특정 세션 상세 조회
 export async function GET_BY_ID(sessionId: string) {
   try {
+    const pool = getPool()
     const client = await pool.connect()
     
     try {
