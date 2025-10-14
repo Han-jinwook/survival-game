@@ -55,7 +55,7 @@ export default function GameLobby() {
       if (response.ok) {
         const data = await response.json()
         console.log("[Lobby] 로비 입장 완료:", data.participant)
-        // 참가자 정보 저장 (heartbeat용)
+        // 참가자 정보 저장 (exit_lobby용)
         localStorage.setItem("participantInfo", JSON.stringify(data.participant))
         return true
       } else {
@@ -135,7 +135,7 @@ export default function GameLobby() {
                   return
                 }
               } else if (myParticipant && myParticipant.status === "playing") {
-                // 이미 입장했으면 참가자 정보 저장 (Heartbeat용)
+                // 이미 입장했으면 참가자 정보 저장 (exit_lobby용)
                 console.log("[Lobby] 이미 로비에 입장한 상태, 참가자 정보 저장")
                 localStorage.setItem("participantInfo", JSON.stringify(myParticipant))
               }
@@ -206,42 +206,6 @@ export default function GameLobby() {
         eventSource.close()
       }
       
-      // Heartbeat: 30초마다 활동 신호 전송
-      const sendHeartbeat = async () => {
-        try {
-          // 현재 참가자 ID 찾기
-          const participantData = localStorage.getItem("participantInfo")
-          if (participantData) {
-            const participant = JSON.parse(participantData)
-            await fetch("/api/game/timeout", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ participantId: participant.id }),
-            })
-            console.log("[Lobby] ❤️ Heartbeat 전송")
-          }
-        } catch (error) {
-          console.error("[Lobby] Heartbeat 전송 실패:", error)
-        }
-      }
-      
-      // 타임아웃 체크: 15초마다 비활성 참가자 자동 로그아웃 (10초 타임아웃)
-      const checkTimeout = async () => {
-        try {
-          const response = await fetch("/api/game/timeout")
-          if (response.ok) {
-            const data = await response.json()
-            if (data.timedOutCount > 0) {
-              console.log(`[Lobby] ⏰ ${data.timedOutCount}명 타임아웃 처리됨`)
-              // 데이터 리로드
-              fetchGameData(false)
-            }
-          }
-        } catch (error) {
-          console.error("[Lobby] 타임아웃 체크 실패:", error)
-        }
-      }
-      
       // 로비 떠날 때 즉시 상태 변경
       const exitLobby = async () => {
         try {
@@ -271,18 +235,9 @@ export default function GameLobby() {
       
       window.addEventListener("beforeunload", handleBeforeUnload)
       
-      // 즉시 한 번 실행
-      sendHeartbeat()
-      
-      // 주기적 실행
-      const heartbeatInterval = setInterval(sendHeartbeat, 30000) // 30초
-      const timeoutInterval = setInterval(checkTimeout, 15000) // 15초 (10초 타임아웃 대비)
-      
       return () => {
         console.log('[Lobby] SSE 연결 종료')
         eventSource.close()
-        clearInterval(heartbeatInterval)
-        clearInterval(timeoutInterval)
         window.removeEventListener("beforeunload", handleBeforeUnload)
         // 페이지 떠날 때 즉시 로비 퇴장
         exitLobby()
