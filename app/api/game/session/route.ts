@@ -38,7 +38,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { action, sessionId, userId, nickname, initialLives, updates } = await request.json()
+    const { action, sessionId, userId, participantId, nickname, initialLives, updates } = await request.json()
 
     if (action === "join") {
       const participant = await DatabaseService.addParticipant(
@@ -47,6 +47,20 @@ export async function POST(request: NextRequest) {
         nickname,
         initialLives || 5
       )
+      return NextResponse.json({ success: true, participant })
+    }
+
+    if (action === "enter_lobby") {
+      // 로비 입장: 참가자 상태를 "playing"으로 변경
+      if (!participantId) {
+        return NextResponse.json({ error: "참가자 ID가 필요합니다." }, { status: 400 })
+      }
+      
+      const participant = await DatabaseService.updateParticipant(participantId, {
+        status: "playing"
+      })
+      
+      console.log(`[Lobby] 참가자 로비 입장: ${participant.nickname} (${participantId})`)
       return NextResponse.json({ success: true, participant })
     }
 
