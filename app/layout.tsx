@@ -8,7 +8,8 @@ export const metadata: Metadata = {
   title: '가위바위보 하나빼기 서바이벌',
   description: '네이버 카페 이벤트 - 가위바위보 하나빼기 서바이벌 게임',
   icons: {
-    icon: '/game-logo.png',
+    icon: '/favicon.png',
+    apple: '/favicon.png',
   },
 }
 
