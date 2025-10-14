@@ -4,7 +4,7 @@
 
 ### 마지막 업데이트
 - 날짜: 2025-10-14
-- **3분 자동 타임아웃 시스템 구현 완료** ✅ (NEW)
+- **로비 즉시 퇴장 + 10초 타임아웃 시스템 구현 완료** ✅ (LATEST)
 - **실시간 SSE 구현 완료** ✅ (5초 폴링 → 즉시 반영)
 - **모바일 반응형 최적화 완료** ✅
 - **로비 입장 시스템 구현 완료** ✅
@@ -87,14 +87,20 @@
    - **Keepalive 연결 유지**: 30초마다 자동 핑
    - **라우팅 버그 수정**: 2~4명 → /finals, 5명+ → /game 정확한 분기
 
-9. **3분 자동 타임아웃 시스템 (2025-10-14)** ✅
-   - **DB 스키마 업데이트**: `game_participants` 테이블에 `last_active_at` 컬럼 추가
-   - **Heartbeat 시스템**: 로비 접속 중 30초마다 활동 신호 자동 전송
-   - **자동 로그아웃**: 3분간 활동 없으면 `playing` → `waiting` 상태로 자동 변경
-   - **타임아웃 체크 API**: `/api/game/timeout` (GET: 타임아웃 체크, POST: heartbeat)
-   - **브라우저 종료 감지**: PC 브라우저 닫으면 3분 후 자동으로 로비에서 제거
-   - **참가자 정보 저장**: `localStorage`에 참가자 ID 저장 후 heartbeat 전송
-   - **DB 함수 추가**: `updateParticipantActivity()`, `checkAndTimeoutInactivePlayers()`
+9. **로비 즉시 퇴장 + 10초 타임아웃 시스템 (2025-10-14)** ✅
+   - **DB 스키마**: `game_participants` 테이블에 `last_active_at` 컬럼
+   - **Heartbeat 시스템**: 로비 페이지 열려있을 때 30초마다 활동 신호 자동 전송
+   - **즉시 퇴장 메커니즘** (메인):
+     - 로비 페이지 떠남 → `exit_lobby` API 호출 → 즉시 `playing` → `waiting`
+     - `beforeunload` 이벤트로 브라우저 닫기 감지
+     - `useEffect cleanup`으로 페이지 이동 감지
+     - `keepalive: true` 옵션으로 페이지 닫혀도 요청 완료 보장
+   - **10초 타임아웃** (백업 안전장치):
+     - 즉시 퇴장 실패 시 (네트워크 끊김, 강제 종료) → 10초 후 자동 타임아웃
+     - 15초마다 타임아웃 체크 (10초 타임아웃 대비)
+   - **API**: `/api/game/timeout` (GET: 타임아웃 체크, POST: heartbeat)
+   - **새 API 액션**: `/api/game/session` POST `exit_lobby` (즉시 상태 변경)
+   - **DB 함수**: `updateParticipantActivity()`, `checkAndTimeoutInactivePlayers(10초)`
 
 #### ⏳ 진행 예정 작업
 1. **프론트엔드 API 연동** (진행 중)
