@@ -55,6 +55,8 @@ export default function GameLobby() {
       if (response.ok) {
         const data = await response.json()
         console.log("[Lobby] 로비 입장 완료:", data.participant)
+        // 참가자 정보 저장 (heartbeat용)
+        localStorage.setItem("participantInfo", JSON.stringify(data.participant))
         return true
       } else {
         console.error("[Lobby] 로비 입장 실패:", response.status)
@@ -198,9 +200,54 @@ export default function GameLobby() {
         eventSource.close()
       }
       
+      // Heartbeat: 30초마다 활동 신호 전송
+      const sendHeartbeat = async () => {
+        try {
+          // 현재 참가자 ID 찾기
+          const participantData = localStorage.getItem("participantInfo")
+          if (participantData) {
+            const participant = JSON.parse(participantData)
+            await fetch("/api/game/timeout", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ participantId: participant.id }),
+            })
+            console.log("[Lobby] ❤️ Heartbeat 전송")
+          }
+        } catch (error) {
+          console.error("[Lobby] Heartbeat 전송 실패:", error)
+        }
+      }
+      
+      // 타임아웃 체크: 1분마다 비활성 참가자 자동 로그아웃
+      const checkTimeout = async () => {
+        try {
+          const response = await fetch("/api/game/timeout")
+          if (response.ok) {
+            const data = await response.json()
+            if (data.timedOutCount > 0) {
+              console.log(`[Lobby] ⏰ ${data.timedOutCount}명 타임아웃 처리됨`)
+              // 데이터 리로드
+              fetchGameData(false)
+            }
+          }
+        } catch (error) {
+          console.error("[Lobby] 타임아웃 체크 실패:", error)
+        }
+      }
+      
+      // 즉시 한 번 실행
+      sendHeartbeat()
+      
+      // 주기적 실행
+      const heartbeatInterval = setInterval(sendHeartbeat, 30000) // 30초
+      const timeoutInterval = setInterval(checkTimeout, 60000) // 1분
+      
       return () => {
         console.log('[Lobby] SSE 연결 종료')
         eventSource.close()
+        clearInterval(heartbeatInterval)
+        clearInterval(timeoutInterval)
       }
     } else {
       console.log("[Lobby] 인증 정보 없음, 로그인 페이지로 이동")
