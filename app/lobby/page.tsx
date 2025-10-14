@@ -230,6 +230,12 @@ export default function GameLobby() {
       
       // beforeunload: 브라우저 닫을 때
       const handleBeforeUnload = () => {
+        // 게임 시작 중이면 퇴장하지 않음
+        const isGameStarting = sessionStorage.getItem('gameStarting')
+        if (isGameStarting === 'true') {
+          console.log('[Lobby] 게임 시작 중 - beforeunload 퇴장 건너뛰기')
+          return
+        }
         exitLobby()
       }
       
@@ -630,12 +636,14 @@ export default function GameLobby() {
       // 5명 이상: 예선전
       console.log("[Lobby] 예선전 시작:", lobbyPlayerCount, "명")
       sessionStorage.setItem('gameStarting', 'true') // 게임 시작 플래그
+      sessionStorage.setItem('currentSessionId', sessionId) // 세션 ID 저장
       setGameDestination("/game")
       setGameStartCountdown(10)
     } else if (lobbyPlayerCount >= 2 && lobbyPlayerCount <= 4) {
       // 2~4명: 본선(결승) 직행
       console.log("[Lobby] 본선 직행:", lobbyPlayerCount, "명")
       sessionStorage.setItem('gameStarting', 'true') // 게임 시작 플래그
+      sessionStorage.setItem('currentSessionId', sessionId) // 세션 ID 저장
       setGameDestination("/finals")
       setStartErrorMessage("✅ " + lobbyPlayerCount + "명 입장! 본선으로 바로 이동합니다...")
       setGameStartCountdown(10)
