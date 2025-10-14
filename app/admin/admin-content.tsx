@@ -409,6 +409,64 @@ export default function AdminContent() {
     }
   }
 
+  const handleCancelEdit = async () => {
+    setIsEditing(false)
+    setIsSaved(true)
+    setSaveMessage("")
+    console.log("[Admin] 수정 취소 - 변경사항 되돌림")
+    try {
+      const response = await fetch("/api/game/settings")
+      if (response.ok) {
+        const data = await response.json()
+        if (data.session) {
+          setCafeName(data.session.cafeName || "")
+          setEventName(data.session.sessionName || "")
+          setPrize(data.session.prize || "")
+          setGameStartTime(data.session.startedAt?.slice(0, 16) || "")
+        }
+      }
+    } catch (error) {
+      console.error("[Admin] 데이터 복원 실패:", error)
+    }
+  }
+
+  const handleSessionSelect = async (sessionId: string) => {
+    setSelectedSessionId(sessionId)
+    
+    if (!sessionId) {
+      setIsReadOnlyMode(false)
+      return
+    }
+    
+    // 선택된 세션 불러오기
+    try {
+      const response = await fetch(`/api/game/settings?sessionId=${sessionId}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.session) {
+          setCafeName(data.session.cafeName || data.session.cafe_name || "")
+          setEventName(data.session.sessionName || data.session.session_name || "")
+          setPrize(data.session.prize || "")
+          setGameStartTime(data.session.startedAt?.slice(0, 16) || data.session.started_at?.slice(0, 16) || "")
+          setIsReadOnlyMode(true)
+          setIsEditing(false)
+        }
+        if (data.participants) {
+          const loadedParticipants = data.participants.map((p: any) => ({
+            id: p.id,
+            naverId: p.naverId || p.naver_id || "",
+            nickname: p.nickname,
+            lives: p.currentLives || p.current_lives,
+            status: p.status,
+          }))
+          setParticipants(loadedParticipants)
+        }
+      }
+    } catch (error) {
+      console.error("[Admin] 세션 불러오기 실패:", error)
+    }
+  }
+
   const aiAutoLobbyEntry = async () => {
     try {
       // DB에서 최신 참가자 상태 가져오기
@@ -603,43 +661,7 @@ export default function AdminContent() {
                 </label>
                 <select
                   value={selectedSessionId}
-                  onChange={async (e) => {
-                    const sessionId = e.target.value
-                    setSelectedSessionId(sessionId)
-                    
-                    if (!sessionId) {
-                      setIsReadOnlyMode(false)
-                      return
-                    }
-                    
-                    // 선택된 세션 불러오기
-                    try {
-                      const response = await fetch(`/api/game/settings?sessionId=${sessionId}`)
-                      if (response.ok) {
-                        const data = await response.json()
-                        if (data.session) {
-                          setCafeName(data.session.cafeName || data.session.cafe_name || "")
-                          setEventName(data.session.sessionName || data.session.session_name || "")
-                          setPrize(data.session.prize || "")
-                          setGameStartTime(data.session.startedAt?.slice(0, 16) || data.session.started_at?.slice(0, 16) || "")
-                          setIsReadOnlyMode(true)
-                          setIsEditing(false)
-                        }
-                        if (data.participants) {
-                          const loadedParticipants = data.participants.map((p: any) => ({
-                            id: p.id,
-                            naverId: p.naverId || p.naver_id || "",
-                            nickname: p.nickname,
-                            lives: p.currentLives || p.current_lives,
-                            status: p.status,
-                          }))
-                          setParticipants(loadedParticipants)
-                        }
-                      }
-                    } catch (error) {
-                      console.error("[Admin] 세션 불러오기 실패:", error)
-                    }
-                  }}
+                  onChange={(e) => handleSessionSelect(e.target.value)}
                   className="w-full bg-black/40 border-purple-800/50 text-white p-2 rounded"
                 >
                   <option value="">새 이벤트 만들기</option>
@@ -752,26 +774,7 @@ export default function AdminContent() {
                     {isSaving ? "⏳ 저장 중..." : "💾 저장"}
                   </Button>
                   <Button
-                    onClick={async () => {
-                      setIsEditing(false)
-                      setIsSaved(true)
-                      setSaveMessage("")
-                      console.log("[Admin] 수정 취소 - 변경사항 되돌림")
-                      try {
-                        const response = await fetch("/api/game/settings")
-                        if (response.ok) {
-                          const data = await response.json()
-                          if (data.session) {
-                            setCafeName(data.session.cafeName || "")
-                            setEventName(data.session.sessionName || "")
-                            setPrize(data.session.prize || "")
-                            setGameStartTime(data.session.startedAt?.slice(0, 16) || "")
-                          }
-                        }
-                      } catch (error) {
-                        console.error("[Admin] 데이터 복원 실패:", error)
-                      }
-                    }}
+                    onClick={handleCancelEdit}
                     variant="outline"
                     className="flex-1 border-gray-600 text-gray-300 hover:bg-gray-800"
                   >
