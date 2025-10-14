@@ -5,9 +5,11 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.app',
+  title: '가위바위보 하나빼기 서바이벌',
+  description: '네이버 카페 이벤트 - 가위바위보 하나빼기 서바이벌 게임',
+  icons: {
+    icon: '/game-logo.png',
+  },
 }
 
 export default function RootLayout({
