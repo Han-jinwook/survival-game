@@ -729,7 +729,9 @@ export default function GameInterface() {
 
       setTimeout(() => {
         console.log("[v0] Calling processElimination with:", [losingWeapon])
-        processElimination([losingWeapon], counts)
+        if (losingWeapon) {
+          processElimination([losingWeapon], counts)
+        }
       }, 3000)
       return
     }
@@ -1069,7 +1071,7 @@ export default function GameInterface() {
           finalists: [{ id: winner.id, nickname: winner.nickname, lives: winner.lives }],
         }
 
-        localStorage.setItem("gameLog", JSON.JSON.stringify(completeGameLog))
+        localStorage.setItem("gameLog", JSON.stringify(completeGameLog))
 
         setGameRound((prev) => ({ ...prev, phase: "gameOver", timeLeft: 0 }))
         setGameMessage(`🎉 ${winner.nickname}님이 우승했습니다! 🎉`)
