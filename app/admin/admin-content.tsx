@@ -371,6 +371,12 @@ export default function AdminContent() {
       const data = await response.json()
       const waitingParticipants = data.participants?.filter((p: any) => p.status === "waiting") || []
 
+      // 최소 인원 검증 (2명 이상)
+      if (waitingParticipants.length < 2) {
+        setAiMessage("❌ 최소 2명 이상 필요합니다 (현재: " + waitingParticipants.length + "명)")
+        return
+      }
+
       if (waitingParticipants.length === 0) {
         setAiMessage("⚠️ 대기 중인 참가자가 없습니다")
         return
@@ -401,8 +407,28 @@ export default function AdminContent() {
       const successCount = results.filter(r => r).length
       
       if (successCount === waitingParticipants.length) {
-        setAiMessage(`✅ AI 자동 입장 완료! ${successCount}명이 로비에 입장했습니다`)
-        console.log("[Admin] AI 자동 입장 완료:", successCount, "명")
+        // 참가자 수에 따라 게임 페이지 결정
+        const totalPlayers = successCount
+        let gameUrl = ""
+        let gameMessage = ""
+
+        if (totalPlayers >= 5) {
+          // 5명 이상: 예선전
+          gameUrl = "/game"
+          gameMessage = `✅ ${totalPlayers}명 입장 완료! 예선전으로 이동합니다...`
+        } else if (totalPlayers >= 2 && totalPlayers <= 4) {
+          // 2~4명: 본선(결승) 직행
+          gameUrl = "/finals"
+          gameMessage = `✅ ${totalPlayers}명 입장 완료! 본선으로 바로 이동합니다...`
+        }
+
+        setAiMessage(gameMessage)
+        console.log("[Admin] AI 자동 입장 완료:", successCount, "명 →", gameUrl)
+
+        // 1.5초 후 게임 페이지로 이동
+        setTimeout(() => {
+          window.location.href = gameUrl
+        }, 1500)
       } else {
         setAiMessage(`⚠️ 부분 성공: ${successCount}/${waitingParticipants.length}명 입장`)
         console.log("[Admin] AI 자동 입장 부분 성공:", successCount, "/", waitingParticipants.length)
@@ -714,8 +740,13 @@ export default function AdminContent() {
           <div className="mb-6 p-4 bg-purple-950/20 border border-purple-600/30 rounded-lg">
             <h4 className="font-semibold mb-3 text-purple-300">🤖 AI 테스트 모드</h4>
             <p className="text-sm text-gray-400 mb-3">
-              테스트를 위해 모든 대기 중인 참가자를 자동으로 로비에 입장시킵니다
+              모든 대기 중인 참가자를 자동으로 로비에 입장시키고 게임을 시작합니다
             </p>
+            <div className="text-xs text-gray-500 space-y-1 mb-3">
+              <div>• 최소 2명 이상 필요</div>
+              <div>• 2~4명: 본선(결승)으로 직행</div>
+              <div>• 5명 이상: 예선전 진행</div>
+            </div>
             <div className="space-y-3">
               <Button 
                 onClick={aiAutoLobbyEntry} 
