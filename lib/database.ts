@@ -423,15 +423,15 @@ export class DatabaseService {
     })
   }
 
-  // 비활성 참가자 타임아웃 처리 (3분)
-  static async checkAndTimeoutInactivePlayers(timeoutMinutes: number = 3): Promise<GameParticipant[]> {
+  // 비활성 참가자 타임아웃 처리 (10초)
+  static async checkAndTimeoutInactivePlayers(timeoutSeconds: number = 10): Promise<GameParticipant[]> {
     return executeWithRetry(async () => {
       const db = getPool()
       const result = await db.query<GameParticipant>(
         `UPDATE game_participants
          SET status = 'waiting'
          WHERE status = 'playing' 
-         AND last_active_at < NOW() - INTERVAL '${timeoutMinutes} minutes'
+         AND last_active_at < NOW() - INTERVAL '${timeoutSeconds} seconds'
          RETURNING *`
       )
       return result.rows

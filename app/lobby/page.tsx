@@ -225,7 +225,7 @@ export default function GameLobby() {
         }
       }
       
-      // 타임아웃 체크: 1분마다 비활성 참가자 자동 로그아웃
+      // 타임아웃 체크: 15초마다 비활성 참가자 자동 로그아웃 (10초 타임아웃)
       const checkTimeout = async () => {
         try {
           const response = await fetch("/api/game/timeout")
@@ -276,7 +276,7 @@ export default function GameLobby() {
       
       // 주기적 실행
       const heartbeatInterval = setInterval(sendHeartbeat, 30000) // 30초
-      const timeoutInterval = setInterval(checkTimeout, 60000) // 1분
+      const timeoutInterval = setInterval(checkTimeout, 15000) // 15초 (10초 타임아웃 대비)
       
       return () => {
         console.log('[Lobby] SSE 연결 종료')
