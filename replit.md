@@ -4,6 +4,7 @@
 
 ### 마지막 업데이트
 - 날짜: 2025-10-14
+- **3분 자동 타임아웃 시스템 구현 완료** ✅ (NEW)
 - **실시간 SSE 구현 완료** ✅ (5초 폴링 → 즉시 반영)
 - **모바일 반응형 최적화 완료** ✅
 - **로비 입장 시스템 구현 완료** ✅
@@ -86,6 +87,15 @@
    - **Keepalive 연결 유지**: 30초마다 자동 핑
    - **라우팅 버그 수정**: 2~4명 → /finals, 5명+ → /game 정확한 분기
 
+9. **3분 자동 타임아웃 시스템 (2025-10-14)** ✅
+   - **DB 스키마 업데이트**: `game_participants` 테이블에 `last_active_at` 컬럼 추가
+   - **Heartbeat 시스템**: 로비 접속 중 30초마다 활동 신호 자동 전송
+   - **자동 로그아웃**: 3분간 활동 없으면 `playing` → `waiting` 상태로 자동 변경
+   - **타임아웃 체크 API**: `/api/game/timeout` (GET: 타임아웃 체크, POST: heartbeat)
+   - **브라우저 종료 감지**: PC 브라우저 닫으면 3분 후 자동으로 로비에서 제거
+   - **참가자 정보 저장**: `localStorage`에 참가자 ID 저장 후 heartbeat 전송
+   - **DB 함수 추가**: `updateParticipantActivity()`, `checkAndTimeoutInactivePlayers()`
+
 #### ⏳ 진행 예정 작업
 1. **프론트엔드 API 연동** (진행 중)
    - ✅ 로비 입장 시스템 완료 (자동 상태 변경: waiting → playing)
@@ -125,7 +135,8 @@ app/
         ├── round/route.ts      # 라운드 진행
         ├── choice/route.ts     # 플레이어 선택
         ├── state/route.ts      # 실시간 상태
-        └── stream/route.ts     # SSE 실시간 스트리밍 (NEW)
+        ├── stream/route.ts     # SSE 실시간 스트리밍
+        └── timeout/route.ts    # 3분 타임아웃 & Heartbeat (NEW)
 
 lib/
 ├── database.ts           # PostgreSQL DB 연결 및 CRUD (pg 라이브러리)
