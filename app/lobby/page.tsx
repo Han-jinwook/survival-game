@@ -242,6 +242,35 @@ export default function GameLobby() {
         }
       }
       
+      // 로비 떠날 때 즉시 상태 변경
+      const exitLobby = async () => {
+        try {
+          const participantData = localStorage.getItem("participantInfo")
+          if (participantData) {
+            const participant = JSON.parse(participantData)
+            await fetch("/api/game/session", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                action: "exit_lobby",
+                participantId: participant.id,
+              }),
+              keepalive: true, // 페이지 닫혀도 요청 완료
+            })
+            console.log("[Lobby] 🚪 로비 퇴장 처리")
+          }
+        } catch (error) {
+          console.error("[Lobby] 로비 퇴장 처리 실패:", error)
+        }
+      }
+      
+      // beforeunload: 브라우저 닫을 때
+      const handleBeforeUnload = () => {
+        exitLobby()
+      }
+      
+      window.addEventListener("beforeunload", handleBeforeUnload)
+      
       // 즉시 한 번 실행
       sendHeartbeat()
       
@@ -254,6 +283,9 @@ export default function GameLobby() {
         eventSource.close()
         clearInterval(heartbeatInterval)
         clearInterval(timeoutInterval)
+        window.removeEventListener("beforeunload", handleBeforeUnload)
+        // 페이지 떠날 때 즉시 로비 퇴장
+        exitLobby()
       }
     } else {
       console.log("[Lobby] 인증 정보 없음, 로그인 페이지로 이동")

@@ -64,6 +64,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, participant })
     }
 
+    if (action === "exit_lobby") {
+      // 로비 퇴장: 참가자 상태를 "waiting"으로 변경
+      if (!participantId) {
+        return NextResponse.json({ error: "참가자 ID가 필요합니다." }, { status: 400 })
+      }
+      
+      const participant = await DatabaseService.updateParticipant(participantId, {
+        status: "waiting"
+      })
+      
+      console.log(`[Lobby] 참가자 로비 퇴장: ${participant.nickname} (${participantId})`)
+      return NextResponse.json({ success: true, participant })
+    }
+
     if (action === "start") {
       const session = await DatabaseService.updateGameSession(sessionId, {
         status: "in_progress",
