@@ -3,15 +3,21 @@ import { DatabaseService, type PlayerChoice } from "@/lib/database"
 
 export async function GET(request: NextRequest) {
   try {
-    const sessionId = request.nextUrl.searchParams.get('sessionId')
+    let sessionId: string | null = request.nextUrl.searchParams.get('sessionId')
     
+    // 세션 ID가 없으면 현재 활성 세션을 자동으로 가져옴
+    let session = null
     if (!sessionId) {
-      return NextResponse.json({ error: "세션 ID가 필요합니다." }, { status: 400 })
+      const activeSession = await DatabaseService.getActiveGameSession()
+      if (activeSession) {
+        session = activeSession
+        sessionId = activeSession.id
+      }
+    } else {
+      session = await DatabaseService.getGameSession(sessionId)
     }
-
-    const session = await DatabaseService.getGameSession(sessionId)
     
-    if (!session) {
+    if (!session || !sessionId) {
       return NextResponse.json({ error: "게임 세션을 찾을 수 없습니다." }, { status: 404 })
     }
 

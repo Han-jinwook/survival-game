@@ -73,12 +73,13 @@ export default function GameLobby() {
         if (data.participants && Array.isArray(data.participants)) {
           const dbPlayers: Player[] = data.participants.map((p: any, index: number) => ({
             id: p.id,
-            naverId: p.naverId,
+            naverId: p.naverId || p.userId, // naverId가 없으면 userId 사용
             nickname: p.nickname,
             lives: p.currentLives,
-            status: p.status === "active" ? "ready" : "waiting",
+            status: p.status === "eliminated" ? "disconnected" : (p.status === "active" ? "ready" : "waiting"),
             joinTime: new Date(p.joinedAt),
-            isInLobby: p.status === "active", // active 상태가 로비 입장
+            // waiting, active 모두 로비에 표시 (eliminated는 제외)
+            isInLobby: p.status !== "eliminated",
           }))
           setPlayers(dbPlayers)
           
