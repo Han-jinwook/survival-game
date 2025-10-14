@@ -49,10 +49,6 @@ externalPort = 3000
 localPort = 46149
 externalPort = 3003
 
-[[ports]]
-localPort = 46779
-externalPort = 4200
-
 [deployment]
 deploymentTarget = "autoscale"
 run = ["pnpm", "run", "start"]

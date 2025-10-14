@@ -4,7 +4,14 @@
 
 ### 마지막 업데이트
 - 날짜: 2025-10-14
-- **Ghost Player 완전 해결 + 홈 페이지 실시간 동기화** ✅ (LATEST)
+- **participantId 기반 사용자 식별 + 로컬 테스트 설정 완료** ✅ (LATEST)
+  - localStorage 사용자 정보 조회 개선: naverId → participantId 비교로 변경
+  - 게임 페이지에서 현재 사용자 정확한 식별 (isCurrentUser 플래그)
+  - DB 테스트 설정: 멀린(waiting), AI 5명(playing) 분리
+  - 로컬 테스트 시나리오: 멀린 로비 입장 → 6명 → AI 자동 조종
+  - 예선/본선 게임 플로우 정상 작동 확인 ✅
+  - **남은 작업**: 자막/멘트 오류, 점수 계산 이슈 (내일 처리)
+- **Ghost Player 완전 해결 + 홈 페이지 실시간 동기화** ✅
   - sessionStorage 플래그 3단계 관리: 'true' (진행 중) → 'completed' (완료) → 제거
   - beforeunload: 'completed'면 플래그 유지하고 return
   - cleanup: 'completed'면 플래그 제거하고 exitLobby 건너뛰기
