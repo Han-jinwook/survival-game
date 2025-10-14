@@ -18,17 +18,6 @@ interface Participant {
   status: "waiting" | "ready" | "playing"
 }
 
-interface SessionSummary {
-  id: string
-  session_name: string
-  cafe_name: string
-  prize: string
-  status: string
-  started_at: string
-  created_at: string
-  participantCount: number
-}
-
 export default function AdminContent() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [adminPassword, setAdminPassword] = useState("")
@@ -51,12 +40,6 @@ export default function AdminContent() {
   const [gameMessage, setGameMessage] = useState("")
   const [aiMessage, setAiMessage] = useState("")
   const isInitialMount = useRef(true)
-  
-  // 이전 세션 관리
-  const [pastSessions, setPastSessions] = useState<SessionSummary[]>([])
-  const [selectedSessionId, setSelectedSessionId] = useState<string>("")
-  const [isReadOnlyMode, setIsReadOnlyMode] = useState(false)
-  const [currentSessionId, setCurrentSessionId] = useState<string>("")
 
   useEffect(() => {
     const savedAuth = localStorage.getItem("admin_authenticated")
@@ -151,22 +134,6 @@ export default function AdminContent() {
     }
     
     loadSettings()
-    
-    // 이전 세션 목록 로드
-    const loadPastSessions = async () => {
-      try {
-        const response = await fetch("/api/game/sessions")
-        if (response.ok) {
-          const data = await response.json()
-          setPastSessions(data.sessions || [])
-          console.log("[Admin] 이전 세션 로드 완료:", data.sessions?.length || 0, "개")
-        }
-      } catch (error) {
-        console.error("[Admin] 이전 세션 로드 실패:", error)
-      }
-    }
-    
-    loadPastSessions()
   }, [])
 
   useEffect(() => {
@@ -224,8 +191,6 @@ export default function AdminContent() {
     setSaveMessage("")
     
     try {
-      // 재등록 모드: 항상 새 세션 생성 (currentSessionId는 참고용)
-      // isReadOnlyMode에서 수정 버튼을 누르면 새로운 세션으로 재등록
       const response = await fetch("/api/game/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -240,7 +205,6 @@ export default function AdminContent() {
             nickname: p.nickname,
             lives: p.lives,
           })),
-          isReregistration: currentSessionId ? true : false, // 재등록 플래그
         }),
       })
 
@@ -252,20 +216,6 @@ export default function AdminContent() {
       setIsSaved(true)
       setLastSavedTime(new Date())
       setIsEditing(false)
-      
-      // 재등록 모드 초기화 및 세션 목록 갱신
-      if (currentSessionId) {
-        setCurrentSessionId("")
-        setIsReadOnlyMode(false)
-        setSelectedSessionId("")
-        
-        // 세션 목록 다시 로드
-        const sessionsResponse = await fetch("/api/game/sessions")
-        if (sessionsResponse.ok) {
-          const sessionsData = await sessionsResponse.json()
-          setPastSessions(sessionsData.sessions || [])
-        }
-      }
       
       if (gameStartTime) {
         setGameScheduled(true)
@@ -427,43 +377,6 @@ export default function AdminContent() {
       }
     } catch (error) {
       console.error("[Admin] 데이터 복원 실패:", error)
-    }
-  }
-
-  const handleSessionSelect = async (sessionId: string) => {
-    setSelectedSessionId(sessionId)
-    
-    if (!sessionId) {
-      setIsReadOnlyMode(false)
-      return
-    }
-    
-    // 선택된 세션 불러오기
-    try {
-      const response = await fetch(`/api/game/settings?sessionId=${sessionId}`)
-      if (response.ok) {
-        const data = await response.json()
-        if (data.session) {
-          setCafeName(data.session.cafeName || data.session.cafe_name || "")
-          setEventName(data.session.sessionName || data.session.session_name || "")
-          setPrize(data.session.prize || "")
-          setGameStartTime(data.session.startedAt?.slice(0, 16) || data.session.started_at?.slice(0, 16) || "")
-          setIsReadOnlyMode(true)
-          setIsEditing(false)
-        }
-        if (data.participants) {
-          const loadedParticipants = data.participants.map((p: any) => ({
-            id: p.id,
-            naverId: p.naverId || p.naver_id || "",
-            nickname: p.nickname,
-            lives: p.currentLives || p.current_lives,
-            status: p.status,
-          }))
-          setParticipants(loadedParticipants)
-        }
-      }
-    } catch (error) {
-      console.error("[Admin] 세션 불러오기 실패:", error)
     }
   }
 
@@ -654,57 +567,6 @@ export default function AdminContent() {
           <Card className="bg-black/60 border-red-800/50 p-6">
             <h3 className="text-xl font-bold mb-4 text-red-300">이벤트 설정</h3>
             
-            {/* 이전 이벤트 불러오기 드롭다운 */}
-            {pastSessions.length > 0 && (
-              <div className="mb-4 p-3 bg-purple-950/30 border border-purple-600/50 rounded-lg">
-                <label className="block text-sm font-medium text-purple-300 mb-2">
-                  📋 이전 이벤트 불러오기
-                </label>
-                <select
-                  value={selectedSessionId}
-                  onChange={(e) => handleSessionSelect(e.target.value)}
-                  className="w-full bg-black/40 border-purple-800/50 text-white p-2 rounded"
-                >
-                  <option value="">새 이벤트 만들기</option>
-                  {pastSessions.map((session) => (
-                    <option key={session.id} value={session.id}>
-                      {format(new Date(session.started_at || session.created_at), 'yyyy-MM-dd HH:mm')} | {session.session_name} ({session.participantCount}명) - {session.status}
-                    </option>
-                  ))}
-                </select>
-                
-                {isReadOnlyMode && (
-                  <div className="mt-2 flex gap-2">
-                    <Button
-                      onClick={() => {
-                        setIsReadOnlyMode(false)
-                        setIsEditing(true)
-                        setCurrentSessionId(selectedSessionId)
-                      }}
-                      className="flex-1 bg-yellow-600 hover:bg-yellow-700 text-white text-sm py-1"
-                    >
-                      ✏️ 재등록을 위한 수정
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setSelectedSessionId("")
-                        setIsReadOnlyMode(false)
-                        setCafeName("")
-                        setEventName("")
-                        setPrize("")
-                        setGameStartTime("")
-                        setParticipants([])
-                      }}
-                      variant="outline"
-                      className="flex-1 border-gray-600 text-gray-300 text-sm py-1"
-                    >
-                      🔄 초기화
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-            
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">카페명</label>
@@ -713,7 +575,7 @@ export default function AdminContent() {
                   onChange={(e) => setCafeName(e.target.value)}
                   className="bg-black/40 border-red-800/50 text-white disabled:opacity-60 disabled:cursor-not-allowed"
                   placeholder="카페 이름을 입력하세요"
-                  disabled={!isEditing || isReadOnlyMode}
+                  disabled={!isEditing}
                 />
               </div>
               <div>
@@ -723,7 +585,7 @@ export default function AdminContent() {
                   onChange={(e) => setEventName(e.target.value)}
                   className="bg-black/40 border-red-800/50 text-white disabled:opacity-60 disabled:cursor-not-allowed"
                   placeholder="이벤트 이름을 입력하세요"
-                  disabled={!isEditing || isReadOnlyMode}
+                  disabled={!isEditing}
                 />
               </div>
               <div>
@@ -733,7 +595,7 @@ export default function AdminContent() {
                   onChange={(e) => setPrize(e.target.value)}
                   className="bg-black/40 border-red-800/50 text-white disabled:opacity-60 disabled:cursor-not-allowed"
                   placeholder="상품을 입력하세요 (예: 아이폰 16 Pro Max)"
-                  disabled={!isEditing || isReadOnlyMode}
+                  disabled={!isEditing}
                 />
               </div>
               <div>
@@ -742,7 +604,7 @@ export default function AdminContent() {
                   type="datetime-local"
                   value={gameStartTime || ""}
                   onChange={(e) => setGameStartTime(e.target.value)}
-                  disabled={!isEditing || isReadOnlyMode}
+                  disabled={!isEditing}
                   className="w-full bg-black/40 border-red-800/50 text-white disabled:opacity-60 text-base p-3 h-12"
                   style={{ colorScheme: 'dark' }}
                 />
@@ -758,14 +620,14 @@ export default function AdminContent() {
                 </div>
               )}
               
-              {!isEditing && !isReadOnlyMode ? (
+              {!isEditing ? (
                 <Button
                   onClick={() => setIsEditing(true)}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 font-semibold mt-4"
                 >
                   📝 정보 수정
                 </Button>
-              ) : !isReadOnlyMode ? (
+              ) : (
                 <div className="flex gap-2 mt-4">
                   <Button
                     onClick={saveSettings}
