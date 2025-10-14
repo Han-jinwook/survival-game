@@ -128,10 +128,16 @@ export default function GameLobby() {
               
               if (myParticipant && myParticipant.status === "waiting") {
                 console.log("[Lobby] 자동 로비 입장 시도:", myParticipant)
-                await enterLobby(myParticipant.id)
-                // 입장 후 데이터 재로드 (자동 입장은 한 번만)
-                setTimeout(() => fetchGameData(false), 500)
-                return
+                const success = await enterLobby(myParticipant.id)
+                if (success) {
+                  // 입장 후 데이터 재로드 (자동 입장은 한 번만)
+                  setTimeout(() => fetchGameData(false), 500)
+                  return
+                }
+              } else if (myParticipant && myParticipant.status === "playing") {
+                // 이미 입장했으면 참가자 정보 저장 (Heartbeat용)
+                console.log("[Lobby] 이미 로비에 입장한 상태, 참가자 정보 저장")
+                localStorage.setItem("participantInfo", JSON.stringify(myParticipant))
               }
             }
           }
