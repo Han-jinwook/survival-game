@@ -239,7 +239,15 @@ export default function GameLobby() {
         console.log('[Lobby] SSE 연결 종료')
         eventSource.close()
         window.removeEventListener("beforeunload", handleBeforeUnload)
-        // 페이지 떠날 때 즉시 로비 퇴장
+        
+        // 게임 시작 중이면 로비 퇴장하지 않음 (게임 페이지로 이동)
+        const isGameStarting = sessionStorage.getItem('gameStarting')
+        if (isGameStarting === 'true') {
+          console.log('[Lobby] 게임 시작 중 - 로비 퇴장 건너뛰기')
+          return
+        }
+        
+        // 그 외의 경우 (홈으로 이동, 브라우저 닫기 등) 로비 퇴장
         exitLobby()
       }
     } else {
@@ -602,11 +610,13 @@ export default function GameLobby() {
     if (lobbyPlayerCount >= 5) {
       // 5명 이상: 예선전
       console.log("[Lobby] 예선전 시작:", lobbyPlayerCount, "명")
+      sessionStorage.setItem('gameStarting', 'true') // 게임 시작 플래그
       setGameDestination("/game")
       setGameStartCountdown(10)
     } else if (lobbyPlayerCount >= 2 && lobbyPlayerCount <= 4) {
       // 2~4명: 본선(결승) 직행
       console.log("[Lobby] 본선 직행:", lobbyPlayerCount, "명")
+      sessionStorage.setItem('gameStarting', 'true') // 게임 시작 플래그
       setGameDestination("/finals")
       setStartErrorMessage("✅ " + lobbyPlayerCount + "명 입장! 본선으로 바로 이동합니다...")
       setGameStartCountdown(10)

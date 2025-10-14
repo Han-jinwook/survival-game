@@ -180,6 +180,9 @@ export default function GameInterface() {
   }, [])
 
   useEffect(() => {
+    // 로비에서 게임 시작 플래그 제거
+    sessionStorage.removeItem('gameStarting')
+    
     const loadGameData = async () => {
       const searchParams = new URLSearchParams(window.location.search)
       const isTestMode = searchParams.get("test") === "finals"
