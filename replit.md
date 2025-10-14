@@ -4,11 +4,13 @@
 
 ### 마지막 업데이트
 - 날짜: 2025-10-14
-- **로컬 테스트 참가자 누락 버그 수정** ✅ (LATEST)
-  - 로비 cleanup 시 게임 시작 중이면 exitLobby 건너뛰기
-  - sessionStorage 플래그로 게임 시작 상태 추적
-  - handleTestStart에 sessionId 전달 추가
-  - 현재 사용자가 게임에 정상 참여하도록 수정
+- **Ghost Player 완전 해결 + 홈 페이지 실시간 동기화** ✅ (LATEST)
+  - sessionStorage 플래그 3단계 관리: 'true' (진행 중) → 'completed' (완료) → 제거
+  - beforeunload: 'completed'면 플래그 유지하고 return
+  - cleanup: 'completed'면 플래그 제거하고 exitLobby 건너뛰기
+  - countdown 취소 시: 'true' 상태에서 exitLobby 정상 실행
+  - 홈 페이지 SSE 추가: 참가자 수 실시간 업데이트 (새로고침 불필요)
+  - Architect 리뷰 통과 ✅
 - **타임아웃 시스템 완전 제거** ✅
   - `/api/game/timeout` API 삭제
   - Heartbeat 시스템 제거
