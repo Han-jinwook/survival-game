@@ -25,6 +25,7 @@ export default function GameLobby() {
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(true)
   const [players, setPlayers] = useState<Player[]>([])
   const [gameStartCountdown, setGameStartCountdown] = useState<number | null>(null)
+  const [gameDestination, setGameDestination] = useState<string>("/game")
   const [sortBy, setSortBy] = useState<"name" | "lives">("lives")
   const [gameStartTime, setGameStartTime] = useState<string>("")
   const [lobbyOpenTime, setLobbyOpenTime] = useState<string>("")
@@ -77,6 +78,22 @@ export default function GameLobby() {
         if (data.session) {
           setCafeName(data.session.cafeName || "썬드림 즐빛카페")
           setEventName(data.session.sessionName || "가위바위보 하나빼기 이벤트")
+          
+          // 게임 시작 감지: 세션 상태가 'in-progress'면 자동 리다이렉트
+          if (data.session.status === "in-progress" || data.session.status === "starting") {
+            const playingCount = data.participants?.filter((p: any) => p.status === "playing").length || 0
+            console.log("[Lobby] 게임 시작 감지! 참가자:", playingCount, "명")
+            
+            // 참가자 수에 따라 페이지 결정
+            if (playingCount >= 5) {
+              console.log("[Lobby] 예선전으로 자동 이동")
+              window.location.href = "/game"
+            } else if (playingCount >= 2) {
+              console.log("[Lobby] 본선으로 자동 이동")
+              window.location.href = "/finals"
+            }
+            return
+          }
           
           // 게임 시작 시간 설정
           if (data.session.startedAt) {
@@ -182,8 +199,8 @@ export default function GameLobby() {
       }, 1000)
       return () => clearTimeout(timer)
     } else if (gameStartCountdown === 0) {
-      console.log("[v0] Countdown finished, redirecting to game")
-      window.location.href = "/game"
+      console.log("[Lobby] Countdown finished, redirecting to:", gameDestination)
+      window.location.href = gameDestination
     }
   }, [gameStartCountdown])
 
@@ -474,7 +491,7 @@ export default function GameLobby() {
     },
   ]
 
-  const handleTestStart = () => {
+  const handleTestStart = async () => {
     // 로비 입장자 수 확인 (playing 상태만)
     const lobbyPlayerCount = players.filter((p) => p.isInLobby).length
     
@@ -485,18 +502,43 @@ export default function GameLobby() {
       return
     }
     
+    // 세션 상태를 'in-progress'로 업데이트
+    try {
+      const response = await fetch("/api/game/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "start",
+        }),
+      })
+      
+      if (!response.ok) {
+        console.error("[Lobby] 게임 시작 API 실패:", response.status)
+        setStartErrorMessage("❌ 게임 시작 실패")
+        setTimeout(() => setStartErrorMessage(""), 3000)
+        return
+      }
+      
+      console.log("[Lobby] 게임 세션 시작 성공")
+    } catch (error) {
+      console.error("[Lobby] 게임 시작 에러:", error)
+      setStartErrorMessage("❌ 게임 시작 실패")
+      setTimeout(() => setStartErrorMessage(""), 3000)
+      return
+    }
+    
     // 참가자 수에 따라 게임 페이지 결정
     if (lobbyPlayerCount >= 5) {
       // 5명 이상: 예선전
       console.log("[Lobby] 예선전 시작:", lobbyPlayerCount, "명")
+      setGameDestination("/game")
       setGameStartCountdown(10)
     } else if (lobbyPlayerCount >= 2 && lobbyPlayerCount <= 4) {
       // 2~4명: 본선(결승) 직행
       console.log("[Lobby] 본선 직행:", lobbyPlayerCount, "명")
+      setGameDestination("/finals")
       setStartErrorMessage("✅ " + lobbyPlayerCount + "명 입장! 본선으로 바로 이동합니다...")
-      setTimeout(() => {
-        window.location.href = "/finals"
-      }, 1500)
+      setGameStartCountdown(10)
     }
   }
 
