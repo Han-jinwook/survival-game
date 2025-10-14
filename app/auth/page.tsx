@@ -81,23 +81,23 @@ export default function AuthPage() {
 
   if (success && userInfo) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-red-950 to-black text-white flex items-center justify-center">
-        <Card className="bg-black/60 border-green-600/50 p-8 max-w-md w-full mx-4">
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-red-950 to-black text-white flex items-center justify-center px-4">
+        <Card className="bg-black/60 border-green-600/50 p-6 md:p-8 max-w-md w-full">
           <div className="text-center">
-            <div className="w-16 h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-white text-2xl">✓</span>
+            <div className="w-12 h-12 md:w-16 md:h-16 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+              <span className="text-white text-xl md:text-2xl">✓</span>
             </div>
-            <h2 className="text-2xl font-bold text-green-400 mb-4">입장 허가!</h2>
-            <div className="bg-red-950/30 border border-red-600/50 rounded-lg p-4 mb-6">
-              <p className="text-red-300 font-semibold mb-2">"{userInfo.nickname}" 참가자님</p>
-              <p className="text-gray-300 text-sm mb-3">
+            <h2 className="text-xl md:text-2xl font-bold text-green-400 mb-3 md:mb-4">입장 허가!</h2>
+            <div className="bg-red-950/30 border border-red-600/50 rounded-lg p-3 md:p-4 mb-4 md:mb-6">
+              <p className="text-red-300 font-semibold text-sm md:text-base mb-2">"{userInfo.nickname}" 참가자님</p>
+              <p className="text-gray-300 text-xs md:text-sm mb-2 md:mb-3">
                 행운권 <span className="text-yellow-400 font-bold">{userInfo.lives}장</span>을
               </p>
-              <p className="text-red-400 font-bold text-lg">목숨 {userInfo.lives}개로 바꿔드립니다.</p>
+              <p className="text-red-400 font-bold text-base md:text-lg">목숨 {userInfo.lives}개로 바꿔드립니다.</p>
             </div>
             <Button
               onClick={handleEnterLobby}
-              className="w-full bg-green-600 hover:bg-green-700 text-white py-3 text-lg font-semibold"
+              className="w-full bg-green-600 hover:bg-green-700 text-white py-2.5 md:py-3 text-base md:text-lg font-semibold"
             >
               게임 로비 입장하기
             </Button>
@@ -111,27 +111,27 @@ export default function AuthPage() {
     <div className="min-h-screen bg-gradient-to-b from-slate-900 via-red-950 to-black text-white">
       <div className="absolute inset-0 bg-[url('/abstract-geometric-pattern.png')] opacity-5"></div>
 
-      <header className="relative z-10 p-6 border-b border-red-800/30">
+      <header className="relative z-10 p-4 md:p-6 border-b border-red-800/30">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <img src="/game-logo.png" alt="가위바위보 로고" className="w-15 h-15 rounded-full" />
-            <h1 className="text-2xl font-bold">가위바위보 하나빼기</h1>
+          <Link href="/" className="flex items-center gap-2 md:gap-3 hover:opacity-80 transition-opacity">
+            <img src="/game-logo.png" alt="가위바위보 로고" className="w-10 h-10 md:w-15 md:h-15 rounded-full" />
+            <h1 className="text-lg md:text-2xl font-bold">가위바위보 하나빼기</h1>
           </Link>
-          <Badge variant="destructive" className="bg-red-600/20 text-red-300 border-red-600/50">
+          <Badge variant="destructive" className="bg-red-600/20 text-red-300 border-red-600/50 text-xs md:text-sm">
             회원 인증
           </Badge>
         </div>
       </header>
 
-      <main className="relative z-10 flex items-center justify-center min-h-[calc(100vh-200px)] px-6">
-        <Card className="bg-black/60 border-red-800/50 p-8 max-w-md w-full">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-red-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="text-red-400 text-2xl">🔐</span>
+      <main className="relative z-10 flex items-center justify-center min-h-[calc(100vh-200px)] px-4 md:px-6">
+        <Card className="bg-black/60 border-red-800/50 p-6 md:p-8 max-w-md w-full">
+          <div className="text-center mb-6 md:mb-8">
+            <div className="w-12 h-12 md:w-16 md:h-16 bg-red-600/20 rounded-full flex items-center justify-center mx-auto mb-3 md:mb-4">
+              <span className="text-red-400 text-xl md:text-2xl">🔐</span>
             </div>
-            <h2 className="text-3xl font-bold mb-2 text-balance">썬드림 즐빛카페</h2>
-            <h3 className="text-xl font-semibold mb-4 text-red-400">회원 인증</h3>
-            <p className="text-gray-300 text-pretty">등록된 네이버 ID를 입력하여 게임에 참가하세요</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2 text-balance">썬드림 즐빛카페</h2>
+            <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-red-400">회원 인증</h3>
+            <p className="text-sm md:text-base text-gray-300 text-pretty">등록된 네이버 ID를 입력하여 게임에 참가하세요</p>
           </div>
 
           <form onSubmit={handleAuth} className="space-y-6">
@@ -159,7 +159,7 @@ export default function AuthPage() {
 
             <Button
               type="submit"
-              className="w-full bg-red-600 hover:bg-red-700 text-white py-3 text-lg font-semibold"
+              className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 md:py-3 text-base md:text-lg font-semibold"
               disabled={isLoading}
             >
               {isLoading ? (
@@ -173,8 +173,8 @@ export default function AuthPage() {
             </Button>
           </form>
 
-          <div className="mt-8 pt-6 border-t border-red-800/30">
-            <h3 className="text-sm font-semibold text-red-300 mb-3">참가 안내</h3>
+          <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-red-800/30">
+            <h3 className="text-xs md:text-sm font-semibold text-red-300 mb-2 md:mb-3">참가 안내</h3>
             <ul className="text-xs text-gray-400 space-y-1">
               <li>• 썬드림 즐빛카페에 등록된 회원만 참가 가능</li>
               <li>• 네이버 ID는 카페 가입 시 사용한 것과 동일해야 함</li>
