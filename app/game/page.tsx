@@ -224,13 +224,13 @@ export default function GameInterface() {
         return
       }
 
-      // Get current user
-      const userInfoData = localStorage.getItem("userInfo")
-      let currentUserNaverId = ""
-      if (userInfoData) {
-        const userInfo = JSON.parse(userInfoData)
-        currentUserNaverId = userInfo.naverId
-        console.log("[v0] Current user naverId:", currentUserNaverId)
+      // Get current user participant ID from localStorage
+      const participantData = localStorage.getItem("participantInfo")
+      let currentParticipantId = ""
+      if (participantData) {
+        const participant = JSON.parse(participantData)
+        currentParticipantId = participant.id
+        console.log("[v0] Current participant ID:", currentParticipantId)
       }
 
       try {
@@ -254,7 +254,7 @@ export default function GameInterface() {
             id: p.id,
             nickname: p.nickname,
             lives: p.currentLives || 0,
-            isCurrentUser: p.naverId === currentUserNaverId,
+            isCurrentUser: p.id === currentParticipantId,
           }
           console.log("[v0] Created game player:", player)
           return player
