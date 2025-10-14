@@ -98,17 +98,21 @@ export default function GameLobby() {
         // 참가자 데이터 설정
         if (data.participants && Array.isArray(data.participants)) {
           // 현재 사용자가 waiting 상태면 자동 입장
-          if (autoEnter && currentUser) {
-            const myParticipant = data.participants.find(
-              (p: any) => p.userId === currentUser.id || p.nickname === currentUser.nickname
-            )
-            
-            if (myParticipant && myParticipant.status === "waiting") {
-              console.log("[Lobby] 자동 로비 입장 시도:", myParticipant)
-              await enterLobby(myParticipant.id)
-              // 입장 후 데이터 재로드 (자동 입장은 한 번만)
-              setTimeout(() => fetchGameData(false), 500)
-              return
+          if (autoEnter) {
+            const userInfo = localStorage.getItem("userInfo")
+            if (userInfo) {
+              const user = JSON.parse(userInfo)
+              const myParticipant = data.participants.find(
+                (p: any) => p.userId === user.id || p.nickname === user.nickname
+              )
+              
+              if (myParticipant && myParticipant.status === "waiting") {
+                console.log("[Lobby] 자동 로비 입장 시도:", myParticipant)
+                await enterLobby(myParticipant.id)
+                // 입장 후 데이터 재로드 (자동 입장은 한 번만)
+                setTimeout(() => fetchGameData(false), 500)
+                return
+              }
             }
           }
           
