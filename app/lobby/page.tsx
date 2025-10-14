@@ -38,118 +38,81 @@ export default function GameLobby() {
   const totalPlayers = players.length
   const lobbyPlayers = players.filter((p) => p.isInLobby).length
 
-  useEffect(() => {
-    console.log("[v0] Lobby page loaded, checking user info")
-    
-    // DB에서 카페명과 이벤트명 가져오기
-    const fetchEventInfo = async () => {
-      try {
-        const response = await fetch("/api/game/settings")
-        if (response.ok) {
-          const data = await response.json()
-          if (data.session) {
-            setCafeName(data.session.cafeName || "썬드림 즐빛카페")
-            setEventName(data.session.sessionName || "가위바위보 하나빼기 이벤트")
+  // 실시간 게임 데이터 가져오기
+  const fetchGameData = async () => {
+    try {
+      const response = await fetch("/api/game/state")
+      if (response.ok) {
+        const data = await response.json()
+        console.log("[Lobby] DB 데이터 로드 성공:", data)
+        
+        // 세션 정보 설정
+        if (data.session) {
+          setCafeName(data.session.cafeName || "썬드림 즐빛카페")
+          setEventName(data.session.sessionName || "가위바위보 하나빼기 이벤트")
+          
+          // 게임 시작 시간 설정
+          if (data.session.startedAt) {
+            const gameDate = new Date(data.session.startedAt)
+            const year = gameDate.getFullYear()
+            const month = gameDate.getMonth() + 1
+            const day = gameDate.getDate()
+            const hours = gameDate.getHours()
+            const minutes = gameDate.getMinutes()
+            setGameStartTime(`${year}년 ${month}월 ${day}일 ${hours}시 ${minutes.toString().padStart(2, "0")}분`)
+            
+            // 로비 오픈 시간 (게임 시작 3분 전)
+            const lobbyDate = new Date(gameDate.getTime() - 3 * 60 * 1000)
+            const lobbyHours = lobbyDate.getHours()
+            const lobbyMinutes = lobbyDate.getMinutes()
+            setLobbyOpenTime(`${lobbyHours}시 ${lobbyMinutes.toString().padStart(2, "0")}분`)
           }
         }
-      } catch (error) {
-        console.error("[Lobby] 이벤트 정보 로드 실패:", error)
+        
+        // 참가자 데이터 설정
+        if (data.participants && Array.isArray(data.participants)) {
+          const dbPlayers: Player[] = data.participants.map((p: any, index: number) => ({
+            id: p.id,
+            naverId: p.naverId,
+            nickname: p.nickname,
+            lives: p.currentLives,
+            status: p.status === "active" ? "ready" : "waiting",
+            joinTime: new Date(p.joinedAt),
+            isInLobby: p.status === "active", // active 상태가 로비 입장
+          }))
+          setPlayers(dbPlayers)
+          
+          // 로비 입장자만 저장
+          const lobbyPlayers = dbPlayers.filter((p) => p.isInLobby)
+          console.log("[Lobby] 로비 입장자 저장:", lobbyPlayers)
+          localStorage.setItem("lobbyPlayers", JSON.stringify(lobbyPlayers))
+        }
+      } else {
+        console.error("[Lobby] 게임 데이터 로드 실패:", response.status)
       }
+    } catch (error) {
+      console.error("[Lobby] 게임 데이터 로드 에러:", error)
     }
-    
-    fetchEventInfo()
+  }
+
+  useEffect(() => {
+    console.log("[Lobby] 페이지 로드, 사용자 확인 중...")
     
     const userInfo = localStorage.getItem("userInfo")
     if (userInfo) {
-      console.log("[v0] User info found:", userInfo)
       const user = JSON.parse(userInfo)
       setCurrentUser(user)
-
-      const gameSettings = localStorage.getItem("gameSettings")
-      if (gameSettings) {
-        const settings = JSON.parse(gameSettings)
-        if (settings.gameStartTime) {
-          // Parse ISO format or HH:mm format
-          let gameDate: Date
-          if (settings.gameStartTime.includes("T")) {
-            // ISO format: 2025-10-15T20:00
-            gameDate = new Date(settings.gameStartTime)
-          } else {
-            // HH:mm format: 20:00
-            const [hours, minutes] = settings.gameStartTime.split(":").map(Number)
-            gameDate = new Date()
-            gameDate.setHours(hours, minutes, 0, 0)
-          }
-
-          // Format game start time in Korean
-          const year = gameDate.getFullYear()
-          const month = gameDate.getMonth() + 1
-          const day = gameDate.getDate()
-          const hours = gameDate.getHours()
-          const minutes = gameDate.getMinutes()
-          setGameStartTime(`${year}년 ${month}월 ${day}일 ${hours}시 ${minutes.toString().padStart(2, "0")}분`)
-
-          // Calculate lobby open time (3 minutes before game start)
-          const lobbyDate = new Date(gameDate.getTime() - 3 * 60 * 1000)
-          const lobbyHours = lobbyDate.getHours()
-          const lobbyMinutes = lobbyDate.getMinutes()
-          setLobbyOpenTime(`${lobbyHours}시 ${lobbyMinutes.toString().padStart(2, "0")}분`)
-        }
-        if (settings.participants && Array.isArray(settings.participants)) {
-          const additionalParticipants = [
-            { naverId: "user004", nickname: "플레이어A", lives: 2 },
-            { naverId: "user005", nickname: "플레이어B", lives: 2 },
-            { naverId: "user006", nickname: "플레이어C", lives: 3 },
-          ]
-
-          const allParticipants = [...settings.participants, ...additionalParticipants]
-
-          const realPlayers: Player[] = allParticipants.map((p: any, index: number) => {
-            // First 5 players are in lobby (including 테스터), 6th player is not entered
-            const isInLobby = index < 5
-            return {
-              id: (index + 1).toString(),
-              naverId: p.naverId,
-              nickname: p.nickname,
-              lives: p.lives,
-              status: "waiting",
-              joinTime: new Date(Date.now() - index * 60000),
-              isInLobby,
-            }
-          })
-          setPlayers(realPlayers)
-
-          const lobbyPlayers = realPlayers.filter((p) => p.isInLobby)
-          console.log("[v0] Saving lobby players to localStorage:", lobbyPlayers)
-          localStorage.setItem("lobbyPlayers", JSON.stringify(lobbyPlayers))
-        } else {
-          setPlayers([
-            {
-              id: "1",
-              naverId: user.naverId,
-              nickname: user.nickname,
-              lives: user.lives,
-              status: "waiting",
-              joinTime: new Date(),
-              isInLobby: true,
-            },
-          ])
-        }
-      } else {
-        setPlayers([
-          {
-            id: "1",
-            naverId: user.naverId,
-            nickname: user.nickname,
-            lives: user.lives,
-            status: "waiting",
-            joinTime: new Date(),
-            isInLobby: true,
-          },
-        ])
-      }
+      console.log("[Lobby] 사용자 정보:", user)
+      
+      // 초기 데이터 로드
+      fetchGameData()
+      
+      // 5초마다 실시간 데이터 갱신
+      const interval = setInterval(fetchGameData, 5000)
+      
+      return () => clearInterval(interval)
     } else {
-      console.log("[v0] No user info found, redirecting to auth")
+      console.log("[Lobby] 인증 정보 없음, 로그인 페이지로 이동")
       setTimeout(() => {
         window.location.href = "/auth"
       }, 100)
