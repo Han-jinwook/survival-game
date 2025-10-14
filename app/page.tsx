@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { ChevronDown } from "lucide-react"
 import Link from "next/link"
 import AudioSystem from "@/components/audio-system"
 
@@ -185,8 +186,14 @@ export default function GameLanding() {
           <Card className="bg-black/60 border-red-800/50 mb-12">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="rules" className="border-none">
-                <AccordionTrigger className="px-8 py-6 hover:no-underline">
-                  <h3 className="text-2xl font-bold text-red-300">게임 규칙</h3>
+                <AccordionTrigger className="px-8 py-6 hover:no-underline hover:bg-red-900/20 transition-colors group">
+                  <div className="flex items-center justify-between w-full">
+                    <h3 className="text-2xl font-bold text-red-300 group-hover:text-red-200 transition-colors">게임 규칙</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-400 group-hover:text-gray-300">클릭하여 펼치기</span>
+                      <ChevronDown className="h-5 w-5 text-red-400 group-hover:text-red-300 transition-transform duration-200" />
+                    </div>
+                  </div>
                 </AccordionTrigger>
                 <AccordionContent className="px-8 pb-8">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
@@ -258,20 +265,6 @@ export default function GameLanding() {
             </Button>
           </div>
         </div>
-
-        {/* Warning Notice */}
-        <Card className="bg-red-950/50 border-red-600/50 p-6 text-center">
-          <div className="flex items-center justify-center gap-3 mb-3">
-            <div className="w-6 h-6 bg-red-600 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs">!</span>
-            </div>
-            <h4 className="text-lg font-semibold text-red-300">주의사항</h4>
-          </div>
-          <p className="text-gray-300 text-pretty">
-            이 게임은 긴장감 있는 서바이벌 게임입니다. 네이버 카페 회원 인증 후 참가 가능하며, 게임 중 퇴장 시 자동 패배
-            처리됩니다.
-          </p>
-        </Card>
       </main>
 
       {/* Footer */}
