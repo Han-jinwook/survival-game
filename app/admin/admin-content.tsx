@@ -733,36 +733,38 @@ export default function AdminContent() {
             </div>
           </div>
 
-          <div className="mb-6 p-4 bg-purple-950/20 border border-purple-600/30 rounded-lg">
-            <h4 className="font-semibold mb-3 text-purple-300">🤖 AI 테스트 모드</h4>
-            <p className="text-sm text-gray-400 mb-3">
-              모든 대기 중인 참가자를 자동으로 로비에 입장시키고 게임을 시작합니다
-            </p>
-            <div className="text-xs text-gray-500 space-y-1 mb-3">
-              <div>• 최소 2명 이상 필요</div>
-              <div>• 2~4명: 본선(결승)으로 직행</div>
-              <div>• 5명 이상: 예선전 진행</div>
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-6 p-4 bg-purple-950/20 border border-purple-600/30 rounded-lg">
+              <h4 className="font-semibold mb-3 text-purple-300">🤖 AI 테스트 모드</h4>
+              <p className="text-sm text-gray-400 mb-3">
+                모든 대기 중인 참가자를 자동으로 로비에 입장시키고 게임을 시작합니다
+              </p>
+              <div className="text-xs text-gray-500 space-y-1 mb-3">
+                <div>• 최소 2명 이상 필요</div>
+                <div>• 2~4명: 본선(결승)으로 직행</div>
+                <div>• 5명 이상: 예선전 진행</div>
+              </div>
+              <div className="space-y-3">
+                <Button 
+                  onClick={aiAutoLobbyEntry} 
+                  className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold"
+                >
+                  🤖 AI 자동 입장
+                </Button>
+                {aiMessage && (
+                  <div className={`p-3 rounded-lg text-sm text-center ${
+                    aiMessage.includes("✅") 
+                      ? "bg-green-900/50 border border-green-600/50 text-green-300" 
+                      : aiMessage.includes("❌") 
+                      ? "bg-red-900/50 border border-red-600/50 text-red-300"
+                      : "bg-yellow-900/50 border border-yellow-600/50 text-yellow-300"
+                  }`}>
+                    {aiMessage}
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="space-y-3">
-              <Button 
-                onClick={aiAutoLobbyEntry} 
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold"
-              >
-                🤖 AI 자동 입장
-              </Button>
-              {aiMessage && (
-                <div className={`p-3 rounded-lg text-sm text-center ${
-                  aiMessage.includes("✅") 
-                    ? "bg-green-900/50 border border-green-600/50 text-green-300" 
-                    : aiMessage.includes("❌") 
-                    ? "bg-red-900/50 border border-red-600/50 text-red-300"
-                    : "bg-yellow-900/50 border border-yellow-600/50 text-yellow-300"
-                }`}>
-                  {aiMessage}
-                </div>
-              )}
-            </div>
-          </div>
+          )}
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
