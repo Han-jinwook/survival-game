@@ -171,10 +171,37 @@ export default function GameLobby() {
       // 초기 데이터 로드 (자동 입장 활성화)
       fetchGameData(true)
       
-      // 5초마다 실시간 데이터 갱신 (자동 입장은 첫 로드에만)
-      const interval = setInterval(() => fetchGameData(false), 5000)
+      // SSE 실시간 연결
+      console.log("[Lobby] SSE 연결 시작...")
+      const eventSource = new EventSource('/api/game/stream')
       
-      return () => clearInterval(interval)
+      eventSource.onopen = () => {
+        console.log('[Lobby] SSE 연결 성공!')
+      }
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          console.log('[Lobby] SSE 메시지 수신:', data)
+          
+          if (data.type === 'game_update') {
+            // DB 변경 감지 → 즉시 데이터 리로드
+            fetchGameData(false)
+          }
+        } catch (error) {
+          console.error('[Lobby] SSE 메시지 파싱 오류:', error)
+        }
+      }
+      
+      eventSource.onerror = (error) => {
+        console.error('[Lobby] SSE 연결 오류:', error)
+        eventSource.close()
+      }
+      
+      return () => {
+        console.log('[Lobby] SSE 연결 종료')
+        eventSource.close()
+      }
     } else {
       console.log("[Lobby] 인증 정보 없음, 로그인 페이지로 이동")
       setTimeout(() => {
