@@ -104,7 +104,7 @@ export default function FinalsPage() {
               })
             },
           })
-        }, 2000)
+        }, 500)
       } catch (error) {
         console.error("[Finals] Error parsing finalist data:", error)
         router.push("/game")
@@ -185,7 +185,7 @@ export default function FinalsPage() {
                 })
               },
             })
-          }, 2000)
+          }, 500)
         })
         .catch((error) => {
           console.error("[Finals] Error loading session data:", error)
@@ -358,34 +358,72 @@ export default function FinalsPage() {
     console.log("[v0] Choice counts:", choices)
     setChoiceCounts(choices)
 
-    // Process timed out players first
+    // 🔧 타임아웃 플레이어 먼저 처리 (무승부 체크 전)
     const timedOutPlayers = players.filter((p) => p.lives > 0 && p.timedOut)
 
     const weaponTypes = [choices.rock > 0, choices.paper > 0, choices.scissors > 0].filter(Boolean).length
 
-    // Case 1: Only 1 weapon type → draw
+    // Case 1: Only 1 weapon type → draw (타임아웃 제외)
     if (weaponTypes === 1) {
       console.log("[v0] Only 1 weapon type → draw")
+      
+      // 🔧 타임아웃 플레이어가 있으면 먼저 처리!
+      if (timedOutPlayers.length > 0) {
+        console.log("[v0] 타임아웃 플레이어 있음 → 무승부 전에 목숨 차감")
+        const losersIds = timedOutPlayers.map((p) => p.id)
+        setPlayersLostLife(losersIds)  // startNextRound에서 목숨 차감할 ID 저장
+        setLosingChoices([])
+        
+        const message = `가위바위보를 내지 않아 ${timedOutPlayers.length}개가 목숨을 잃었습니다`
+        setGameMessage(message)
+        speak(message, {
+          onComplete: () => {
+            // startNextRound에서 목숨 차감 처리 (중복 차감 방지)
+            setTimeout(() => startNextRound(), 1500)
+          },
+        })
+        return
+      }
+      
       setLosingChoices([])
       setPlayersLostLife([])
       setGameMessage("이번 게임은 무승부라 바로 이어서 시작합니다")
       speak("이번 게임은 무승부라 바로 이어서 시작합니다", {
         onComplete: () => {
-          setTimeout(() => replayRound(), 2000)
+          setTimeout(() => replayRound(), 1000)
         },
       })
       return
     }
 
-    // Case 2: All 3 weapons present → draw
+    // Case 2: All 3 weapons present → draw (타임아웃 제외)
     if (weaponTypes === 3) {
       console.log("[v0] All 3 weapons present → draw")
+      
+      // 🔧 타임아웃 플레이어가 있으면 먼저 처리!
+      if (timedOutPlayers.length > 0) {
+        console.log("[v0] 타임아웃 플레이어 있음 → 무승부 전에 목숨 차감")
+        const losersIds = timedOutPlayers.map((p) => p.id)
+        setPlayersLostLife(losersIds)  // startNextRound에서 목숨 차감할 ID 저장
+        setLosingChoices([])
+        
+        const message = `가위바위보를 내지 않아 ${timedOutPlayers.length}개가 목숨을 잃었습니다`
+        setGameMessage(message)
+        speak(message, {
+          onComplete: () => {
+            // startNextRound에서 목숨 차감 처리 (중복 차감 방지)
+            setTimeout(() => startNextRound(), 1500)
+          },
+        })
+        return
+      }
+      
       setLosingChoices([])
       setPlayersLostLife([])
       setGameMessage("이번 게임은 무승부라 바로 이어서 시작합니다 (3종류 무기 출현)")
       speak("이번 게임은 무승부라 바로 이어서 시작합니다", {
         onComplete: () => {
-          setTimeout(() => replayRound(), 2000)
+          setTimeout(() => replayRound(), 1000)
         },
       })
       return
@@ -424,7 +462,9 @@ export default function FinalsPage() {
     setPlayersLostLife(losersIds)
     console.log("[v0] Players who lost life:", losersIds)
 
-    const updatedPlayers = players.map((p) => {
+    // 🔧 목숨 차감은 startNextRound에서만 처리 (중복 차감 방지)
+    // 승자 체크를 위해 예상 생존자 수 계산
+    const playersAfterLoss = players.map((p) => {
       if (losersIds.includes(p.id)) {
         console.log(`[v0] Will update ${p.nickname} lives: ${p.lives} -> ${p.lives - 1}`)
         return { ...p, lives: p.lives - 1 }
@@ -432,7 +472,7 @@ export default function FinalsPage() {
       return p
     })
 
-    const actualSurvivors = updatedPlayers.filter((p) => p.lives > 0).length
+    const actualSurvivors = playersAfterLoss.filter((p) => p.lives > 0).length
 
     console.log("[v0] Survivors after elimination:", actualSurvivors)
 
@@ -452,22 +492,23 @@ export default function FinalsPage() {
     speak(message, {
       onComplete: () => {
         // Update displayed lives for current user (synchronized with subtitle timing)
-        const currentUserAfterElimination = updatedPlayers.find((p) => p.isCurrentUser)
+        const currentUserAfterElimination = playersAfterLoss.find((p) => p.isCurrentUser)
         if (currentUserAfterElimination) {
           setDisplayedCurrentUserLives(currentUserAfterElimination.lives)
         }
 
-        setPlayers(updatedPlayers)
-
         if (actualSurvivors === 1) {
-          const winner = updatedPlayers.find((p) => p.lives > 0)
+          const winner = playersAfterLoss.find((p) => p.lives > 0)
           if (winner) {
+            // 승자 목숨도 업데이트
+            setPlayers(playersAfterLoss)
             setGameRound((prev) => ({ ...prev, phase: "gameOver" }))
             setGameMessage(`🎉 ${winner.nickname}님이 우승했습니다! 🎉`)
             speak(`우승자는 ${winner.nickname}입니다. 축하합니다!`)
           }
         } else {
-          setTimeout(() => startNextRound(updatedPlayers), 3000)
+          // startNextRound에서 목숨 차감 처리
+          setTimeout(() => startNextRound(), 1500)
         }
       },
     })
@@ -532,10 +573,10 @@ export default function FinalsPage() {
             console.log("[v0] Current players state at this point:")
             // Note: This will log the OLD state because we're in a closure
             setGameRound((prev) => ({ ...prev, phase: "selectTwo", timeLeft: 10 }))
-          }, 1000)
+          }, 500)
         },
       })
-    }, 1000)
+    }, 500)
 
     console.log("[v0] ===== startNextRound END =====")
   }
