@@ -854,11 +854,6 @@ export default function GameInterface() {
     const currentUserBeforeElimination = players.find((p) => p.isCurrentUser)
     let currentUserLostLife = false
 
-    // Store current lives for delayed display update
-    if (currentUserBeforeElimination) {
-      setDisplayedCurrentUserLives(currentUserBeforeElimination.lives)
-    }
-
     setPlayers((currentPlayers) => {
       console.log("[v0] Current players count:", currentPlayers.length)
       console.log(
