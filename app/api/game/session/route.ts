@@ -93,10 +93,14 @@ export async function POST(request: NextRequest) {
         }
       }
       
+      // 게임 시작 (강제 업데이트로 NOTIFY 발생)
       const session = await DatabaseService.updateGameSession(sessionId, {
         status: "in_progress",
         started_at: new Date().toISOString(),
+        current_round: 0,
       })
+      
+      console.log(`[게임 시작] 세션 업데이트 완료: ${session.id}, status: ${session.status}`)
       return NextResponse.json({ success: true, session })
     }
 
