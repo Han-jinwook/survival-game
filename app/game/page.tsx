@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -66,6 +66,7 @@ interface GameLog {
 
 export default function GameInterface() {
   const router = useRouter()
+  const hasLoadedDataRef = useRef(false)
   const [players, setPlayers] = useState<Player[]>([])
   const [gameMode, setGameMode] = useState<GameMode>("preliminary")
   const [showModeTransition, setShowModeTransition] = useState(false)
@@ -184,6 +185,12 @@ export default function GameInterface() {
     sessionStorage.removeItem('gameStarting')
     
     const loadGameData = async () => {
+      if (hasLoadedDataRef.current) {
+        console.log("[v0] Already loaded game data, skipping")
+        return
+      }
+      hasLoadedDataRef.current = true
+      
       const searchParams = new URLSearchParams(window.location.search)
       const isTestMode = searchParams.get("test") === "finals"
 
