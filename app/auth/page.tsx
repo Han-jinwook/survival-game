@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
-import AudioSystem, { playGameVoice } from "@/components/audio-system"
+import AudioSystem from "@/components/audio-system"
 
 export default function AuthPage() {
   const router = useRouter()
@@ -47,12 +47,6 @@ export default function AuthPage() {
         console.log("[v0] Authentication successful for:", data.user.nickname)
         setUserInfo({ nickname: data.user.nickname, lives: data.user.lives })
         setSuccess(true)
-
-        try {
-          playGameVoice("auth_success")
-        } catch (error) {
-          console.log("[v0] Audio play failed:", error)
-        }
 
         localStorage.setItem(
           "userInfo",
