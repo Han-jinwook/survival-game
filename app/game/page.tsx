@@ -972,7 +972,7 @@ export default function GameInterface() {
       }
 
       let eliminationMessage = ""
-      const battleLivesLost = totalLivesLost // This is now just the count of lives lost from battle
+      const battleLivesLost = totalLivesLost - timeoutCount // Exclude timeout from battle count
 
       if (timeoutCount > 0 && battleLivesLost > 0) {
         // Both timeout and battle losses
@@ -1009,14 +1009,14 @@ export default function GameInterface() {
         hasEliminationSpokenRef.current = true
         setGameMessage(eliminationMessage)
 
-        // Update displayed lives to match actual lives (syncs timing with message)
-        const newCurrentUser = updatedPlayers.find((p) => p.isCurrentUser)
-        if (newCurrentUser) {
-          setDisplayedCurrentUserLives(newCurrentUser.lives)
-        }
-
         speak(eliminationMessage, {
           onComplete: () => {
+            // Update displayed lives after TTS completes (syncs timing with message)
+            const newCurrentUser = updatedPlayers.find((p) => p.isCurrentUser)
+            if (newCurrentUser) {
+              setDisplayedCurrentUserLives(newCurrentUser.lives)
+            }
+
             // After TTS completes, proceed with game flow
             if (newSurvivors === 1) {
               console.log("[v0] Winner found!")
