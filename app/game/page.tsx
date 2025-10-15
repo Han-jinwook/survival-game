@@ -912,15 +912,28 @@ export default function GameInterface() {
           // Clear timedOut flag for next round
           return { ...p, lives: newLives, timedOut: false }
         } else if (lostByTimeout) {
-          // Handle timeout separately without life loss, but record the event
-          console.log(`[v0] ℹ️ ${p.nickname} timed out but doesn't lose life in this version.`)
+          // Timeout: lose 1 life
+          const newLives = Math.max(0, p.lives - 1)
+          console.log(
+            `[v0] ⏱️ ${p.nickname} timed out, loses 1 life: ${p.lives} -> ${newLives}`,
+          )
+          
           timeoutCount++
+          totalLivesLost++
+          if (newLives === 0) {
+            playersEliminated++
+          }
+
+          if (p.isCurrentUser) {
+            currentUserLostLife = true
+          }
+
           const event: GameEvent = {
             type: "timeup",
             playerId: p.id,
             playerNickname: p.nickname,
-            livesLost: 0, // No life lost for timeout
-            remainingLives: p.lives,
+            livesLost: 1,
+            remainingLives: newLives,
             timestamp: Date.now(),
           }
           setCurrentRoundLog((prevLog) => ({
@@ -928,7 +941,7 @@ export default function GameInterface() {
             events: [...prevLog.events, event],
           }))
           // Clear timedOut flag for next round
-          return { ...p, timedOut: false }
+          return { ...p, lives: newLives, timedOut: false }
         }
 
         // Clear timedOut flag even if didn't lose life
