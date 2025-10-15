@@ -67,6 +67,7 @@ interface GameLog {
 export default function GameInterface() {
   const router = useRouter()
   const hasLoadedDataRef = useRef(false)
+  const hasEliminationSpokenRef = useRef(false)
   const [players, setPlayers] = useState<Player[]>([])
   const [gameMode, setGameMode] = useState<GameMode>("preliminary")
   const [showModeTransition, setShowModeTransition] = useState(false)
@@ -846,6 +847,9 @@ export default function GameInterface() {
     console.log("[v0] Processing elimination for choices:", losingChoicesArray)
     console.log("[v0] Counts:", counts)
 
+    // Reset elimination spoken flag at start of each elimination
+    hasEliminationSpokenRef.current = false
+
     const currentUserBeforeElimination = players.find((p) => p.isCurrentUser)
     let currentUserLostLife = false
 
@@ -980,44 +984,49 @@ export default function GameInterface() {
       // </CHANGE>
 
       console.log("[v0] Elimination message:", eliminationMessage)
-      setGameMessage(eliminationMessage)
 
-      speak(eliminationMessage, {
-        onComplete: () => {
-          // After TTS completes, proceed with game flow
-          if (newSurvivors === 1) {
-            console.log("[v0] Winner found!")
-            setTimeout(() => {
-              const winner = newAlivePlayers[0]
-              const finalRoundLog = { ...currentRoundLog, survivorsAtEnd: 1 }
-              const completeGameLog: GameLog = {
-                ...gameLog,
-                endTime: Date.now(),
-                rounds: [...gameLog.rounds, finalRoundLog],
-                finalists: [{ id: winner.id, nickname: winner.nickname, lives: winner.lives }],
-              }
+      // Prevent duplicate speak calls using ref (React Strict Mode protection)
+      if (!hasEliminationSpokenRef.current) {
+        hasEliminationSpokenRef.current = true
+        setGameMessage(eliminationMessage)
 
-              localStorage.setItem("gameLog", JSON.stringify(completeGameLog))
+        speak(eliminationMessage, {
+          onComplete: () => {
+            // After TTS completes, proceed with game flow
+            if (newSurvivors === 1) {
+              console.log("[v0] Winner found!")
+              setTimeout(() => {
+                const winner = newAlivePlayers[0]
+                const finalRoundLog = { ...currentRoundLog, survivorsAtEnd: 1 }
+                const completeGameLog: GameLog = {
+                  ...gameLog,
+                  endTime: Date.now(),
+                  rounds: [...gameLog.rounds, finalRoundLog],
+                  finalists: [{ id: winner.id, nickname: winner.nickname, lives: winner.lives }],
+                }
 
-              setGameRound((prev) => ({ ...prev, phase: "gameOver", timeLeft: 0 }))
-              setGameMessage(`🎉 ${winner.nickname}님이 우승했습니다! 🎉`)
-              speak(`우승자는 ${winner.nickname}입니다. 축하합니다!`)
-            }, 2000)
-          } else if (newSurvivors <= 4 && gameMode === "preliminary") {
-            console.log("[v0] Showing finals confirmation modal after delay")
-            setTimeout(() => {
-              setFinalsCountdown(60)
-              setShowFinalsConfirmation(true)
-              speak("결승전 진출자가 확정되었습니다")
-            }, 2000)
-          } else {
-            console.log("[v0] Starting next round after TTS complete")
-            setTimeout(() => {
-              startNextRound()
-            }, 2000)
-          }
-        },
-      })
+                localStorage.setItem("gameLog", JSON.stringify(completeGameLog))
+
+                setGameRound((prev) => ({ ...prev, phase: "gameOver", timeLeft: 0 }))
+                setGameMessage(`🎉 ${winner.nickname}님이 우승했습니다! 🎉`)
+                speak(`우승자는 ${winner.nickname}입니다. 축하합니다!`)
+              }, 2000)
+            } else if (newSurvivors <= 4 && gameMode === "preliminary") {
+              console.log("[v0] Showing finals confirmation modal after delay")
+              setTimeout(() => {
+                setFinalsCountdown(60)
+                setShowFinalsConfirmation(true)
+                speak("결승전 진출자가 확정되었습니다")
+              }, 2000)
+            } else {
+              console.log("[v0] Starting next round after TTS complete")
+              setTimeout(() => {
+                startNextRound()
+              }, 2000)
+            }
+          },
+        })
+      }
 
       setTimeoutEliminatedCount(0)
 
@@ -1045,6 +1054,9 @@ export default function GameInterface() {
 
   const startNextRound = () => {
     console.log("[v0] ===== startNextRound START =====")
+
+    // Reset elimination spoken flag for next round
+    hasEliminationSpokenRef.current = false
 
     setGameLog((prev) => ({
       ...prev,
