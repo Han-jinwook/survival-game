@@ -389,7 +389,10 @@ export class DatabaseService {
     const db = getPool()
     const client = await db.connect()
 
+    console.log('[DB] LISTEN 클라이언트 연결 시작')
+
     await client.query('LISTEN game_update')
+    console.log('[DB] LISTEN game_update 등록 완료')
 
     client.on('notification', (msg) => {
       if (msg.channel === 'game_update' && msg.payload) {
@@ -402,11 +405,20 @@ export class DatabaseService {
       }
     })
 
+    // DB 에러 핸들링
+    client.on('error', (err) => {
+      console.error('[DB] LISTEN 클라이언트 에러:', err)
+    })
+
     // 연결 해제 함수 반환
     return () => {
-      client.query('UNLISTEN game_update').finally(() => {
-        client.release()
-      })
+      console.log('[DB] LISTEN 해제 시작')
+      client.query('UNLISTEN game_update')
+        .catch((err) => console.error('[DB] UNLISTEN 오류:', err))
+        .finally(() => {
+          client.release()
+          console.log('[DB] LISTEN 클라이언트 해제 완료')
+        })
     }
   }
 

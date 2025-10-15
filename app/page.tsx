@@ -52,28 +52,53 @@ export default function GameLanding() {
     
     loadEventInfo()
     
-    // SSE 실시간 동기화 - 참가자 수 업데이트
-    const eventSource = new EventSource('/api/game/stream')
+    // SSE 실시간 동기화 - 재연결 로직 포함
+    let eventSource: EventSource | null = null
+    let reconnectTimeout: NodeJS.Timeout | null = null
+    let isActive = true
     
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        if (data.type === 'game_update' && data.table === 'game_participants') {
-          // 참가자 변경 감지 → 즉시 데이터 리로드
-          loadEventInfo()
+    const connectSSE = () => {
+      if (!isActive) return
+      
+      eventSource = new EventSource('/api/game/stream')
+      console.log('[Home] SSE 연결 시도...')
+      
+      eventSource.onopen = () => {
+        console.log('[Home] SSE 연결 성공')
+      }
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data)
+          if (data.type === 'game_update' && data.table === 'game_participants') {
+            // 참가자 변경 감지 → 즉시 데이터 리로드
+            loadEventInfo()
+          }
+        } catch (error) {
+          console.error('[Home] SSE 메시지 파싱 오류:', error)
         }
-      } catch (error) {
-        console.error('[Home] SSE 메시지 파싱 오류:', error)
+      }
+      
+      eventSource.onerror = (error) => {
+        console.error('[Home] SSE 연결 오류:', error)
+        eventSource?.close()
+        
+        // 3초 후 재연결 시도
+        if (isActive) {
+          console.log('[Home] 3초 후 SSE 재연결 시도...')
+          reconnectTimeout = setTimeout(() => {
+            connectSSE()
+          }, 3000)
+        }
       }
     }
     
-    eventSource.onerror = (error) => {
-      console.error('[Home] SSE 연결 오류:', error)
-      eventSource.close()
-    }
+    connectSSE()
     
     return () => {
-      eventSource.close()
+      isActive = false
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
+      eventSource?.close()
     }
   }, [])
 

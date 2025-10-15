@@ -179,32 +179,50 @@ export default function GameLobby() {
       // 초기 데이터 로드 (자동 입장 활성화)
       fetchGameData(true)
       
-      // SSE 실시간 연결
-      console.log("[Lobby] SSE 연결 시작...")
-      const eventSource = new EventSource('/api/game/stream')
+      // SSE 실시간 연결 - 재연결 로직 포함
+      let eventSource: EventSource | null = null
+      let reconnectTimeout: NodeJS.Timeout | null = null
+      let isActive = true
       
-      eventSource.onopen = () => {
-        console.log('[Lobby] SSE 연결 성공!')
-      }
-      
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          console.log('[Lobby] SSE 메시지 수신:', data)
-          
-          if (data.type === 'game_update') {
-            // DB 변경 감지 → 즉시 데이터 리로드
-            fetchGameData(false)
+      const connectSSE = () => {
+        if (!isActive) return
+        
+        console.log("[Lobby] SSE 연결 시도...")
+        eventSource = new EventSource('/api/game/stream')
+        
+        eventSource.onopen = () => {
+          console.log('[Lobby] SSE 연결 성공!')
+        }
+        
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data)
+            console.log('[Lobby] SSE 메시지 수신:', data)
+            
+            if (data.type === 'game_update') {
+              // DB 변경 감지 → 즉시 데이터 리로드
+              fetchGameData(false)
+            }
+          } catch (error) {
+            console.error('[Lobby] SSE 메시지 파싱 오류:', error)
           }
-        } catch (error) {
-          console.error('[Lobby] SSE 메시지 파싱 오류:', error)
+        }
+        
+        eventSource.onerror = (error) => {
+          console.error('[Lobby] SSE 연결 오류:', error)
+          eventSource?.close()
+          
+          // 3초 후 재연결 시도
+          if (isActive) {
+            console.log('[Lobby] 3초 후 SSE 재연결 시도...')
+            reconnectTimeout = setTimeout(() => {
+              connectSSE()
+            }, 3000)
+          }
         }
       }
       
-      eventSource.onerror = (error) => {
-        console.error('[Lobby] SSE 연결 오류:', error)
-        eventSource.close()
-      }
+      connectSSE()
       
       // 로비 떠날 때 즉시 상태 변경
       const exitLobby = async () => {
@@ -250,7 +268,9 @@ export default function GameLobby() {
       
       return () => {
         console.log('[Lobby] SSE 연결 종료')
-        eventSource.close()
+        isActive = false
+        if (reconnectTimeout) clearTimeout(reconnectTimeout)
+        eventSource?.close()
         window.removeEventListener("beforeunload", handleBeforeUnload)
         
         const gameStartingFlag = sessionStorage.getItem('gameStarting')
