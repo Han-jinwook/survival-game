@@ -380,15 +380,15 @@ export default function GameLobby() {
 
   // 예약 시간 자동 게임 시작 체크
   useEffect(() => {
-    if (!scheduledStartDate || autoStartTriggered || gameStartCountdown !== null) {
+    if (!scheduledStartDate || autoStartTriggered || gameStartCountdown !== null || sessionStatus !== "waiting") {
       return
     }
 
     const checkScheduledStart = () => {
       const now = new Date()
       
-      // 예약 시간 도달 확인 (10초 이내 오차 허용)
-      if (now >= scheduledStartDate) {
+      // 예약 시간 도달 확인 + 세션이 waiting 상태일 때만
+      if (now >= scheduledStartDate && sessionStatus === "waiting") {
         console.log("[Lobby] 예약 시간 도달! 자동 게임 시작:", scheduledStartDate)
         setAutoStartTriggered(true)
         handleTestStart() // 자동으로 게임 시작
@@ -399,7 +399,7 @@ export default function GameLobby() {
     const interval = setInterval(checkScheduledStart, 1000)
     
     return () => clearInterval(interval)
-  }, [scheduledStartDate, autoStartTriggered, gameStartCountdown])
+  }, [scheduledStartDate, autoStartTriggered, gameStartCountdown, sessionStatus])
 
   const currentUserStatus = players.find((p) => p.naverId === currentUser?.naverId)?.status || "waiting"
   const totalLives = players.reduce((sum, player) => sum + player.lives, 0)
