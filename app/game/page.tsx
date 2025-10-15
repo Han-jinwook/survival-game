@@ -275,7 +275,7 @@ export default function GameInterface() {
         const totalLives = gamePlayers.reduce((sum, p) => sum + p.lives, 0)
         const modeText = gamePlayers.length > 4 ? "예선" : "결승"
 
-        const startMessage = `총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} 1라운드를 시작합니다`
+        const startMessage = `이제 총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} 1라운드를 시작합니다`
         setGameMessage(startMessage)
         
         setTimeout(() => {
