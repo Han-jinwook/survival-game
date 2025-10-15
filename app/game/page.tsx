@@ -1820,7 +1820,7 @@ export default function GameInterface() {
                   <div
                     className={`text-xl font-bold ${losingChoices.includes("scissors") ? "text-red-400" : "text-white"}`}
                   >
-                    {choiceCounts.scissors}개
+                    {choiceCounts.scissors}명
                   </div>
                   {losingChoices.includes("scissors") && (
                     <div className="relative inline-flex items-center justify-center mt-1 animate-pulse">
@@ -1858,7 +1858,7 @@ export default function GameInterface() {
                   <div
                     className={`text-xl font-bold ${losingChoices.includes("rock") ? "text-red-400" : "text-white"}`}
                   >
-                    {choiceCounts.rock}개
+                    {choiceCounts.rock}명
                   </div>
                   {losingChoices.includes("rock") && (
                     <div className="relative inline-flex items-center justify-center mt-1 animate-pulse">
@@ -1896,7 +1896,7 @@ export default function GameInterface() {
                   <div
                     className={`text-xl font-bold ${losingChoices.includes("paper") ? "text-red-400" : "text-white"}`}
                   >
-                    {choiceCounts.paper}개
+                    {choiceCounts.paper}명
                   </div>
                   {losingChoices.includes("paper") && (
                     <div className="relative inline-flex items-center justify-center mt-1 animate-pulse">
