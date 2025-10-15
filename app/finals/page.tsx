@@ -362,11 +362,11 @@ export default function FinalsPage() {
     const timedOutCount = timedOutPlayers.length
     let message = ""
     if (timedOutCount > 0 && eliminatedCount > 0) {
-      message = `가위바위보를 내지 않아 ${timedOutCount}명, ${losingText}를 낸 ${eliminatedCount}명이 목숨을 잃었습니다`
+      message = `가위바위보를 내지 않아 ${timedOutCount}개, ${losingText}를 낸 ${eliminatedCount}개의 목숨을 잃었습니다`
     } else if (timedOutCount > 0) {
-      message = `가위바위보를 내지 않아 ${timedOutCount}명이 목숨을 잃었습니다`
+      message = `가위바위보를 내지 않아 ${timedOutCount}개가 목숨을 잃었습니다`
     } else {
-      message = `${losingText}를 낸 ${eliminatedCount}명이 목숨을 잃었습니다`
+      message = `${losingText}를 낸 ${eliminatedCount}개의 목숨을 잃었습니다`
     }
 
     setGameMessage(message)
@@ -729,7 +729,7 @@ export default function FinalsPage() {
           ))}
 
           {/* Current User - Only shown in participant mode (참가자 모드에서만 표시) */}
-          {!isSpectator && currentUser && currentUser.lives > 0 && (
+          {!isSpectator && currentUser && (
             <div className={`absolute ${playerPositions.userStyle}`}>
               <CurrentUserCard
                 player={{
