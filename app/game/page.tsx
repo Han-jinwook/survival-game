@@ -681,7 +681,7 @@ export default function GameInterface() {
         setGameRound((prev) => ({ ...prev, phase: "revealing", timeLeft: 5 }))
 
         if (timeoutEliminatedPlayers.length > 0) {
-          const message = `가위바위보를 내지 않아 ${timeoutEliminatedPlayers.length}명이 목숨 1개를 잃었습니다! (배틀은 무승부)`
+          const message = `가위바위보를 내지 않아 ${timeoutEliminatedPlayers.length}개가 목숨 1개를 잃었습니다! (배틀은 무승부)`
           setGameMessage(message)
           speak(message)
           setTimeout(() => {
@@ -761,7 +761,7 @@ export default function GameInterface() {
       setGameRound((prev) => ({ ...prev, phase: "revealing", timeLeft: 5 }))
 
       if (timeoutEliminatedPlayers.length > 0) {
-        const message = `가위바위보를 내지 않아 ${timeoutEliminatedPlayers.length}명이 목숨 1개를 잃었습니다!`
+        const message = `가위바위보를 내지 않아 ${timeoutEliminatedPlayers.length}개가 목숨 1개를 잃었습니다!`
         setGameMessage(message)
         speak(message)
         setTimeout(() => {
@@ -802,7 +802,7 @@ export default function GameInterface() {
       setGameRound((prev) => ({ ...prev, phase: "revealing", timeLeft: 5 }))
 
       if (timeoutEliminatedPlayers.length > 0) {
-        const message = `가위바위보를 내지 않아 ${timeoutEliminatedPlayers.length}명이 목숨 1개를 잃었습니다! (배틀은 무승부)`
+        const message = `가위바위보를 내지 않아 ${timeoutEliminatedPlayers.length}개가 목숨 1개를 잃었습니다! (배틀은 무승부)`
         setGameMessage(message)
         speak(message)
         setTimeout(() => {
@@ -977,10 +977,10 @@ export default function GameInterface() {
             ? `${getChoiceKorean(choice)}`
             : losingChoicesArray.map((c) => getChoiceKorean(c)).join(", ")
 
-        eliminationMessage = `가위바위보를 내지 않아 ${timeoutCount}명, ${choiceText}를 낸 ${battleLivesLost}개의 목숨을 잃었습니다`
+        eliminationMessage = `가위바위보를 내지 않아 ${timeoutCount}개, ${choiceText}를 낸 ${battleLivesLost}개의 목숨을 잃었습니다`
       } else if (timeoutCount > 0) {
         // Only timeout losses
-        eliminationMessage = `가위바위보를 내지 않아 ${timeoutCount}명이 시간 초과했습니다.`
+        eliminationMessage = `가위바위보를 내지 않아 ${timeoutCount}개가 시간 초과했습니다.`
       } else if (battleLivesLost > 0) {
         // Only battle losses
         const choice = losingChoicesArray[0]
