@@ -79,7 +79,7 @@ export interface GameSession {
   session_name: string
   cafe_name?: string
   prize?: string
-  status: "waiting" | "in_progress" | "completed"
+  status: "waiting" | "starting" | "in_progress" | "completed"
   initial_lives: number
   current_round: number
   winner_id?: string
@@ -173,7 +173,7 @@ export class DatabaseService {
     return executeWithRetry(async () => {
       const db = getPool()
       const result = await db.query<GameSession>(
-        "SELECT * FROM game_sessions WHERE status IN ('waiting', 'in_progress') ORDER BY created_at DESC LIMIT 1"
+        "SELECT * FROM game_sessions WHERE status IN ('waiting', 'starting', 'in_progress') ORDER BY created_at DESC LIMIT 1"
       )
       return result.rows[0] || null
     })

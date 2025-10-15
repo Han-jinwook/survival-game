@@ -81,17 +81,38 @@ export default function GameLobby() {
           setCafeName(data.session.cafeName || "썬드림 즐빛카페")
           setEventName(data.session.sessionName || "가위바위보 하나빼기 이벤트")
           
-          // 게임 시작 감지: 세션 상태가 'in-progress'면 자동 리다이렉트
-          if (data.session.status === "in-progress" || data.session.status === "starting") {
+          // 게임 시작 감지: 세션 상태별 처리
+          if (data.session.status === "starting") {
+            // countdown 시작 신호
             const playingCount = data.participants?.filter((p: any) => p.status === "playing").length || 0
-            console.log("[Lobby] 게임 시작 감지! 참가자:", playingCount, "명")
+            console.log("[Lobby] 카운트다운 시작 감지! 참가자:", playingCount, "명")
             
-            // 참가자 수에 따라 페이지 결정
+            // 목적지 결정
+            let destination = "/game"
             if (playingCount >= 5) {
-              console.log("[Lobby] 예선전으로 자동 이동")
+              destination = "/game"
+              console.log("[Lobby] 예선전 카운트다운")
+            } else if (playingCount >= 2) {
+              destination = "/finals"
+              console.log("[Lobby] 본선 카운트다운")
+            }
+            
+            // 카운트다운 시작
+            sessionStorage.setItem('gameStarting', 'true')
+            sessionStorage.setItem('currentSessionId', data.session.id)
+            setGameDestination(destination)
+            setGameStartCountdown(10)
+            return
+          }
+          
+          if (data.session.status === "in-progress") {
+            // 이미 게임 진행 중 → 즉시 이동
+            const playingCount = data.participants?.filter((p: any) => p.status === "playing").length || 0
+            console.log("[Lobby] 게임 진행 중 감지! 즉시 이동")
+            
+            if (playingCount >= 5) {
               window.location.href = "/game"
             } else if (playingCount >= 2) {
-              console.log("[Lobby] 본선으로 자동 이동")
               window.location.href = "/finals"
             }
             return
@@ -666,14 +687,26 @@ export default function GameLobby() {
       return
     }
     
-    // 세션 상태를 'in-progress'로 업데이트
+    // 참가자 수에 따라 게임 페이지 결정
+    let destination = "/game"
+    if (lobbyPlayerCount >= 5) {
+      destination = "/game" // 예선전
+      console.log("[Lobby] 예선전 시작:", lobbyPlayerCount, "명")
+    } else if (lobbyPlayerCount >= 2 && lobbyPlayerCount <= 4) {
+      destination = "/finals" // 본선 직행
+      console.log("[Lobby] 본선 직행:", lobbyPlayerCount, "명")
+      setStartErrorMessage("✅ " + lobbyPlayerCount + "명 입장! 본선으로 바로 이동합니다...")
+    }
+    
+    // 세션 상태를 'starting'으로 업데이트 (countdown 시작 신호)
     try {
       const response = await fetch("/api/game/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "start",
+          action: "start_countdown",
           sessionId: sessionId,
+          destination: destination,
         }),
       })
       
@@ -684,7 +717,7 @@ export default function GameLobby() {
         return
       }
       
-      console.log("[Lobby] 게임 세션 시작 성공")
+      console.log("[Lobby] 카운트다운 시작 신호 전송 완료")
     } catch (error) {
       console.error("[Lobby] 게임 시작 에러:", error)
       setStartErrorMessage("❌ 게임 시작 실패")
@@ -692,23 +725,11 @@ export default function GameLobby() {
       return
     }
     
-    // 참가자 수에 따라 게임 페이지 결정
-    if (lobbyPlayerCount >= 5) {
-      // 5명 이상: 예선전
-      console.log("[Lobby] 예선전 시작:", lobbyPlayerCount, "명")
-      sessionStorage.setItem('gameStarting', 'true') // 게임 시작 플래그
-      sessionStorage.setItem('currentSessionId', sessionId) // 세션 ID 저장
-      setGameDestination("/game")
-      setGameStartCountdown(10)
-    } else if (lobbyPlayerCount >= 2 && lobbyPlayerCount <= 4) {
-      // 2~4명: 본선(결승) 직행
-      console.log("[Lobby] 본선 직행:", lobbyPlayerCount, "명")
-      sessionStorage.setItem('gameStarting', 'true') // 게임 시작 플래그
-      sessionStorage.setItem('currentSessionId', sessionId) // 세션 ID 저장
-      setGameDestination("/finals")
-      setStartErrorMessage("✅ " + lobbyPlayerCount + "명 입장! 본선으로 바로 이동합니다...")
-      setGameStartCountdown(10)
-    }
+    // 로컬에서도 카운트다운 시작
+    sessionStorage.setItem('gameStarting', 'true')
+    sessionStorage.setItem('currentSessionId', sessionId)
+    setGameDestination(destination)
+    setGameStartCountdown(10)
   }
 
   if (!currentUser) {

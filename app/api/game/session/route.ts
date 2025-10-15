@@ -78,29 +78,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, participant })
     }
 
+    if (action === "start_countdown") {
+      // 카운트다운 시작: status → 'starting'
+      const session = await DatabaseService.updateGameSession(sessionId, {
+        status: "starting",
+        current_round: 0,
+      })
+      
+      console.log(`[카운트다운 시작] 세션: ${session.id}, 10초 후 게임 시작`)
+      
+      // 10초 후 자동으로 in-progress로 변경 + 로비 미입장자 제거
+      setTimeout(async () => {
+        try {
+          const participants = await DatabaseService.getParticipants(sessionId)
+          
+          // status !== 'playing'인 참가자를 eliminated로 변경
+          for (const participant of participants) {
+            if (participant.status !== 'playing') {
+              await DatabaseService.updateParticipant(participant.id, {
+                status: 'eliminated',
+                eliminated_at: new Date().toISOString()
+              })
+              console.log(`[게임 시작] 로비 미입장자 제거: ${participant.nickname}`)
+            }
+          }
+          
+          // 게임 시작
+          await DatabaseService.updateGameSession(sessionId, {
+            status: "in_progress",
+            started_at: new Date().toISOString(),
+          })
+          
+          console.log(`[게임 시작] 세션 ${sessionId} 게임 진행 중`)
+        } catch (error) {
+          console.error('[게임 시작] 자동 시작 오류:', error)
+        }
+      }, 10000) // 10초 후
+      
+      return NextResponse.json({ success: true, session })
+    }
+    
     if (action === "start") {
-      // 게임 시작: 로비 미입장자 제거
+      // 즉시 게임 시작 (기존 로직 유지)
       const participants = await DatabaseService.getParticipants(sessionId)
       
-      // status !== 'playing'인 참가자를 eliminated로 변경
       for (const participant of participants) {
         if (participant.status !== 'playing') {
           await DatabaseService.updateParticipant(participant.id, {
             status: 'eliminated',
             eliminated_at: new Date().toISOString()
           })
-          console.log(`[게임 시작] 로비 미입장자 제거: ${participant.nickname} (${participant.id})`)
+          console.log(`[게임 시작] 로비 미입장자 제거: ${participant.nickname}`)
         }
       }
       
-      // 게임 시작 (강제 업데이트로 NOTIFY 발생)
       const session = await DatabaseService.updateGameSession(sessionId, {
         status: "in_progress",
         started_at: new Date().toISOString(),
         current_round: 0,
       })
       
-      console.log(`[게임 시작] 세션 업데이트 완료: ${session.id}, status: ${session.status}`)
+      console.log(`[게임 시작] 세션 업데이트 완료: ${session.id}`)
       return NextResponse.json({ success: true, session })
     }
 
