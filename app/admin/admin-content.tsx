@@ -179,6 +179,18 @@ export default function AdminContent() {
     setSaveMessage("")
     
     try {
+      // 🕐 한국 시간(KST) 명시적 처리: datetime-local 값을 한국 시간대로 저장
+      let kstStartTime = undefined
+      if (gameStartTime) {
+        // datetime-local 값: "2025-10-16T00:56" (이미 한국 로컬 시간)
+        // 한국 시간대(+09:00) 명시하여 ISO 문자열 생성
+        kstStartTime = gameStartTime + ":00+09:00" // "2025-10-16T00:56:00+09:00"
+        console.log("[Admin] 시간 변환:", {
+          input: gameStartTime,
+          kstTime: kstStartTime
+        })
+      }
+      
       const response = await fetch("/api/game/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -187,7 +199,7 @@ export default function AdminContent() {
           cafeName: cafeName || undefined,
           prize: prize || undefined,
           initialLives: 5,
-          gameStartTime: gameStartTime || undefined,
+          gameStartTime: kstStartTime,
           participants: participants.map(p => ({
             naverId: p.naverId,
             nickname: p.nickname,
