@@ -397,62 +397,6 @@ export default function GameInterface() {
     }
   }, [gameRound.phase, gameRound.timeLeft])
 
-  useEffect(() => {
-    if (gameRound.phase === "selectTwo" && gameRound.timeLeft <= 9 && gameRound.timeLeft > 0) {
-      const timer = setTimeout(() => {
-        setPlayers((prev) =>
-          prev.map((p) => {
-            if (!p.isCurrentUser && p.lives > 0 && (!p.selectedChoices || p.selectedChoices.length !== 2)) {
-              const allChoices: GameChoice[] = ["rock", "paper", "scissors"]
-              const randomTwo = allChoices.sort(() => Math.random() - 0.5).slice(0, 2)
-              console.log(`[v0] AI ${p.nickname} auto-selected:`, randomTwo)
-              return { ...p, selectedChoices: randomTwo }
-            }
-            return p
-          }),
-        )
-      }, 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [gameRound.phase, gameRound.timeLeft])
-
-  useEffect(() => {
-    if (gameRound.phase === "excludeOne" && gameRound.timeLeft <= 9 && gameRound.timeLeft > 0) {
-      const timer = setTimeout(() => {
-        setPlayers((prev) =>
-          prev.map((p) => {
-            if (
-              !p.isCurrentUser &&
-              p.lives > 0 &&
-              !p.finalChoice &&
-              p.selectedChoices &&
-              p.selectedChoices.length === 2
-            ) {
-              const finalChoice = p.selectedChoices[Math.floor(Math.random() * 2)]
-              console.log(`[v0] AI ${p.nickname} auto-excluded, final choice:`, finalChoice)
-
-              const event: GameEvent = {
-                type: "choice",
-                playerId: p.id,
-                playerNickname: p.nickname,
-                choice: finalChoice,
-                timestamp: Date.now(),
-              }
-              setCurrentRoundLog((prevLog) => ({
-                ...prevLog,
-                events: [...prevLog.events, event],
-              }))
-
-              return { ...p, finalChoice }
-            }
-            return p
-          }),
-        )
-      }, 500)
-      return () => clearTimeout(timer)
-    }
-  }, [gameRound.phase, gameRound.timeLeft])
-
   const handleSelectTwoTimeUp = () => {
     const playersWithoutChoice = alivePlayers.filter((p) => !p.selectedChoices || p.selectedChoices.length < 2)
 
@@ -469,19 +413,6 @@ export default function GameInterface() {
 
       setGameMessage(`${playersWithoutChoice.length}명이 시간 초과!`)
     }
-
-    setPlayers((prev) =>
-      prev.map((p) => {
-        if (!p.isCurrentUser && !p.selectedChoices && p.lives > 0) {
-          // Ensure it only applies to alive players without choices
-          const allChoices: GameChoice[] = ["rock", "paper", "scissors"]
-          const randomTwo = allChoices.sort(() => Math.random() - 0.5).slice(0, 2)
-          console.log(`[v0] AI ${p.nickname} auto-selected at timeout:`, randomTwo)
-          return { ...p, selectedChoices: randomTwo }
-        }
-        return p
-      }),
-    )
 
     setGameRound((prev) => ({ ...prev, phase: "excludeOne", timeLeft: 10 }))
   }
@@ -502,30 +433,6 @@ export default function GameInterface() {
 
       setGameMessage(`${playersWithoutFinalChoice.length}명이 시간 초과!`)
     }
-
-    setPlayers((prev) =>
-      prev.map((p) => {
-        if (!p.isCurrentUser && !p.finalChoice && p.selectedChoices && p.selectedChoices.length === 2) {
-          const finalChoice = p.selectedChoices[Math.floor(Math.random() * 2)]
-          console.log(`[v0] AI ${p.nickname} auto-excluded at timeout:`, finalChoice)
-
-          const event: GameEvent = {
-            type: "choice",
-            playerId: p.id,
-            playerNickname: p.nickname,
-            choice: finalChoice,
-            timestamp: Date.now(),
-          }
-          setCurrentRoundLog((prevLog) => ({
-            ...prevLog,
-            events: [...prevLog.events, event],
-          }))
-
-          return { ...p, finalChoice }
-        }
-        return p
-      }),
-    )
 
     calculateResults()
   }
