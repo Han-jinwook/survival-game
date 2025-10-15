@@ -849,10 +849,6 @@ export default function GameInterface() {
     const currentUserBeforeElimination = players.find((p) => p.isCurrentUser)
     let currentUserLostLife = false
 
-    let totalLivesLost = 0
-    let playersEliminated = 0
-    let timeoutCount = 0
-
     setPlayers((currentPlayers) => {
       console.log("[v0] Current players count:", currentPlayers.length)
       console.log(
@@ -865,6 +861,10 @@ export default function GameInterface() {
           isAlive: p.lives > 0,
         })),
       )
+
+      let totalLivesLost = 0
+      let playersEliminated = 0
+      let timeoutCount = 0
 
       const updatedPlayers = currentPlayers.map((p) => {
         const lostByTimeout = p.lives > 0 && p.timedOut
