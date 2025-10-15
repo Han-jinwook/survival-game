@@ -144,8 +144,8 @@ export default function FinalsPage() {
           const activePlayers = data.participants.filter((p: any) => p.status === "playing")
           
           const finalsPlayers: Player[] = activePlayers.map((p: any) => {
-            // userId 또는 nickname으로 비교 (로비와 동일한 로직)
-            const isMe = p.userId === currentUser.id || p.nickname === currentUser.nickname
+            // userId로만 비교
+            const isMe = p.userId === currentUser.id
             console.log(`[Finals] Player ${p.nickname}: userId=${p.userId}, currentUserId=${currentUser.id}, isCurrentUser=${isMe}`)
             return {
               id: p.id,

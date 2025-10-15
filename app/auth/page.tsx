@@ -51,6 +51,7 @@ export default function AuthPage() {
         localStorage.setItem(
           "userInfo",
           JSON.stringify({
+            id: data.user.id,
             naverId: trimmedNaverId,
             nickname: data.user.nickname,
             lives: data.user.lives,

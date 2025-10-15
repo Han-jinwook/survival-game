@@ -148,7 +148,7 @@ export default function GameLobby() {
             if (userInfo) {
               const user = JSON.parse(userInfo)
               const myParticipant = data.participants.find(
-                (p: any) => p.userId === user.id || p.nickname === user.nickname
+                (p: any) => p.userId === user.id
               )
               
               if (myParticipant && myParticipant.status === "waiting") {
