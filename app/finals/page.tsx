@@ -225,14 +225,14 @@ export default function FinalsPage() {
           // Mark players who didn't select 2 choices as timed out
           setPlayers((prev) =>
             prev.map((p) => {
+              // Check if player has selected 2 choices (currentUser uses selectedChoices state, others use p.selectedChoices)
               if (p.isCurrentUser) {
-                // User: check if they selected 2 choices
                 if (selectedChoices.length < 2) {
                   return { ...p, timedOut: true }
                 }
                 return p
               } else {
-                // AI opponents: check if they have selectedChoices
+                // Other players: check DB synced selectedChoices
                 if (!p.selectedChoices || p.selectedChoices.length < 2) {
                   return { ...p, timedOut: true }
                 }
@@ -271,37 +271,6 @@ export default function FinalsPage() {
       }
     }
   }, [gameRound.phase, gameRound.timeLeft, selectedChoices, players])
-
-  useEffect(() => {
-    if (gameRound.phase === "selectTwo") {
-      // AI opponents auto-select after 2 seconds
-      setTimeout(() => {
-        setPlayers((prev) =>
-          prev.map((p) => {
-            if (!p.isCurrentUser && !p.selectedChoices && p.lives > 0) {
-              const allChoices: GameChoice[] = ["rock", "paper", "scissors"]
-              const shuffled = allChoices.sort(() => Math.random() - 0.5)
-              return { ...p, selectedChoices: [shuffled[0], shuffled[1]] }
-            }
-            return p
-          }),
-        )
-      }, 2000)
-    } else if (gameRound.phase === "excludeOne") {
-      // AI opponents auto-exclude after 2 seconds
-      setTimeout(() => {
-        setPlayers((prev) =>
-          prev.map((p) => {
-            if (!p.isCurrentUser && p.selectedChoices && !p.finalChoice && p.lives > 0) {
-              const randomChoice = p.selectedChoices[Math.floor(Math.random() * 2)]
-              return { ...p, finalChoice: randomChoice }
-            }
-            return p
-          }),
-        )
-      }, 2000)
-    }
-  }, [gameRound.phase])
 
   useEffect(() => {
     if (players.length > 0) {
