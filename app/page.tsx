@@ -13,12 +13,13 @@ export default function GameLanding() {
   const [playerCount, setPlayerCount] = useState(0)
   const [spectatorCount, setSpectatorCount] = useState(0)
   const [visitorId] = useState(() => `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
-  const [eventInfo, setEventInfo] = useState<{
-    cafeName: string
-    name: string
-    prize: string
-    startTime: string
-  } | null>(null)
+  const [eventInfo, setEventInfo] = useState({
+    cafeName: "",
+    name: "",
+    prize: "",
+    startTime: "",
+  })
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     const loadEventInfo = async () => {
@@ -31,9 +32,9 @@ export default function GameLanding() {
           if (data.session) {
             setEventInfo({
               cafeName: data.session.cafeName || "",
-              name: data.session.sessionName || "2025 신년 특별 이벤트",
-              prize: data.session.prize || "아이폰 16 Pro Max",
-              startTime: data.session.startedAt || data.session.createdAt || "2025-01-15T20:00",
+              name: data.session.sessionName || "",
+              prize: data.session.prize || "",
+              startTime: data.session.startedAt || data.session.createdAt || "",
             })
             
             // 게임 시작 감지 → 인증된 사용자는 로비로 자동 이동
@@ -53,10 +54,12 @@ export default function GameLanding() {
             }
           }
         } else {
-          console.log("[Home] DB에 저장된 설정 없음 - 기본값 사용")
+          console.log("[Home] DB에 저장된 설정 없음")
         }
       } catch (error) {
         console.error("[Home] 데이터 로드 실패:", error)
+      } finally {
+        setIsLoading(false)
       }
     }
     
@@ -225,7 +228,14 @@ export default function GameLanding() {
       {/* Main Content */}
       <main className="relative z-10 max-w-6xl mx-auto px-6 py-12">
         <div className="text-center mb-16">
-          {eventInfo ? (
+          {isLoading ? (
+            <div className="bg-gradient-to-r from-red-950/80 to-orange-950/80 border border-red-600/50 rounded-lg p-8 mb-12">
+              <div className="flex items-center justify-center gap-3">
+                <div className="animate-spin w-6 h-6 border-2 border-white/30 border-t-white rounded-full"></div>
+                <p className="text-gray-300">이벤트 정보 로딩 중...</p>
+              </div>
+            </div>
+          ) : eventInfo.name ? (
             <Card className="bg-gradient-to-r from-red-950/80 to-orange-950/80 border-red-600/50 p-8 mb-12">
               <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="flex-1 text-left">
@@ -247,12 +257,17 @@ export default function GameLanding() {
               </div>
             </Card>
           ) : (
-            <div className="bg-gradient-to-r from-red-950/80 to-orange-950/80 border border-red-600/50 rounded-lg p-8 mb-12">
-              <div className="flex items-center justify-center gap-3">
-                <div className="animate-spin w-6 h-6 border-2 border-white/30 border-t-white rounded-full"></div>
-                <p className="text-gray-300">이벤트 정보 로딩 중...</p>
+            <Card className="bg-gradient-to-r from-orange-950/80 to-yellow-950/80 border-yellow-600/50 p-8 mb-12">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-yellow-300 mb-3">📢 이벤트 준비 중입니다</p>
+                <p className="text-gray-300 mb-4">
+                  관리자가 아직 이벤트를 설정하지 않았습니다.
+                </p>
+                <p className="text-sm text-gray-400">
+                  관리자는 <Link href="/admin" className="text-yellow-400 hover:underline">운영자 입장</Link>에서 이벤트를 생성할 수 있습니다.
+                </p>
               </div>
-            </div>
+            </Card>
           )}
 
           <p className="text-3xl font-semibold text-gray-200 mb-12 max-w-4xl mx-auto text-balance leading-relaxed">
