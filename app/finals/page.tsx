@@ -75,11 +75,11 @@ export default function FinalsPage() {
       console.log("[v0] Game round ID:", gameRoundId)
       console.log("[v0] Data timestamp:", timestamp)
 
-      const finalsPlayers: Player[] = finalists.map((f: any, index: number) => ({
+      const finalsPlayers: Player[] = finalists.map((f: any) => ({
         id: f.id,
         nickname: f.nickname,
         lives: f.lives,
-        isCurrentUser: index === 0,
+        isCurrentUser: f.isCurrentUser,
         maxLives: f.lives,
       }))
 

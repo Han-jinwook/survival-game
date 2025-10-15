@@ -240,6 +240,8 @@ export default function GameInterface() {
         const participant = JSON.parse(participantData)
         currentParticipantId = participant.id
         console.log("[v0] Current participant ID:", currentParticipantId)
+      } else {
+        console.warn("[v0] WARNING: No participantInfo found in localStorage!")
       }
 
       try {
@@ -323,6 +325,11 @@ export default function GameInterface() {
           lives: p.lives,
           isCurrentUser: p.isCurrentUser,
         }))
+
+      console.log("[v0] ==== FINALS DATA PREPARATION ====")
+      console.log("[v0] Current players before filter:", players)
+      console.log("[v0] Finalists being saved:", finalists)
+      console.log("[v0] ===================================")
 
       // Store in sessionStorage for the finals page to access
       sessionStorage.setItem(
