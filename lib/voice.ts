@@ -20,17 +20,22 @@ export function speak(
   text: string,
   options?: { rate?: number; pitch?: number; volume?: number; onComplete?: () => void },
 ) {
+  console.log("[TTS] speak() called with text:", text)
+  
   if (!voiceEnabled) {
+    console.log("[TTS] Voice disabled, skipping")
     options?.onComplete?.()
     return
   }
 
   // Cancel any ongoing speech
   if (isSpeaking) {
+    console.log("[TTS] Canceling ongoing speech")
     window.speechSynthesis.cancel()
   }
 
   const utterance = new SpeechSynthesisUtterance(text)
+  console.log("[TTS] Creating utterance for:", text)
 
   // Set Korean voice if available
   const voices = window.speechSynthesis.getVoices()
