@@ -151,7 +151,7 @@ export default function AdminContent() {
       return () => clearTimeout(timer)
     } else if (countdown === 0 && gameStatus === "starting") {
       setGameStatus("in-progress")
-      window.location.href = "/spectate-game"
+      window.location.href = "/game"
     }
   }, [countdown, gameStatus])
 
