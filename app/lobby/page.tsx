@@ -137,6 +137,21 @@ export default function GameLobby() {
             setGameStartTime(`${year}년 ${month}월 ${day}일 ${hours}시 ${minutes.toString().padStart(2, "0")}분`)
             setScheduledStartDate(gameDate) // 예약 시간 자동 시작용
             
+            // 🚫 로비 입장 시간 제한 체크 (게임 시작 1분 후에는 관전 모드로)
+            const now = new Date()
+            const lobbyClosingTime = new Date(gameDate.getTime() + 1 * 60 * 1000) // 게임 시작 1분 후
+            
+            if (now > lobbyClosingTime) {
+              console.log("[Lobby] 로비 입장 마감! 관전 모드로 이동:", {
+                gameStartTime: gameDate.toISOString(),
+                currentTime: now.toISOString(),
+                lobbyClosingTime: lobbyClosingTime.toISOString()
+              })
+              alert("로비 입장 시간이 마감되었습니다.\n관람 모드로 이동합니다.")
+              window.location.href = "/viewer"
+              return
+            }
+            
             // 로비 오픈 시간 (게임 시작 3분 전)
             const lobbyDate = new Date(gameDate.getTime() - 3 * 60 * 1000)
             const lobbyHours = lobbyDate.getHours()
@@ -381,14 +396,6 @@ export default function GameLobby() {
   // 예약 시간 자동 게임 시작 체크
   useEffect(() => {
     if (!scheduledStartDate || autoStartTriggered || gameStartCountdown !== null || sessionStatus !== "waiting") {
-      return
-    }
-
-    // 예약 시간이 과거인 경우 (로비 오픈 시간 + 30초 이전) 자동 시작하지 않음
-    const now = new Date()
-    const lobbyOpenGraceTime = 30 * 1000 // 30초 여유
-    if (now.getTime() > scheduledStartDate.getTime() + lobbyOpenGraceTime) {
-      console.log("[Lobby] 예약 시간이 이미 지나서 자동 시작 안 함:", scheduledStartDate)
       return
     }
 
