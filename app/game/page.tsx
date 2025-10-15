@@ -275,18 +275,21 @@ export default function GameInterface() {
         const totalLives = gamePlayers.reduce((sum, p) => sum + p.lives, 0)
         const modeText = gamePlayers.length > 4 ? "예선" : "결승"
 
-        const startMessage = `이제 총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} 1라운드를 시작합니다`
+        const startMessage = `총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} 1라운드를 시작합니다`
         setGameMessage(startMessage)
-        speak(startMessage, {
-          onComplete: () => {
-            setGameRound({
-              round: 1,
-              phase: "selectTwo",
-              timeLeft: 10,
-              survivors: gamePlayers.length,
-            })
-          },
-        })
+        
+        setTimeout(() => {
+          speak(startMessage, {
+            onComplete: () => {
+              setGameRound({
+                round: 1,
+                phase: "selectTwo",
+                timeLeft: 10,
+                survivors: gamePlayers.length,
+              })
+            },
+          })
+        }, 500)
       } catch (error) {
         console.error("[v0] Error loading game data:", error)
       }
@@ -1109,10 +1112,10 @@ export default function GameInterface() {
         survivorsAtEnd: currentAlivePlayers.length,
       })
 
-      setGameMessage(`이제 총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} ${nextRound}라운드를 시작합니다`)
+      setGameMessage(`총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} ${nextRound}라운드를 시작합니다`)
 
       setTimeout(() => {
-        speak(`이제 총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} ${nextRound}라운드를 시작합니다`, {
+        speak(`총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} ${nextRound}라운드를 시작합니다`, {
           onComplete: () => {
             // The useEffect will handle setting the message and speaking
             setTimeout(() => {
