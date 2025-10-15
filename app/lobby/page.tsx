@@ -36,6 +36,7 @@ export default function GameLobby() {
   const [eventName, setEventName] = useState("가위바위보 하나빼기 이벤트")
   const [startErrorMessage, setStartErrorMessage] = useState<string>("")
   const [autoStartTriggered, setAutoStartTriggered] = useState(false)
+  const [sessionStatus, setSessionStatus] = useState<string>("waiting")
 
   const minPlayers = 3
   const readyPlayers = players.filter((p) => p.status === "ready").length
@@ -82,6 +83,7 @@ export default function GameLobby() {
         if (data.session) {
           setCafeName(data.session.cafeName || "썬드림 즐빛카페")
           setEventName(data.session.sessionName || "가위바위보 하나빼기 이벤트")
+          setSessionStatus(data.session.status || "waiting")
           
           // 게임 시작 감지: 세션 상태별 처리
           if (data.session.status === "starting") {
@@ -878,9 +880,10 @@ export default function GameLobby() {
                   {/* 개발 테스트용 버튼 (프로덕션에서 제거 예정) */}
                   <Button
                     onClick={handleTestStart}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base"
+                    disabled={sessionStatus !== "waiting"}
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    테스트 시작
+                    {sessionStatus === "waiting" ? "테스트 시작" : "게임 준비 중..."}
                   </Button>
                   {startErrorMessage && (
                     <div className={`mt-2 md:mt-3 p-2 md:p-3 rounded-lg text-xs md:text-sm text-center ${
