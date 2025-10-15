@@ -134,6 +134,15 @@ export type GameUpdateCallback = (update: {
 // 데이터베이스 서비스
 export class DatabaseService {
   // 사용자 관련
+  static async getUserById(userId: string): Promise<User | null> {
+    const db = getPool()
+    const result = await db.query<User>(
+      'SELECT * FROM users WHERE id = $1',
+      [userId]
+    )
+    return result.rows[0] || null
+  }
+
   static async getUserByNaverId(naverId: string): Promise<User | null> {
     const db = getPool()
     const result = await db.query<User>(

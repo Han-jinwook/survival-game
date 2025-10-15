@@ -195,156 +195,162 @@ export default function GameLobby() {
   useEffect(() => {
     console.log("[Lobby] 페이지 로드, 사용자 확인 중...")
     
-    const userInfo = localStorage.getItem("userInfo")
-    if (userInfo) {
-      const user = JSON.parse(userInfo)
-      setCurrentUser(user)
-      console.log("[Lobby] 사용자 정보:", user)
-      
-      // 초기 데이터 로드 (자동 입장 활성화)
-      fetchGameData(true)
-      
-      // SSE 실시간 연결 - 재연결 로직 포함
-      let eventSource: EventSource | null = null
-      let reconnectTimeout: NodeJS.Timeout | null = null
-      let pollingInterval: NodeJS.Timeout | null = null
-      let isActive = true
-      let sseConnected = false
-      
-      const connectSSE = () => {
-        if (!isActive) return
-        
-        console.log("[Lobby] SSE 연결 시도...")
-        eventSource = new EventSource('/api/game/stream')
-        
-        eventSource.onopen = () => {
-          console.log('[Lobby] SSE 연결 성공!')
-          sseConnected = true
-          
-          // SSE 성공 시 폴링 중지
-          if (pollingInterval) {
-            clearInterval(pollingInterval)
-            pollingInterval = null
-            console.log('[Lobby] SSE 연결 성공 - 폴링 중지')
-          }
+    let eventSource: EventSource | null = null
+    let reconnectTimeout: NodeJS.Timeout | null = null
+    let pollingInterval: NodeJS.Timeout | null = null
+    let isActive = true
+    let sseConnected = false
+    
+    // 로비 떠날 때 즉시 상태 변경
+    const exitLobby = async () => {
+      try {
+        const participantData = localStorage.getItem("participantInfo")
+        if (participantData) {
+          const participant = JSON.parse(participantData)
+          await fetch("/api/game/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "exit_lobby",
+              participantId: participant.id,
+            }),
+            keepalive: true,
+          })
+          console.log("[Lobby] 🚪 로비 퇴장 처리")
         }
+      } catch (error) {
+        console.error("[Lobby] 로비 퇴장 처리 실패:", error)
+      }
+    }
+    
+    // SSE 실시간 연결 - 재연결 로직 포함
+    const connectSSE = () => {
+      if (!isActive) return
+      
+      console.log("[Lobby] SSE 연결 시도...")
+      eventSource = new EventSource('/api/game/stream')
+      
+      eventSource.onopen = () => {
+        console.log('[Lobby] SSE 연결 성공!')
+        sseConnected = true
         
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data)
-            console.log('[Lobby] SSE 메시지 수신:', data)
-            
-            if (data.type === 'game_update') {
-              // DB 변경 감지 → 즉시 데이터 리로드
-              fetchGameData(false)
-            }
-          } catch (error) {
-            console.error('[Lobby] SSE 메시지 파싱 오류:', error)
-          }
-        }
-        
-        eventSource.onerror = (error) => {
-          console.error('[Lobby] SSE 연결 오류:', error)
-          eventSource?.close()
-          sseConnected = false
-          
-          // 3초 후 재연결 시도
-          if (isActive) {
-            console.log('[Lobby] 3초 후 SSE 재연결 시도...')
-            reconnectTimeout = setTimeout(() => {
-              connectSSE()
-            }, 3000)
-          }
+        if (pollingInterval) {
+          clearInterval(pollingInterval)
+          pollingInterval = null
+          console.log('[Lobby] SSE 연결 성공 - 폴링 중지')
         }
       }
       
-      connectSSE()
-      
-      // 폴링 백업 (SSE 실패 시 2초마다 상태 확인)
-      setTimeout(() => {
-        if (!sseConnected && isActive) {
-          console.log('[Lobby] SSE 연결 실패 - 폴링 백업 시작 (2초 간격)')
-          pollingInterval = setInterval(() => {
-            if (!sseConnected && isActive) {
-              console.log('[Lobby] 폴링으로 게임 상태 확인...')
-              fetchGameData(false)
-            }
-          }, 2000)
-        }
-      }, 5000) // 5초 후 SSE 상태 확인
-      
-      // 로비 떠날 때 즉시 상태 변경
-      const exitLobby = async () => {
+      eventSource.onmessage = (event) => {
         try {
-          const participantData = localStorage.getItem("participantInfo")
-          if (participantData) {
-            const participant = JSON.parse(participantData)
-            await fetch("/api/game/session", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                action: "exit_lobby",
-                participantId: participant.id,
-              }),
-              keepalive: true, // 페이지 닫혀도 요청 완료
-            })
-            console.log("[Lobby] 🚪 로비 퇴장 처리")
+          const data = JSON.parse(event.data)
+          console.log('[Lobby] SSE 메시지 수신:', data)
+          
+          if (data.type === 'game_update') {
+            fetchGameData(false)
           }
         } catch (error) {
-          console.error("[Lobby] 로비 퇴장 처리 실패:", error)
+          console.error('[Lobby] SSE 메시지 파싱 오류:', error)
         }
       }
       
-      // beforeunload: 브라우저 닫을 때
-      const handleBeforeUnload = () => {
-        const gameStartingFlag = sessionStorage.getItem('gameStarting')
-        
-        // countdown 정상 완료 → exitLobby 건너뛰기 (플래그는 cleanup에서 제거)
-        if (gameStartingFlag === 'completed') {
-          console.log('[Lobby] 게임 시작 완료 - beforeunload 퇴장 건너뛰기')
-          return
-        }
-        
-        // countdown 진행 중 취소 또는 일반 퇴장 → exitLobby 실행
-        if (gameStartingFlag === 'true') {
-          console.log('[Lobby] Countdown 취소 - beforeunload exitLobby 실행')
-        }
-        
-        exitLobby()
-      }
-      
-      window.addEventListener("beforeunload", handleBeforeUnload)
-      
-      return () => {
-        console.log('[Lobby] SSE 연결 종료')
-        isActive = false
-        if (reconnectTimeout) clearTimeout(reconnectTimeout)
-        if (pollingInterval) clearInterval(pollingInterval)
+      eventSource.onerror = (error) => {
+        console.error('[Lobby] SSE 연결 오류:', error)
         eventSource?.close()
-        window.removeEventListener("beforeunload", handleBeforeUnload)
+        sseConnected = false
         
-        const gameStartingFlag = sessionStorage.getItem('gameStarting')
-        
-        // countdown 정상 완료 → exitLobby 건너뛰기
-        if (gameStartingFlag === 'completed') {
-          console.log('[Lobby] 게임 시작 완료 - cleanup 퇴장 건너뛰기')
-          sessionStorage.removeItem('gameStarting')
-          return
+        if (isActive) {
+          console.log('[Lobby] 3초 후 SSE 재연결 시도...')
+          reconnectTimeout = setTimeout(() => {
+            connectSSE()
+          }, 3000)
         }
-        
-        // countdown 진행 중 취소 또는 일반 퇴장 → exitLobby 실행
-        if (gameStartingFlag === 'true') {
-          console.log('[Lobby] Countdown 취소 - cleanup exitLobby 실행')
-          sessionStorage.removeItem('gameStarting')
-        }
-        
-        exitLobby()
       }
-    } else {
-      console.log("[Lobby] 인증 정보 없음, 로그인 페이지로 이동")
-      setTimeout(() => {
-        window.location.href = "/auth"
-      }, 100)
+    }
+    
+    // 쿠키 기반 인증으로 현재 사용자 확인
+    const loadCurrentUser = async () => {
+      try {
+        const response = await fetch('/api/auth/me')
+        if (response.ok) {
+          const data = await response.json()
+          if (data.user) {
+            setCurrentUser(data.user)
+            console.log("[Lobby] 쿠키 인증 성공:", data.user)
+            
+            // 초기 데이터 로드 (자동 입장 활성화)
+            fetchGameData(true)
+            
+            // SSE 연결 시작
+            connectSSE()
+            
+            // 폴링 백업 (5초 후 SSE 상태 확인)
+            setTimeout(() => {
+              if (!sseConnected && isActive) {
+                console.log('[Lobby] SSE 연결 실패 - 폴링 백업 시작 (2초 간격)')
+                pollingInterval = setInterval(() => {
+                  if (!sseConnected && isActive) {
+                    console.log('[Lobby] 폴링으로 게임 상태 확인...')
+                    fetchGameData(false)
+                  }
+                }, 2000)
+              }
+            }, 5000)
+            
+            return
+          }
+        }
+      } catch (error) {
+        console.error('[Lobby] 쿠키 인증 실패:', error)
+      }
+      
+      // 쿠키 인증 실패 시 로그인 페이지로
+      console.log("[Lobby] 인증되지 않은 사용자 - 로그인 필요")
+      window.location.href = "/auth"
+    }
+    
+    loadCurrentUser()
+    
+    // beforeunload: 브라우저 닫을 때
+    const handleBeforeUnload = () => {
+      const gameStartingFlag = sessionStorage.getItem('gameStarting')
+      
+      if (gameStartingFlag === 'completed') {
+        console.log('[Lobby] 게임 시작 완료 - beforeunload 퇴장 건너뛰기')
+        return
+      }
+      
+      if (gameStartingFlag === 'true') {
+        console.log('[Lobby] Countdown 취소 - beforeunload exitLobby 실행')
+      }
+      
+      exitLobby()
+    }
+    
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    
+    return () => {
+      console.log('[Lobby] SSE 연결 종료')
+      isActive = false
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
+      if (pollingInterval) clearInterval(pollingInterval)
+      eventSource?.close()
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+      
+      const gameStartingFlag = sessionStorage.getItem('gameStarting')
+      
+      if (gameStartingFlag === 'completed') {
+        console.log('[Lobby] 게임 시작 완료 - cleanup 퇴장 건너뛰기')
+        sessionStorage.removeItem('gameStarting')
+        return
+      }
+      
+      if (gameStartingFlag === 'true') {
+        console.log('[Lobby] Countdown 취소 - cleanup exitLobby 실행')
+        sessionStorage.removeItem('gameStarting')
+      }
+      
+      exitLobby()
     }
   }, [])
 

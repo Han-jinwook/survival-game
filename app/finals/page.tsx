@@ -123,22 +123,24 @@ export default function FinalsPage() {
 
       fetch("/api/game/session?sessionId=" + currentSessionId)
         .then((res) => res.json())
-        .then((data) => {
+        .then(async (data) => {
           if (!data.session || !data.participants) {
             console.error("[Finals] Failed to load session data")
             router.push("/")
             return
           }
 
-          const userInfo = localStorage.getItem("userInfo")
-          if (!userInfo) {
-            console.error("[Finals] No userInfo found in localStorage")
-            router.push("/")
+          // 쿠키로 현재 사용자 ID 확인
+          const userResponse = await fetch('/api/auth/me')
+          if (!userResponse.ok) {
+            console.error("[Finals] 쿠키 인증 실패")
+            router.push("/auth")
             return
           }
 
-          const currentUser = JSON.parse(userInfo)
-          console.log("[Finals] Current user from localStorage:", currentUser)
+          const userData = await userResponse.json()
+          const currentUser = userData.user
+          console.log("[Finals] Current user from cookie:", currentUser)
           console.log("[Finals] Participants from DB:", data.participants)
 
           const activePlayers = data.participants.filter((p: any) => p.status === "playing")

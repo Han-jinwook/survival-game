@@ -43,8 +43,8 @@ export async function POST(request: NextRequest) {
       console.log("Participant info not found, using default lives:", err)
     }
 
-    // 인증 성공
-    return NextResponse.json({
+    // 인증 성공 - 쿠키 발급
+    const response = NextResponse.json({
       success: true,
       user: {
         id: user.id,
@@ -53,6 +53,19 @@ export async function POST(request: NextRequest) {
         lives: userLives,
       },
     })
+
+    // 쿠키 설정 (24시간 유효)
+    response.cookies.set('uid', user.id, {
+      httpOnly: true,     // JS 접근 차단 (보안)
+      secure: process.env.NODE_ENV === 'production', // HTTPS만 허용 (프로덕션)
+      maxAge: 86400,      // 24시간
+      path: '/',          // 모든 경로에서 사용
+      sameSite: 'lax'     // CSRF 방지
+    })
+
+    console.log('[Auth] 쿠키 발급 완료:', user.id)
+
+    return response
   } catch (error) {
     console.error("Auth error:", error)
     return NextResponse.json({ error: "서버 오류가 발생했습니다." }, { status: 500 })
