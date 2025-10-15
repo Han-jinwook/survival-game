@@ -5,11 +5,23 @@ import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: '가위바위보 하나빼기 서바이벌',
-  description: '네이버 카페 이벤트 - 가위바위보 하나빼기 서바이벌 게임',
+  title: '가위바위보-하나빼기 게임',
+  description: '한국 전통 게임인 가위바위보 하나빼기 게임을 다수가 함께 할 수 있는 온라인 게임',
+  manifest: '/manifest.json',
   icons: {
-    icon: '/favicon.png',
-    apple: '/favicon.png',
+    icon: '/icon-192x192.png',
+    apple: '/icon-512x512.png',
+  },
+  themeColor: '#9333ea',
+  viewport: {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: '하나빼기',
   },
 }
 
