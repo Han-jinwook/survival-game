@@ -384,11 +384,19 @@ export default function GameLobby() {
       return
     }
 
+    // 예약 시간이 과거인 경우 (로비 오픈 시간 + 30초 이전) 자동 시작하지 않음
+    const now = new Date()
+    const lobbyOpenGraceTime = 30 * 1000 // 30초 여유
+    if (now.getTime() > scheduledStartDate.getTime() + lobbyOpenGraceTime) {
+      console.log("[Lobby] 예약 시간이 이미 지나서 자동 시작 안 함:", scheduledStartDate)
+      return
+    }
+
     const checkScheduledStart = () => {
-      const now = new Date()
+      const currentTime = new Date()
       
       // 예약 시간 도달 확인 + 세션이 waiting 상태일 때만
-      if (now >= scheduledStartDate && sessionStatus === "waiting") {
+      if (currentTime >= scheduledStartDate && sessionStatus === "waiting") {
         console.log("[Lobby] 예약 시간 도달! 자동 게임 시작:", scheduledStartDate)
         setAutoStartTriggered(true)
         handleTestStart() // 자동으로 게임 시작
