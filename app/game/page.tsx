@@ -240,8 +240,6 @@ export default function GameInterface() {
         const participant = JSON.parse(participantData)
         currentParticipantId = participant.id
         console.log("[v0] Current participant ID:", currentParticipantId)
-      } else {
-        console.warn("[v0] WARNING: No participantInfo found in localStorage!")
       }
 
       try {
@@ -260,12 +258,12 @@ export default function GameInterface() {
         const lobbyPlayers = data.participants?.filter((p: any) => p.status === "playing") || []
         console.log("[v0] Playing participants:", lobbyPlayers)
 
-        const gamePlayers: Player[] = lobbyPlayers.map((p: any, index: number) => {
+        const gamePlayers: Player[] = lobbyPlayers.map((p: any) => {
           const player = {
             id: p.id,
             nickname: p.nickname,
             lives: p.currentLives || 0,
-            isCurrentUser: currentParticipantId ? (p.id === currentParticipantId) : (index === 0),
+            isCurrentUser: p.id === currentParticipantId,
           }
           console.log("[v0] Created game player:", player)
           return player
@@ -325,11 +323,6 @@ export default function GameInterface() {
           lives: p.lives,
           isCurrentUser: p.isCurrentUser,
         }))
-
-      console.log("[v0] ==== FINALS DATA PREPARATION ====")
-      console.log("[v0] Current players before filter:", players)
-      console.log("[v0] Finalists being saved:", finalists)
-      console.log("[v0] ===================================")
 
       // Store in sessionStorage for the finals page to access
       sessionStorage.setItem(

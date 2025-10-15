@@ -48,6 +48,12 @@ export default function AuthPage() {
         setUserInfo({ nickname: data.user.nickname, lives: data.user.lives })
         setSuccess(true)
 
+        try {
+          playGameVoice("auth_success")
+        } catch (error) {
+          console.log("[v0] Audio play failed:", error)
+        }
+
         localStorage.setItem(
           "userInfo",
           JSON.stringify({
