@@ -131,17 +131,30 @@ export default function FinalsPage() {
           }
 
           const userInfo = localStorage.getItem("userInfo")
-          const currentUserId = userInfo ? JSON.parse(userInfo).id : null
+          if (!userInfo) {
+            console.error("[Finals] No userInfo found in localStorage")
+            router.push("/")
+            return
+          }
+
+          const currentUser = JSON.parse(userInfo)
+          console.log("[Finals] Current user from localStorage:", currentUser)
+          console.log("[Finals] Participants from DB:", data.participants)
 
           const activePlayers = data.participants.filter((p: any) => p.status === "playing")
           
-          const finalsPlayers: Player[] = activePlayers.map((p: any) => ({
-            id: p.id,
-            nickname: p.nickname,
-            lives: p.currentLives,
-            isCurrentUser: p.userId === currentUserId,
-            maxLives: p.initialLives,
-          }))
+          const finalsPlayers: Player[] = activePlayers.map((p: any) => {
+            // userId 또는 nickname으로 비교 (로비와 동일한 로직)
+            const isMe = p.userId === currentUser.id || p.nickname === currentUser.nickname
+            console.log(`[Finals] Player ${p.nickname}: userId=${p.userId}, currentUserId=${currentUser.id}, isCurrentUser=${isMe}`)
+            return {
+              id: p.id,
+              nickname: p.nickname,
+              lives: p.currentLives,
+              isCurrentUser: isMe,
+              maxLives: p.initialLives,
+            }
+          })
 
           console.log("[Finals] Loaded players from DB:", finalsPlayers)
 
