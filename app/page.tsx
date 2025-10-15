@@ -36,6 +36,16 @@ export default function GameLanding() {
               startTime: data.session.startedAt || data.session.createdAt || "2025-01-15T20:00",
             })
             
+            // 게임 시작 감지 → 인증된 사용자는 로비로 자동 이동
+            if (data.session.status === "in-progress") {
+              const userInfo = localStorage.getItem("userInfo")
+              if (userInfo) {
+                console.log("[Home] 게임 시작 감지! 로비로 이동")
+                window.location.href = "/lobby"
+                return
+              }
+            }
+            
             if (data.participants) {
               // 로비 대기중 = playing 상태인 참가자만
               const playingCount = data.participants.filter((p: any) => p.status === 'playing').length
@@ -70,9 +80,16 @@ export default function GameLanding() {
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
-          if (data.type === 'game_update' && data.table === 'game_participants') {
+          if (data.type === 'game_update') {
             // 참가자 변경 감지 → 즉시 데이터 리로드
-            loadEventInfo()
+            if (data.table === 'game_participants') {
+              loadEventInfo()
+            }
+            // 게임 세션 변경 감지 (게임 시작 등)
+            if (data.table === 'game_sessions') {
+              console.log('[Home] 게임 세션 변경 감지:', data)
+              loadEventInfo()
+            }
           }
         } catch (error) {
           console.error('[Home] SSE 메시지 파싱 오류:', error)
