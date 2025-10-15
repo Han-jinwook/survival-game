@@ -13,12 +13,12 @@ export default function GameLanding() {
   const [playerCount, setPlayerCount] = useState(0)
   const [spectatorCount, setSpectatorCount] = useState(0)
   const [visitorId] = useState(() => `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
-  const [eventInfo, setEventInfo] = useState({
-    cafeName: "",
-    name: "2025 신년 특별 이벤트",
-    prize: "아이폰 16 Pro Max",
-    startTime: "2025-01-15T20:00",
-  })
+  const [eventInfo, setEventInfo] = useState<{
+    cafeName: string
+    name: string
+    prize: string
+    startTime: string
+  } | null>(null)
 
   useEffect(() => {
     const loadEventInfo = async () => {
@@ -225,26 +225,35 @@ export default function GameLanding() {
       {/* Main Content */}
       <main className="relative z-10 max-w-6xl mx-auto px-6 py-12">
         <div className="text-center mb-16">
-          <Card className="bg-gradient-to-r from-red-950/80 to-orange-950/80 border-red-600/50 p-8 mb-12">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex-1 text-left">
-                {eventInfo.cafeName && (
-                  <p className="text-sm text-gray-400 mb-1">카페명: {eventInfo.cafeName}</p>
-                )}
-                <h3 className="text-2xl font-bold text-white mb-2">{eventInfo.name}</h3>
-                <p className="text-xl text-yellow-300 font-semibold mb-1">🎁 상품: {eventInfo.prize}</p>
-                <p className="text-lg text-red-200">📅 게임 시작: {formatDateTime(eventInfo.startTime)}</p>
+          {eventInfo ? (
+            <Card className="bg-gradient-to-r from-red-950/80 to-orange-950/80 border-red-600/50 p-8 mb-12">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex-1 text-left">
+                  {eventInfo.cafeName && (
+                    <p className="text-sm text-gray-400 mb-1">카페명: {eventInfo.cafeName}</p>
+                  )}
+                  <h3 className="text-2xl font-bold text-white mb-2">{eventInfo.name}</h3>
+                  <p className="text-xl text-yellow-300 font-semibold mb-1">🎁 상품: {eventInfo.prize}</p>
+                  <p className="text-lg text-red-200">📅 게임 시작: {formatDateTime(eventInfo.startTime)}</p>
+                </div>
+                <div className="bg-red-600/30 border-2 border-red-500 rounded-lg p-6 min-w-[280px]">
+                  <p className="text-sm text-red-200 mb-2 font-semibold">⚠️ 중요 안내</p>
+                  <p className="text-white font-bold text-lg">
+                    게임 시작 1분 전까지
+                    <br />
+                    모든 참가자는 입장 완료 필수!
+                  </p>
+                </div>
               </div>
-              <div className="bg-red-600/30 border-2 border-red-500 rounded-lg p-6 min-w-[280px]">
-                <p className="text-sm text-red-200 mb-2 font-semibold">⚠️ 중요 안내</p>
-                <p className="text-white font-bold text-lg">
-                  게임 시작 1분 전까지
-                  <br />
-                  모든 참가자는 입장 완료 필수!
-                </p>
+            </Card>
+          ) : (
+            <div className="bg-gradient-to-r from-red-950/80 to-orange-950/80 border border-red-600/50 rounded-lg p-8 mb-12">
+              <div className="flex items-center justify-center gap-3">
+                <div className="animate-spin w-6 h-6 border-2 border-white/30 border-t-white rounded-full"></div>
+                <p className="text-gray-300">이벤트 정보 로딩 중...</p>
               </div>
             </div>
-          </Card>
+          )}
 
           <p className="text-3xl font-semibold text-gray-200 mb-12 max-w-4xl mx-auto text-balance leading-relaxed">
             전통 가위바위보 하나빼기 게임이 생존 게임으로 돌아왔습니다. 행운권이 곧 당신의 목숨입니다.
