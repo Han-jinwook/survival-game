@@ -141,15 +141,23 @@ export default function GameLobby() {
             const now = new Date()
             const lobbyClosingTime = new Date(gameDate.getTime() - 1 * 60 * 1000) // 게임 시작 1분 전
             
+            console.log("[Lobby] 입장 시간 체크:", {
+              gameStartTime: gameDate.toISOString(),
+              currentTime: now.toISOString(),
+              lobbyClosingTime: lobbyClosingTime.toISOString(),
+              canEnter: now <= lobbyClosingTime,
+              gameStartMs: gameDate.getTime(),
+              nowMs: now.getTime(),
+              closingMs: lobbyClosingTime.getTime()
+            })
+            
             if (now > lobbyClosingTime) {
-              console.log("[Lobby] 로비 입장 마감! 관전 모드로 이동:", {
-                gameStartTime: gameDate.toISOString(),
-                currentTime: now.toISOString(),
-                lobbyClosingTime: lobbyClosingTime.toISOString()
-              })
+              console.log("[Lobby] ❌ 로비 입장 마감! 관전 모드로 이동")
               alert("로비 입장 시간이 마감되었습니다.\n(게임 시작 1분 전까지만 입장 가능)\n\n관람 모드로 이동합니다.")
               window.location.href = "/viewer"
               return
+            } else {
+              console.log("[Lobby] ✅ 로비 입장 가능 (마감 시간 전)")
             }
             
             // 로비 오픈 시간 (게임 시작 3분 전)
