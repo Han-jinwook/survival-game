@@ -729,7 +729,7 @@ export default function FinalsPage() {
           ))}
 
           {/* Current User - Only shown in participant mode (참가자 모드에서만 표시) */}
-          {!isSpectator && currentUser && currentUser.lives > 0 && (
+          {!isSpectator && currentUser && (
             <div className={`absolute ${playerPositions.userStyle}`}>
               <CurrentUserCard
                 player={{
