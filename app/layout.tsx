@@ -12,17 +12,20 @@ export const metadata: Metadata = {
     icon: '/icon-192x192.png',
     apple: '/icon-512x512.png',
   },
-  themeColor: '#9333ea',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
     title: '하나빼기',
   },
+}
+
+export function generateViewport() {
+  return {
+    width: 'device-width',
+    initialScale: 1,
+    maximumScale: 1,
+    themeColor: '#9333ea',
+  }
 }
 
 export default function RootLayout({
