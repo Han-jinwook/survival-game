@@ -182,7 +182,9 @@ export default function GameLobby() {
       // SSE 실시간 연결 - 재연결 로직 포함
       let eventSource: EventSource | null = null
       let reconnectTimeout: NodeJS.Timeout | null = null
+      let pollingInterval: NodeJS.Timeout | null = null
       let isActive = true
+      let sseConnected = false
       
       const connectSSE = () => {
         if (!isActive) return
@@ -192,6 +194,14 @@ export default function GameLobby() {
         
         eventSource.onopen = () => {
           console.log('[Lobby] SSE 연결 성공!')
+          sseConnected = true
+          
+          // SSE 성공 시 폴링 중지
+          if (pollingInterval) {
+            clearInterval(pollingInterval)
+            pollingInterval = null
+            console.log('[Lobby] SSE 연결 성공 - 폴링 중지')
+          }
         }
         
         eventSource.onmessage = (event) => {
@@ -211,6 +221,7 @@ export default function GameLobby() {
         eventSource.onerror = (error) => {
           console.error('[Lobby] SSE 연결 오류:', error)
           eventSource?.close()
+          sseConnected = false
           
           // 3초 후 재연결 시도
           if (isActive) {
@@ -223,6 +234,19 @@ export default function GameLobby() {
       }
       
       connectSSE()
+      
+      // 폴링 백업 (SSE 실패 시 2초마다 상태 확인)
+      setTimeout(() => {
+        if (!sseConnected && isActive) {
+          console.log('[Lobby] SSE 연결 실패 - 폴링 백업 시작 (2초 간격)')
+          pollingInterval = setInterval(() => {
+            if (!sseConnected && isActive) {
+              console.log('[Lobby] 폴링으로 게임 상태 확인...')
+              fetchGameData(false)
+            }
+          }, 2000)
+        }
+      }, 5000) // 5초 후 SSE 상태 확인
       
       // 로비 떠날 때 즉시 상태 변경
       const exitLobby = async () => {
@@ -270,6 +294,7 @@ export default function GameLobby() {
         console.log('[Lobby] SSE 연결 종료')
         isActive = false
         if (reconnectTimeout) clearTimeout(reconnectTimeout)
+        if (pollingInterval) clearInterval(pollingInterval)
         eventSource?.close()
         window.removeEventListener("beforeunload", handleBeforeUnload)
         

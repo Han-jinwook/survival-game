@@ -79,6 +79,20 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "start") {
+      // 게임 시작: 로비 미입장자 제거
+      const participants = await DatabaseService.getParticipants(sessionId)
+      
+      // status !== 'playing'인 참가자를 eliminated로 변경
+      for (const participant of participants) {
+        if (participant.status !== 'playing') {
+          await DatabaseService.updateParticipant(participant.id, {
+            status: 'eliminated',
+            eliminated_at: new Date().toISOString()
+          })
+          console.log(`[게임 시작] 로비 미입장자 제거: ${participant.nickname} (${participant.id})`)
+        }
+      }
+      
       const session = await DatabaseService.updateGameSession(sessionId, {
         status: "in_progress",
         started_at: new Date().toISOString(),
