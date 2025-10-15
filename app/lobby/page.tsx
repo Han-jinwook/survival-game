@@ -28,12 +28,14 @@ export default function GameLobby() {
   const [gameDestination, setGameDestination] = useState<string>("/game")
   const [sortBy, setSortBy] = useState<"name" | "lives">("lives")
   const [gameStartTime, setGameStartTime] = useState<string>("")
+  const [scheduledStartDate, setScheduledStartDate] = useState<Date | null>(null)
   const [lobbyOpenTime, setLobbyOpenTime] = useState<string>("")
   const [showRulesModal, setShowRulesModal] = useState(false)
   const [currentRuleCard, setCurrentRuleCard] = useState(0)
   const [cafeName, setCafeName] = useState("썬드림 즐빛카페")
   const [eventName, setEventName] = useState("가위바위보 하나빼기 이벤트")
   const [startErrorMessage, setStartErrorMessage] = useState<string>("")
+  const [autoStartTriggered, setAutoStartTriggered] = useState(false)
 
   const minPlayers = 3
   const readyPlayers = players.filter((p) => p.status === "ready").length
@@ -131,6 +133,7 @@ export default function GameLobby() {
             const hours = gameDate.getHours()
             const minutes = gameDate.getMinutes()
             setGameStartTime(`${year}년 ${month}월 ${day}일 ${hours}시 ${minutes.toString().padStart(2, "0")}분`)
+            setScheduledStartDate(gameDate) // 예약 시간 자동 시작용
             
             // 로비 오픈 시간 (게임 시작 3분 전)
             const lobbyDate = new Date(gameDate.getTime() - 3 * 60 * 1000)
@@ -376,6 +379,29 @@ export default function GameLobby() {
       window.location.href = gameDestination
     }
   }, [gameStartCountdown, gameDestination])
+
+  // 예약 시간 자동 게임 시작 체크
+  useEffect(() => {
+    if (!scheduledStartDate || autoStartTriggered || gameStartCountdown !== null) {
+      return
+    }
+
+    const checkScheduledStart = () => {
+      const now = new Date()
+      
+      // 예약 시간 도달 확인 (10초 이내 오차 허용)
+      if (now >= scheduledStartDate) {
+        console.log("[Lobby] 예약 시간 도달! 자동 게임 시작:", scheduledStartDate)
+        setAutoStartTriggered(true)
+        handleTestStart() // 자동으로 게임 시작
+      }
+    }
+
+    // 1초마다 체크
+    const interval = setInterval(checkScheduledStart, 1000)
+    
+    return () => clearInterval(interval)
+  }, [scheduledStartDate, autoStartTriggered, gameStartCountdown])
 
   const currentUserStatus = players.find((p) => p.naverId === currentUser?.naverId)?.status || "waiting"
   const totalLives = players.reduce((sum, player) => sum + player.lives, 0)
