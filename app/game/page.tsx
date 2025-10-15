@@ -108,6 +108,7 @@ export default function GameInterface() {
   const alivePlayers = players.filter((p) => p.lives > 0)
 
   const [voiceEnabled, setVoiceEnabledState] = useState(true)
+  const [displayedCurrentUserLives, setDisplayedCurrentUserLives] = useState<number | null>(null)
 
   const getPositionedOpponents = () => {
     const opponents = alivePlayers
@@ -853,6 +854,11 @@ export default function GameInterface() {
     const currentUserBeforeElimination = players.find((p) => p.isCurrentUser)
     let currentUserLostLife = false
 
+    // Store current lives for delayed display update
+    if (currentUserBeforeElimination) {
+      setDisplayedCurrentUserLives(currentUserBeforeElimination.lives)
+    }
+
     setPlayers((currentPlayers) => {
       console.log("[v0] Current players count:", currentPlayers.length)
       console.log(
@@ -990,6 +996,12 @@ export default function GameInterface() {
         hasEliminationSpokenRef.current = true
         setGameMessage(eliminationMessage)
 
+        // Update displayed lives to match actual lives (syncs timing with message)
+        const newCurrentUser = updatedPlayers.find((p) => p.isCurrentUser)
+        if (newCurrentUser) {
+          setDisplayedCurrentUserLives(newCurrentUser.lives)
+        }
+
         speak(eliminationMessage, {
           onComplete: () => {
             // After TTS completes, proceed with game flow
@@ -1057,6 +1069,9 @@ export default function GameInterface() {
 
     // Reset elimination spoken flag for next round
     hasEliminationSpokenRef.current = false
+    
+    // Reset displayed lives (will use actual lives from currentUser)
+    setDisplayedCurrentUserLives(null)
 
     setGameLog((prev) => ({
       ...prev,
@@ -1900,13 +1915,13 @@ export default function GameInterface() {
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex gap-1.5">
-                    {Array.from({ length: currentUser.lives }).map((_, i) => (
+                    {Array.from({ length: displayedCurrentUserLives ?? currentUser.lives }).map((_, i) => (
                       <div key={i} className="w-8 h-8 bg-yellow-600 rounded-full flex items-center justify-center">
                         <span className="text-base text-black font-bold">♠</span>
                       </div>
                     ))}
                   </div>
-                  <span className="text-2xl font-bold text-yellow-300">목숨 {currentUser.lives}개</span>
+                  <span className="text-2xl font-bold text-yellow-300">목숨 {displayedCurrentUserLives ?? currentUser.lives}개</span>
                 </div>
               </div>
             </div>
