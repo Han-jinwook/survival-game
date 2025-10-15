@@ -106,9 +106,13 @@ export default function GameLobby() {
           }
           
           if (data.session.status === "in-progress") {
-            // 이미 게임 진행 중 → 즉시 이동
+            // 이미 게임 진행 중 → sessionStorage 설정 후 이동
             const playingCount = data.participants?.filter((p: any) => p.status === "playing").length || 0
             console.log("[Lobby] 게임 진행 중 감지! 즉시 이동")
+            
+            // sessionStorage 설정 (게임 페이지 초기화에 필요)
+            sessionStorage.setItem('gameStarting', 'true')
+            sessionStorage.setItem('currentSessionId', data.session.id)
             
             if (playingCount >= 5) {
               window.location.href = "/game"

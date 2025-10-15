@@ -56,62 +56,126 @@ export default function FinalsPage() {
 
   useEffect(() => {
     if (initialized) {
-      console.log("[v0] Already initialized, skipping re-initialization")
+      console.log("[Finals] Already initialized, skipping re-initialization")
       return
     }
 
+    // 먼저 finalistsData 확인
     const storedData = sessionStorage.getItem("finalistsData")
 
-    if (!storedData) {
-      console.log("[v0] No finalist data found, redirecting to game")
-      router.push("/game")
-      return
-    }
+    if (storedData) {
+      // 예선전에서 온 경우
+      try {
+        const { gameRoundId, finalists, timestamp } = JSON.parse(storedData)
 
-    try {
-      const { gameRoundId, finalists, timestamp } = JSON.parse(storedData)
+        console.log("[Finals] Loaded finalists from session:", finalists)
+        console.log("[Finals] Game round ID:", gameRoundId)
 
-      console.log("[v0] Loaded finalists:", finalists)
-      console.log("[v0] Game round ID:", gameRoundId)
-      console.log("[v0] Data timestamp:", timestamp)
+        const finalsPlayers: Player[] = finalists.map((f: any) => ({
+          id: f.id,
+          nickname: f.nickname,
+          lives: f.lives,
+          isCurrentUser: f.isCurrentUser,
+          maxLives: f.lives,
+        }))
 
-      const finalsPlayers: Player[] = finalists.map((f: any) => ({
-        id: f.id,
-        nickname: f.nickname,
-        lives: f.lives,
-        isCurrentUser: f.isCurrentUser,
-        maxLives: f.lives,
-      }))
-
-      setPlayers(finalsPlayers)
-      setGameRound({
-        round: 1,
-        phase: "waiting",
-        timeLeft: 0,
-        survivors: finalsPlayers.length,
-      })
-
-      const totalLives = finalsPlayers.reduce((sum, p) => sum + p.lives, 0)
-      const message = `이제 총 ${finalsPlayers.length}명, 목숨 ${totalLives}개로, 결승 1라운드를 시작합니다`
-      setGameMessage(message)
-
-      setInitialized(true)
-
-      setTimeout(() => {
-        speak(message, {
-          onComplete: () => {
-            setGameRound({
-              round: 1,
-              phase: "selectTwo",
-              timeLeft: 10,
-              survivors: finalsPlayers.length,
-            })
-          },
+        setPlayers(finalsPlayers)
+        setGameRound({
+          round: 1,
+          phase: "waiting",
+          timeLeft: 0,
+          survivors: finalsPlayers.length,
         })
-      }, 2000)
-    } catch (error) {
-      console.error("[v0] Error parsing finalist data:", error)
-      router.push("/game")
+
+        const totalLives = finalsPlayers.reduce((sum, p) => sum + p.lives, 0)
+        const message = `이제 총 ${finalsPlayers.length}명, 목숨 ${totalLives}개로, 결승 1라운드를 시작합니다`
+        setGameMessage(message)
+
+        setInitialized(true)
+
+        setTimeout(() => {
+          speak(message, {
+            onComplete: () => {
+              setGameRound({
+                round: 1,
+                phase: "selectTwo",
+                timeLeft: 10,
+                survivors: finalsPlayers.length,
+              })
+            },
+          })
+        }, 2000)
+      } catch (error) {
+        console.error("[Finals] Error parsing finalist data:", error)
+        router.push("/game")
+      }
+    } else {
+      // 로비에서 직행한 경우: DB에서 로드
+      const currentSessionId = sessionStorage.getItem("currentSessionId")
+      
+      if (!currentSessionId) {
+        console.log("[Finals] No session data found, redirecting to home")
+        router.push("/")
+        return
+      }
+
+      console.log("[Finals] Loading from DB, session:", currentSessionId)
+
+      fetch("/api/game/session?sessionId=" + currentSessionId)
+        .then((res) => res.json())
+        .then((data) => {
+          if (!data.session || !data.participants) {
+            console.error("[Finals] Failed to load session data")
+            router.push("/")
+            return
+          }
+
+          const userInfo = localStorage.getItem("userInfo")
+          const currentUserId = userInfo ? JSON.parse(userInfo).id : null
+
+          const activePlayers = data.participants.filter((p: any) => p.status === "playing")
+          
+          const finalsPlayers: Player[] = activePlayers.map((p: any) => ({
+            id: p.id,
+            nickname: p.nickname,
+            lives: p.currentLives,
+            isCurrentUser: p.userId === currentUserId,
+            maxLives: p.initialLives,
+          }))
+
+          console.log("[Finals] Loaded players from DB:", finalsPlayers)
+
+          setPlayers(finalsPlayers)
+          setGameRound({
+            round: 1,
+            phase: "waiting",
+            timeLeft: 0,
+            survivors: finalsPlayers.length,
+          })
+
+          const totalLives = finalsPlayers.reduce((sum, p) => sum + p.lives, 0)
+          const message = `이제 총 ${finalsPlayers.length}명, 목숨 ${totalLives}개로, 결승 1라운드를 시작합니다`
+          setGameMessage(message)
+
+          setInitialized(true)
+
+          setTimeout(() => {
+            speak(message, {
+              onComplete: () => {
+                setGameRound({
+                  round: 1,
+                  phase: "selectTwo",
+                  timeLeft: 10,
+                  survivors: finalsPlayers.length,
+                })
+              },
+            })
+          }, 2000)
+        })
+        .catch((error) => {
+          console.error("[Finals] Error loading session data:", error)
+          router.push("/")
+        })
     }
   }, [router, initialized]) // Add initialized to dependencies
 
