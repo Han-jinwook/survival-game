@@ -44,19 +44,13 @@ export default function AuthPage() {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        console.log("[v0] Authentication successful for:", data.user.nickname)
+        console.log("[Auth] Authentication successful for:", data.user.nickname)
         setUserInfo({ nickname: data.user.nickname, lives: data.user.lives })
         setSuccess(true)
 
-        localStorage.setItem(
-          "userInfo",
-          JSON.stringify({
-            id: data.user.id,
-            naverId: trimmedNaverId,
-            nickname: data.user.nickname,
-            lives: data.user.lives,
-          }),
-        )
+        // 쿠키는 서버에서 자동으로 설정됨
+        // userId는 참고용으로 localStorage에 저장 (SSE 연결 등에 필요)
+        localStorage.setItem("userId", data.user.id)
       } else {
         console.log("[v0] Authentication failed for:", trimmedNaverId)
         setError(data.error || "등록되지 않은 네이버 ID입니다. 썬드림 즐빛카페 운영자에게 문의해주세요.")
