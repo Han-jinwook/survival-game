@@ -1086,86 +1086,92 @@ export default function GameInterface() {
       rounds: [...prev.rounds, currentRoundLog],
     }))
 
-    const resetPlayers = players.map((p) => ({
-      ...p,
-      selectedChoices: undefined,
-      finalChoice: undefined,
-      timedOut: undefined,
-    }))
+    let roundMessage = ""
+    
+    setPlayers((currentPlayers) => {
+      const resetPlayers = currentPlayers.map((p) => ({
+        ...p,
+        selectedChoices: undefined,
+        finalChoice: undefined,
+        timedOut: undefined,
+      }))
 
-    console.log(
-      "[v0] Players reset for next round:",
-      resetPlayers.map((p) => ({ nickname: p.nickname, lives: p.lives })),
-    )
+      console.log(
+        "[v0] Players reset for next round:",
+        resetPlayers.map((p) => ({ nickname: p.nickname, lives: p.lives })),
+      )
 
-    const currentAlivePlayers = resetPlayers.filter((p) => p.lives > 0)
-    const totalPlayers = currentAlivePlayers.length
+      const currentAlivePlayers = resetPlayers.filter((p) => p.lives > 0)
+      const totalPlayers = currentAlivePlayers.length
 
-    console.log("[v0] Current alive players for next round:", totalPlayers)
+      console.log("[v0] Current alive players for next round:", totalPlayers)
 
-    // If only 1 player remains, declare winner and end game
-    if (totalPlayers === 1) {
-      console.log("[v0] Only 1 player remaining - ending game")
-      const winner = currentAlivePlayers[0]
-      const finalRoundLog = { ...currentRoundLog, survivorsAtEnd: 1 }
-      const completeGameLog: GameLog = {
-        ...gameLog,
-        endTime: Date.now(),
-        rounds: [...gameLog.rounds, finalRoundLog],
-        finalists: [{ id: winner.id, nickname: winner.nickname, lives: winner.lives }],
+      // If only 1 player remains, declare winner and end game
+      if (totalPlayers === 1) {
+        console.log("[v0] Only 1 player remaining - ending game")
+        const winner = currentAlivePlayers[0]
+        const finalRoundLog = { ...currentRoundLog, survivorsAtEnd: 1 }
+        const completeGameLog: GameLog = {
+          ...gameLog,
+          endTime: Date.now(),
+          rounds: [...gameLog.rounds, finalRoundLog],
+          finalists: [{ id: winner.id, nickname: winner.nickname, lives: winner.lives }],
+        }
+
+        localStorage.setItem("gameLog", JSON.stringify(completeGameLog))
+
+        setGameRound((prev) => ({ ...prev, phase: "gameOver", timeLeft: 0 }))
+        setGameMessage(`🎉 ${winner.nickname}님이 우승했습니다! 🎉`)
+        speak(`우승자는 ${winner.nickname}입니다. 축하합니다!`)
+
+        return resetPlayers
       }
 
-      localStorage.setItem("gameLog", JSON.stringify(completeGameLog))
+      const totalLives = currentAlivePlayers.reduce((sum, p) => sum + p.lives, 0)
 
-      setGameRound((prev) => ({ ...prev, phase: "gameOver", timeLeft: 0 }))
-      setGameMessage(`🎉 ${winner.nickname}님이 우승했습니다! 🎉`)
-      speak(`우승자는 ${winner.nickname}입니다. 축하합니다!`)
+      console.log("[v0] Total lives for next round:", totalLives)
 
-      setPlayers(resetPlayers)
-      return
-    }
+      const nextRound = gameRound.round + 1
+      const modeText = gameMode === "preliminary" ? "예선" : "결승"
 
-    const totalLives = currentAlivePlayers.reduce((sum, p) => sum + p.lives, 0)
+      setGameRound((prev) => ({
+        ...prev,
+        round: nextRound,
+        phase: "waiting",
+        timeLeft: 0,
+        survivors: currentAlivePlayers.length,
+      }))
 
-    console.log("[v0] Total lives for next round:", totalLives)
+      const event: GameEvent = {
+        type: "roundStart",
+        playerId: "system",
+        playerNickname: "System",
+        timestamp: Date.now(),
+      }
+      setCurrentRoundLog({
+        round: nextRound,
+        events: [event],
+        choiceCounts: { rock: 0, paper: 0, scissors: 0 },
+        losingChoice: null,
+        survivorsAtEnd: currentAlivePlayers.length,
+      })
 
-    const nextRound = gameRound.round + 1
-    const modeText = gameMode === "preliminary" ? "예선" : "결승"
+      roundMessage = `총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} ${nextRound}라운드를 시작합니다`
+      setGameMessage(roundMessage)
 
-    setGameRound((prev) => ({
-      ...prev,
-      round: nextRound,
-      phase: "waiting",
-      timeLeft: 0,
-      survivors: currentAlivePlayers.length,
-    }))
-
-    const event: GameEvent = {
-      type: "roundStart",
-      playerId: "system",
-      playerNickname: "System",
-      timestamp: Date.now(),
-    }
-    setCurrentRoundLog({
-      round: nextRound,
-      events: [event],
-      choiceCounts: { rock: 0, paper: 0, scissors: 0 },
-      losingChoice: null,
-      survivorsAtEnd: currentAlivePlayers.length,
+      return resetPlayers
     })
 
-    setGameMessage(`총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} ${nextRound}라운드를 시작합니다`)
-
-    setPlayers(resetPlayers)
-
     setTimeout(() => {
-      speak(`총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} ${nextRound}라운드를 시작합니다`, {
-        onComplete: () => {
-          setTimeout(() => {
-            setGameRound((prev) => ({ ...prev, phase: "selectTwo", timeLeft: 10 }))
-          }, 1000)
-        },
-      })
+      if (roundMessage) {
+        speak(roundMessage, {
+          onComplete: () => {
+            setTimeout(() => {
+              setGameRound((prev) => ({ ...prev, phase: "selectTwo", timeLeft: 10 }))
+            }, 1000)
+          },
+        })
+      }
     }, 1000)
 
     setSelectedChoices([])
