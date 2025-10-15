@@ -49,6 +49,7 @@ export default function FinalsPage() {
   const [voiceEnabled, setVoiceEnabled] = useState(true)
   const [choiceCounts, setChoiceCounts] = useState<Record<GameChoice, number>>({ rock: 0, paper: 0, scissors: 0 })
   const [initialized, setInitialized] = useState(false)
+  const [displayedCurrentUserLives, setDisplayedCurrentUserLives] = useState<number | null>(null)
 
   const opponents = players.filter((p) => !p.isCurrentUser)
   const currentUser = players.find((p) => p.isCurrentUser)
@@ -261,6 +262,12 @@ export default function FinalsPage() {
   const calculateResults = () => {
     console.log("[v0] ===== calculateResults START =====")
 
+    // Store current user's lives before elimination for delayed display update
+    const currentUserBeforeElimination = players.find((p) => p.isCurrentUser)
+    if (currentUserBeforeElimination) {
+      setDisplayedCurrentUserLives(currentUserBeforeElimination.lives)
+    }
+
     const choices: Record<GameChoice, number> = { rock: 0, paper: 0, scissors: 0 }
     players.forEach((p) => {
       if (p.finalChoice && p.lives > 0 && !p.timedOut) {
@@ -365,6 +372,12 @@ export default function FinalsPage() {
     setGameMessage(message)
     speak(message, {
       onComplete: () => {
+        // Update displayed lives for current user (synchronized with subtitle timing)
+        const currentUserAfterElimination = updatedPlayers.find((p) => p.isCurrentUser)
+        if (currentUserAfterElimination) {
+          setDisplayedCurrentUserLives(currentUserAfterElimination.lives)
+        }
+
         setPlayers(updatedPlayers)
 
         if (actualSurvivors === 1) {
@@ -420,6 +433,7 @@ export default function FinalsPage() {
     setSelectedChoices([])
     setLosingChoices([])
     setPlayersLostLife([])
+    setDisplayedCurrentUserLives(null) // Reset for next round
 
     setGameRound({
       round: nextRound,
@@ -454,6 +468,7 @@ export default function FinalsPage() {
     setSelectedChoices([])
     setLosingChoices([])
     setPlayersLostLife([])
+    setDisplayedCurrentUserLives(null) // Reset for replay round
     setPlayers((prev) =>
       prev.map((p) => ({
         ...p,
@@ -717,7 +732,10 @@ export default function FinalsPage() {
           {!isSpectator && currentUser && currentUser.lives > 0 && (
             <div className={`absolute ${playerPositions.userStyle}`}>
               <CurrentUserCard
-                player={currentUser}
+                player={{
+                  ...currentUser,
+                  lives: displayedCurrentUserLives ?? currentUser.lives,
+                }}
                 phase={gameRound.phase}
                 selectedChoices={selectedChoices}
                 onSelectChoice={handleSelectChoice}
