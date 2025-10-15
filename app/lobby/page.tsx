@@ -71,7 +71,7 @@ export default function GameLobby() {
   }
 
   // 실시간 게임 데이터 가져오기
-  const fetchGameData = async (autoEnter = false) => {
+  const fetchGameData = async (autoEnter = false, cookieUserId?: string) => {
     try {
       const response = await fetch("/api/game/state")
       if (response.ok) {
@@ -145,28 +145,24 @@ export default function GameLobby() {
         
         // 참가자 데이터 설정
         if (data.participants && Array.isArray(data.participants)) {
-          // 현재 사용자가 waiting 상태면 자동 입장
-          if (autoEnter) {
-            const userInfo = localStorage.getItem("userInfo")
-            if (userInfo) {
-              const user = JSON.parse(userInfo)
-              const myParticipant = data.participants.find(
-                (p: any) => p.userId === user.id
-              )
-              
-              if (myParticipant && myParticipant.status === "waiting") {
-                console.log("[Lobby] 자동 로비 입장 시도:", myParticipant)
-                const success = await enterLobby(myParticipant.id)
-                if (success) {
-                  // 입장 후 데이터 재로드 (자동 입장은 한 번만)
-                  setTimeout(() => fetchGameData(false), 500)
-                  return
-                }
-              } else if (myParticipant && myParticipant.status === "playing") {
-                // 이미 입장했으면 참가자 정보 저장 (exit_lobby용)
-                console.log("[Lobby] 이미 로비에 입장한 상태, 참가자 정보 저장")
-                localStorage.setItem("participantInfo", JSON.stringify(myParticipant))
+          // 🍪 쿠키 인증 - 현재 사용자가 waiting 상태면 자동 입장
+          if (autoEnter && cookieUserId) {
+            const myParticipant = data.participants.find(
+              (p: any) => p.userId === cookieUserId
+            )
+            
+            if (myParticipant && myParticipant.status === "waiting") {
+              console.log("[Lobby] 🍪 쿠키 인증 - 자동 로비 입장 시도:", myParticipant)
+              const success = await enterLobby(myParticipant.id)
+              if (success) {
+                // 입장 후 데이터 재로드 (자동 입장은 한 번만)
+                setTimeout(() => fetchGameData(false), 500)
+                return
               }
+            } else if (myParticipant && myParticipant.status === "playing") {
+              // 이미 입장했으면 참가자 정보 저장 (exit_lobby용)
+              console.log("[Lobby] 🍪 이미 로비에 입장한 상태, 참가자 정보 저장")
+              localStorage.setItem("participantInfo", JSON.stringify(myParticipant))
             }
           }
           
@@ -279,10 +275,10 @@ export default function GameLobby() {
           const data = await response.json()
           if (data.user) {
             setCurrentUser(data.user)
-            console.log("[Lobby] 쿠키 인증 성공:", data.user)
+            console.log("[Lobby] 🍪 쿠키 인증 성공:", data.user)
             
-            // 초기 데이터 로드 (자동 입장 활성화)
-            fetchGameData(true)
+            // 🍪 초기 데이터 로드 (자동 입장 활성화 + 쿠키 userId 전달)
+            fetchGameData(true, data.user.id)
             
             // SSE 연결 시작
             connectSSE()
