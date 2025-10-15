@@ -593,7 +593,7 @@ export default function GameInterface() {
       setPlayers((prev) =>
         prev.map((p) =>
           playersWithoutChoice.some((pwc) => pwc.id === p.id)
-            ? { ...p, lives: Math.max(0, p.lives - 1), timedOut: true }
+            ? { ...p, timedOut: true }
             : p,
         ),
       )
