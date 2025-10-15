@@ -417,6 +417,13 @@ export class DatabaseService {
     // DB 에러 핸들링
     client.on('error', (err) => {
       console.error('[DB] LISTEN 클라이언트 에러:', err)
+      // 에러 발생 시 연결 파기 (풀에 반환하지 않음)
+      try {
+        client.release(true) // true = destroy connection
+        console.log('[DB] 손상된 LISTEN 연결 파기 완료')
+      } catch (e) {
+        console.error('[DB] LISTEN 연결 파기 오류:', e)
+      }
     })
 
     // 연결 해제 함수 반환
