@@ -260,12 +260,12 @@ export default function GameInterface() {
         const lobbyPlayers = data.participants?.filter((p: any) => p.status === "playing") || []
         console.log("[v0] Playing participants:", lobbyPlayers)
 
-        const gamePlayers: Player[] = lobbyPlayers.map((p: any) => {
+        const gamePlayers: Player[] = lobbyPlayers.map((p: any, index: number) => {
           const player = {
             id: p.id,
             nickname: p.nickname,
             lives: p.currentLives || 0,
-            isCurrentUser: p.id === currentParticipantId,
+            isCurrentUser: currentParticipantId ? (p.id === currentParticipantId) : (index === 0),
           }
           console.log("[v0] Created game player:", player)
           return player
