@@ -137,9 +137,9 @@ export default function GameLobby() {
             setGameStartTime(`${year}년 ${month}월 ${day}일 ${hours}시 ${minutes.toString().padStart(2, "0")}분`)
             setScheduledStartDate(gameDate) // 예약 시간 자동 시작용
             
-            // 🚫 로비 입장 시간 제한 체크 (게임 시작 1분 후에는 관전 모드로)
+            // 🚫 로비 입장 시간 제한 체크 (게임 시작 1분 전까지만 입장 가능)
             const now = new Date()
-            const lobbyClosingTime = new Date(gameDate.getTime() + 1 * 60 * 1000) // 게임 시작 1분 후
+            const lobbyClosingTime = new Date(gameDate.getTime() - 1 * 60 * 1000) // 게임 시작 1분 전
             
             if (now > lobbyClosingTime) {
               console.log("[Lobby] 로비 입장 마감! 관전 모드로 이동:", {
@@ -147,7 +147,7 @@ export default function GameLobby() {
                 currentTime: now.toISOString(),
                 lobbyClosingTime: lobbyClosingTime.toISOString()
               })
-              alert("로비 입장 시간이 마감되었습니다.\n관람 모드로 이동합니다.")
+              alert("로비 입장 시간이 마감되었습니다.\n(게임 시작 1분 전까지만 입장 가능)\n\n관람 모드로 이동합니다.")
               window.location.href = "/viewer"
               return
             }
