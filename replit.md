@@ -7,7 +7,23 @@ This project is a "Rock-Paper-Scissors One-Exclusion Survival Game" designed for
 
 ### 마지막 업데이트
 - 날짜: 2025-10-16
-- **세션 생명주기 관리 시스템 구축 완료** ✅ (LATEST)
+- **프로덕션 배포 완료** ✅ (LATEST)
+  - 문제: Next.js 프로덕션 빌드 오류 (webpack runtime 모듈 누락, PWA 관련 빌드 실패)
+  - 해결: PWA 비활성화 (`next.config.mjs`에서 `disable: true` 설정)
+  - 결과: 프로덕션 배포 성공, 모든 기능 정상 작동
+  - URL: https://survival-game-app-chiuking369.replit.app
+  - 결정: PWA 기능(오프라인 지원, 앱 설치) 없이 일반 웹사이트로 운영
+- **데이터베이스 연결 안정화** ✅
+  - 문제: "Cannot use pool after calling end" 에러 발생
+  - 원인: `executeWithRetry()`에서 재시도 후 `pool.end()` 호출
+  - 해결: `pool.end()` 제거, 연결 풀 재사용
+  - 결과: 데이터베이스 안정적으로 작동, 프로덕션 DB 연결됨
+- **SSE double-release 버그 수정** ✅
+  - 문제: LISTEN 클라이언트가 중복 해제되는 버그
+  - 원인: SSE 연결 종료 시 cleanup 로직 중복 실행
+  - 해결: `isReleased` 플래그 추가로 중복 방지
+  - 결과: SSE 실시간 동기화 안정적으로 작동
+- **세션 생명주기 관리 시스템 구축 완료** ✅
   - 문제: 게임 완료 후 같은 세션을 재사용하면서 시간 설정 등 버그 발생
   - 해결: 완료된 세션을 닫고 새 세션 생성하는 시스템 구축
   - 기능: 'closed' 상태 추가, 세션 닫기/새 세션 생성 버튼, 닫힌 세션 수정 차단
