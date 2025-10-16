@@ -1271,9 +1271,20 @@ export default function GameInterface() {
     if (newChoices.length === 2) {
       try {
         const participantInfo = localStorage.getItem("participantInfo")
-        if (!participantInfo) return
+        const sessionIdStr = sessionStorage.getItem("currentSessionId")
+        
+        if (!participantInfo || !sessionIdStr) {
+          console.error("[Choice] 참가자 정보 또는 세션 ID 없음")
+          return
+        }
 
         const participant = JSON.parse(participantInfo)
+        const sessionId = parseInt(sessionIdStr, 10)
+        
+        if (isNaN(sessionId)) {
+          console.error("[Choice] 세션 ID 파싱 실패:", sessionIdStr)
+          return
+        }
 
         const response = await fetch("/api/game/choice", {
           method: "POST",
@@ -1282,6 +1293,7 @@ export default function GameInterface() {
             action: "select_two",
             roundId,
             participantId: participant.id,
+            sessionId,
             selectedChoices: newChoices,
           }),
         })
@@ -1309,9 +1321,20 @@ export default function GameInterface() {
     // 서버에 하나빼기 저장
     try {
       const participantInfo = localStorage.getItem("participantInfo")
-      if (!participantInfo) return
+      const sessionIdStr = sessionStorage.getItem("currentSessionId")
+      
+      if (!participantInfo || !sessionIdStr) {
+        console.error("[Choice] 참가자 정보 또는 세션 ID 없음")
+        return
+      }
 
       const participant = JSON.parse(participantInfo)
+      const sessionId = parseInt(sessionIdStr, 10)
+      
+      if (isNaN(sessionId)) {
+        console.error("[Choice] 세션 ID 파싱 실패:", sessionIdStr)
+        return
+      }
 
       const response = await fetch("/api/game/choice", {
         method: "POST",
@@ -1320,6 +1343,7 @@ export default function GameInterface() {
           action: "exclude_one",
           roundId,
           participantId: participant.id,
+          sessionId,
           excludedChoice: choice, // 제외할 선택
         }),
       })
