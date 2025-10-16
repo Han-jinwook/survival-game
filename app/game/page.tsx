@@ -101,7 +101,8 @@ export default function GameInterface() {
     survivorsAtEnd: 0,
   })
 
-  // Generated unique ID for the current game session for sessionStorage
+  // DB 라운드 ID
+  const [roundId, setRoundId] = useState<string | null>(null)
   const [gameRoundId, setGameRoundId] = useState<string>("")
 
   const currentUser = players.find((p) => p.isCurrentUser)
@@ -287,6 +288,12 @@ export default function GameInterface() {
         const data = await response.json()
         console.log("[v0] DB game data:", data)
 
+        // 라운드 정보 설정
+        if (data.round) {
+          setRoundId(data.round.id)
+          console.log("[v0] 라운드 ID 설정:", data.round.id)
+        }
+
         // playing 상태인 참가자만 게임에 참여
         const lobbyPlayers = data.participants?.filter((p: any) => p.status === "playing") || []
         console.log("[v0] Playing participants:", lobbyPlayers)
@@ -346,7 +353,7 @@ export default function GameInterface() {
     eventSource.onmessage = async (event) => {
       try {
         const data = JSON.parse(event.data)
-        console.log("[SSE] 수신:", data.type)
+        console.log("[SSE] 수신:", data.type, data)
         
         if (data.type === 'connected') return
         
@@ -366,6 +373,28 @@ export default function GameInterface() {
           
           setPlayers(updatedPlayers)
           console.log("[SSE] 동기화 완료:", updatedPlayers.length, "명")
+
+          // 라운드 정보 업데이트
+          if (gameState.round) {
+            setRoundId(gameState.round.id)
+            console.log("[SSE] 라운드 ID 업데이트:", gameState.round.id, "Phase:", gameState.round.phase)
+            
+            // 페이즈 업데이트 (timeLeft도 함께 설정하여 클라이언트 타이머 방지)
+            if (gameState.round.phase === 'excludeOne') {
+              setGameRound((prev) => ({ ...prev, phase: 'excludeOne', timeLeft: 10 }))
+            } else if (gameState.round.phase === 'revealing') {
+              // 결과 표시
+              setGameRound((prev) => ({ ...prev, phase: 'revealing', timeLeft: 5 }))
+              if (gameState.round.losingChoice) {
+                setLosingChoice(gameState.round.losingChoice as GameChoice)
+                setChoiceCounts({
+                  rock: gameState.round.rockCount || 0,
+                  paper: gameState.round.paperCount || 0,
+                  scissors: gameState.round.scissorsCount || 0
+                })
+              }
+            }
+          }
         }
       } catch (error) {
         console.error("[SSE] 오류:", error)
@@ -447,14 +476,16 @@ export default function GameInterface() {
         setGameRound((prev) => ({ ...prev, timeLeft: prev.timeLeft - 1 }))
       }, 1000)
       return () => clearTimeout(timer)
-    } else if (gameRound.timeLeft === 0) {
+    } else if (gameRound.timeLeft === 0 && !roundId) {
+      // 🔒 서버 모드 (roundId 있음)일 때는 클라이언트 계산 비활성화
+      // 테스트 모드 (roundId 없음)일 때만 로컬 계산 실행
       if (gameRound.phase === "selectTwo") {
         handleSelectTwoTimeUp()
       } else if (gameRound.phase === "excludeOne") {
         handleExcludeOneTimeUp()
       }
     }
-  }, [gameRound.timeLeft, gameRound.phase])
+  }, [gameRound.timeLeft, gameRound.phase, roundId])
 
   useEffect(() => {
     if (gameRound.phase === "selectTwo" && gameRound.timeLeft === 10) {
@@ -1217,43 +1248,92 @@ export default function GameInterface() {
     console.log("[v0] ===== startNextRound END =====")
   }
 
-  const handleSelectChoice = (choice: GameChoice) => {
-    if (gameRound.phase !== "selectTwo") return
+  const handleSelectChoice = async (choice: GameChoice) => {
+    if (gameRound.phase !== "selectTwo" || !roundId || !currentUser) return
 
+    // UI 업데이트 (즉시 피드백)
     setSelectedChoices((prev) => {
       if (prev.includes(choice)) {
         return prev.filter((c) => c !== choice)
       } else if (prev.length < 2) {
-        const newChoices = [...prev, choice]
-        if (newChoices.length === 2) {
-          setPlayers((players) => players.map((p) => (p.isCurrentUser ? { ...p, selectedChoices: newChoices } : p)))
-        }
-        return newChoices
+        return [...prev, choice]
       }
       return prev
     })
+
+    // 2개 선택 완료 시 서버에 저장
+    const newChoices = selectedChoices.includes(choice)
+      ? selectedChoices.filter((c) => c !== choice)
+      : selectedChoices.length < 2
+        ? [...selectedChoices, choice]
+        : selectedChoices
+
+    if (newChoices.length === 2) {
+      try {
+        const participantInfo = localStorage.getItem("participantInfo")
+        if (!participantInfo) return
+
+        const participant = JSON.parse(participantInfo)
+
+        const response = await fetch("/api/game/choice", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "select_two",
+            roundId,
+            participantId: participant.id,
+            selectedChoices: newChoices,
+          }),
+        })
+
+        if (!response.ok) {
+          console.error("[Choice] 2개 선택 저장 실패:", response.status)
+        } else {
+          console.log("[Choice] 2개 선택 저장 성공:", newChoices)
+        }
+      } catch (error) {
+        console.error("[Choice] 2개 선택 API 오류:", error)
+      }
+    }
   }
 
-  const handleExcludeChoice = (choice: GameChoice) => {
-    if (gameRound.phase !== "excludeOne" || !selectedChoices.includes(choice)) return
+  const handleExcludeChoice = async (choice: GameChoice) => {
+    if (gameRound.phase !== "excludeOne" || !selectedChoices.includes(choice) || !roundId || !currentUser) return
 
     const finalChoice = selectedChoices.find((c) => c !== choice)
-    if (finalChoice) {
-      setPlayers((prev) => prev.map((p) => (p.isCurrentUser ? { ...p, finalChoice } : p)))
+    if (!finalChoice) return
 
-      if (currentUser) {
-        const event: GameEvent = {
-          type: "choice",
-          playerId: currentUser.id,
-          playerNickname: currentUser.nickname,
-          choice: finalChoice,
-          timestamp: Date.now(),
-        }
-        setCurrentRoundLog((prev) => ({
-          ...prev,
-          events: [...prev.events, event],
-        }))
+    // UI 업데이트 (즉시 피드백)
+    setPlayers((prev) => prev.map((p) => (p.isCurrentUser ? { ...p, finalChoice } : p)))
+
+    // 서버에 하나빼기 저장
+    try {
+      const participantInfo = localStorage.getItem("participantInfo")
+      if (!participantInfo) return
+
+      const participant = JSON.parse(participantInfo)
+
+      const response = await fetch("/api/game/choice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "exclude_one",
+          roundId,
+          participantId: participant.id,
+          excludedChoice: choice, // 제외할 선택
+        }),
+      })
+
+      if (!response.ok) {
+        console.error("[Choice] 하나빼기 저장 실패:", response.status)
+      } else {
+        const data = await response.json()
+        console.log("[Choice] 하나빼기 저장 성공. 최종 선택:", data.choice.finalChoice)
+        
+        // 서버가 자동으로 결과를 계산할 수 있음 (SSE로 알림 받음)
       }
+    } catch (error) {
+      console.error("[Choice] 하나빼기 API 오류:", error)
     }
   }
 
