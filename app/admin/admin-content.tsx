@@ -61,8 +61,8 @@ export default function AdminContent() {
     if (!gameStartTime) return ""
 
     const now = new Date()
-    // datetime-local 값을 한국 시간대로 명시적 변환
-    const startTime = new Date(gameStartTime + ':00+09:00')
+    // datetime-local 값을 Date 객체로 변환 (로컬 시간으로 해석됨)
+    const startTime = new Date(gameStartTime)
     const diff = startTime.getTime() - now.getTime()
 
     if (diff <= 0) return "게임 시작 시간이 지났습니다"
@@ -182,8 +182,8 @@ export default function AdminContent() {
       setTimeRemaining(remaining)
 
       const now = new Date()
-      // datetime-local 값을 한국 시간대로 명시적 변환
-      const startTime = new Date(gameStartTime + ':00+09:00')
+      // datetime-local 값을 Date 객체로 변환 (로컬 시간으로 해석됨)
+      const startTime = new Date(gameStartTime)
       const diff = startTime.getTime() - now.getTime()
 
       if (diff <= 0 && gameStatus === "waiting") {
@@ -229,15 +229,17 @@ export default function AdminContent() {
     setSaveMessage("")
     
     try {
-      // 🕐 한국 시간(KST) 명시적 처리: datetime-local 값을 한국 시간대로 저장
-      let kstStartTime = undefined
+      // 🕐 시간 처리: datetime-local 값을 UTC ISO 문자열로 변환
+      let startTimeISO = undefined
       if (gameStartTime) {
-        // datetime-local 값: "2025-10-16T00:56" (이미 한국 로컬 시간)
-        // 한국 시간대(+09:00) 명시하여 ISO 문자열 생성
-        kstStartTime = gameStartTime + ":00+09:00" // "2025-10-16T00:56:00+09:00"
+        // datetime-local 값: "2025-10-17T15:30" (브라우저 로컬 시간 = 한국 시간)
+        // Date 객체 생성 시 로컬 시간으로 해석됨
+        const localDate = new Date(gameStartTime)
+        // UTC ISO 문자열로 변환 (서버에 저장용)
+        startTimeISO = localDate.toISOString()
         console.log("[Admin] 시간 변환:", {
-          input: gameStartTime,
-          kstTime: kstStartTime
+          local: gameStartTime,
+          utc: startTimeISO
         })
       }
       
@@ -249,7 +251,7 @@ export default function AdminContent() {
           cafeName: cafeName || undefined,
           prize: prize || undefined,
           initialLives: 5,
-          gameStartTime: kstStartTime,
+          gameStartTime: startTimeISO,
           participants: participants.map(p => ({
             naverId: p.naverId,
             nickname: p.nickname,
@@ -270,8 +272,8 @@ export default function AdminContent() {
       if (gameStartTime) {
         setGameScheduled(true)
         const now = new Date()
-        // datetime-local 값을 한국 시간대로 명시적 변환
-        const startTime = new Date(gameStartTime + ':00+09:00')
+        // datetime-local 값을 Date 객체로 변환 (로컬 시간으로 해석됨)
+        const startTime = new Date(gameStartTime)
         const diff = startTime.getTime() - now.getTime()
         
         if (diff > 0) {
@@ -643,7 +645,7 @@ export default function AdminContent() {
                 />
                 {gameStartTime && (
                   <p className="text-sm text-gray-400 mt-2">
-                    ⏰ {format(new Date(gameStartTime + ':00+09:00'), 'yyyy년 MM월 dd일 HH:mm', { locale: ko })} 시작
+                    ⏰ {format(new Date(gameStartTime), 'yyyy년 MM월 dd일 HH:mm', { locale: ko })} 시작
                   </p>
                 )}
               </div>
@@ -916,7 +918,7 @@ export default function AdminContent() {
         <div className="max-w-6xl mx-auto text-center">
           <p className="text-gray-500 text-sm">
             {cafeName} × {eventName} • 상품: {prize} • 시작:{" "}
-            {gameStartTime ? new Date(gameStartTime + ':00+09:00').toLocaleString("ko-KR") : "미설정"}
+            {gameStartTime ? new Date(gameStartTime).toLocaleString("ko-KR") : "미설정"}
           </p>
         </div>
       </footer>
