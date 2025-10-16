@@ -94,7 +94,25 @@ export default function AdminContent() {
             setCafeName(data.session.cafeName || "")
             setEventName(data.session.sessionName || "")
             setPrize(data.session.prize || "")
-            setGameStartTime(data.session.startedAt?.slice(0, 16) || "")
+            
+            // UTC 시간을 브라우저 로컬 시간(한국 시간)으로 변환
+            if (data.session.startedAt) {
+              const date = new Date(data.session.startedAt) // 브라우저가 자동으로 로컬 시간으로 변환
+              const year = date.getFullYear()
+              const month = (date.getMonth() + 1).toString().padStart(2, '0')
+              const day = date.getDate().toString().padStart(2, '0')
+              const hours = date.getHours().toString().padStart(2, '0')
+              const minutes = date.getMinutes().toString().padStart(2, '0')
+              const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}`
+              setGameStartTime(localTimeString)
+              console.log("[Admin] 시간 로드:", {
+                utc: data.session.startedAt,
+                local: localTimeString
+              })
+            } else {
+              setGameStartTime("")
+            }
+            
             setGameScheduled(data.session.status === "waiting")
           }
           
