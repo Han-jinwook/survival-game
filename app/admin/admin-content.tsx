@@ -61,7 +61,8 @@ export default function AdminContent() {
     if (!gameStartTime) return ""
 
     const now = new Date()
-    const startTime = new Date(gameStartTime)
+    // datetime-local 값을 한국 시간대로 명시적 변환
+    const startTime = new Date(gameStartTime + ':00+09:00')
     const diff = startTime.getTime() - now.getTime()
 
     if (diff <= 0) return "게임 시작 시간이 지났습니다"
@@ -154,7 +155,8 @@ export default function AdminContent() {
       setTimeRemaining(remaining)
 
       const now = new Date()
-      const startTime = new Date(gameStartTime)
+      // datetime-local 값을 한국 시간대로 명시적 변환
+      const startTime = new Date(gameStartTime + ':00+09:00')
       const diff = startTime.getTime() - now.getTime()
 
       if (diff <= 0 && gameStatus === "waiting") {
@@ -241,7 +243,8 @@ export default function AdminContent() {
       if (gameStartTime) {
         setGameScheduled(true)
         const now = new Date()
-        const startTime = new Date(gameStartTime)
+        // datetime-local 값을 한국 시간대로 명시적 변환
+        const startTime = new Date(gameStartTime + ':00+09:00')
         const diff = startTime.getTime() - now.getTime()
         
         if (diff > 0) {
@@ -546,7 +549,7 @@ export default function AdminContent() {
                 />
                 {gameStartTime && (
                   <p className="text-sm text-gray-400 mt-2">
-                    ⏰ {format(new Date(gameStartTime), 'yyyy년 MM월 dd일 HH:mm', { locale: ko })} 시작
+                    ⏰ {format(new Date(gameStartTime + ':00+09:00'), 'yyyy년 MM월 dd일 HH:mm', { locale: ko })} 시작
                   </p>
                 )}
               </div>
@@ -792,7 +795,7 @@ export default function AdminContent() {
         <div className="max-w-6xl mx-auto text-center">
           <p className="text-gray-500 text-sm">
             {cafeName} × {eventName} • 상품: {prize} • 시작:{" "}
-            {gameStartTime ? new Date(gameStartTime).toLocaleString("ko-KR") : "미설정"}
+            {gameStartTime ? new Date(gameStartTime + ':00+09:00').toLocaleString("ko-KR") : "미설정"}
           </p>
         </div>
       </footer>
