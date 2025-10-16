@@ -38,7 +38,19 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { action, sessionId, userId, participantId, nickname, initialLives, updates } = await request.json()
+    const body = await request.json()
+    const { action, sessionId, userId, participantId, nickname, initialLives, updates } = body
+
+    // 🔒 닫힌 세션에 대한 mutating 작업 차단
+    const protectedActions = ["reset_session", "start_countdown", "start", "update", "complete"]
+    if (protectedActions.includes(action) && sessionId) {
+      const session = await DatabaseService.getGameSession(sessionId)
+      if (session?.status === "closed") {
+        return NextResponse.json({ 
+          error: "닫힌 세션은 수정할 수 없습니다. 새 세션을 생성해주세요." 
+        }, { status: 403 })
+      }
+    }
 
     if (action === "join") {
       const participant = await DatabaseService.addParticipant(
@@ -114,6 +126,13 @@ export async function POST(request: NextRequest) {
       // 10초 후 자동으로 in-progress로 변경 + 로비 미입장자 제거
       setTimeout(async () => {
         try {
+          // 🔒 세션 상태 재확인: 카운트다운 중 닫혔거나 상태가 변경되었으면 건너뛰기
+          const currentSession = await DatabaseService.getGameSession(sessionId)
+          if (!currentSession || currentSession.status !== "starting") {
+            console.log(`[게임 시작] 세션 상태 변경됨 (${currentSession?.status}), 자동 시작 취소`)
+            return
+          }
+
           const participants = await DatabaseService.getParticipants(sessionId)
           
           // status !== 'playing'인 참가자를 eliminated로 변경
@@ -178,6 +197,36 @@ export async function POST(request: NextRequest) {
         ...updates,
       })
       return NextResponse.json({ success: true, session })
+    }
+
+    if (action === "close_session") {
+      // 완료된 세션을 닫기 (수정 불가능하게 만들기)
+      if (!sessionId) {
+        return NextResponse.json({ error: "세션 ID가 필요합니다." }, { status: 400 })
+      }
+      
+      const session = await DatabaseService.updateGameSession(sessionId, {
+        status: "closed",
+      })
+      
+      console.log(`[세션 닫기] 세션 ${sessionId}가 닫혔습니다. 더 이상 수정할 수 없습니다.`)
+      return NextResponse.json({ success: true, session })
+    }
+
+    if (action === "create_new_session") {
+      // 완전히 새로운 세션 생성
+      const { sessionName, startedAt, cafeName, prize } = body
+      
+      const newSession = await DatabaseService.createGameSession(
+        sessionName || "가위바위보 하나빼기 게임",
+        initialLives || 5,
+        startedAt,
+        cafeName,
+        prize
+      )
+      
+      console.log(`[새 세션 생성] ID: ${newSession.id}, 이름: ${newSession.session_name}`)
+      return NextResponse.json({ success: true, session: newSession })
     }
 
     return NextResponse.json({ error: "지원하지 않는 액션입니다." }, { status: 400 })

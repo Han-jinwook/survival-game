@@ -28,7 +28,7 @@ export default function AdminContent() {
   const [prize, setPrize] = useState("")
   const [gameStartTime, setGameStartTime] = useState("")
   const [gameScheduled, setGameScheduled] = useState(false)
-  const [gameStatus, setGameStatus] = useState<"waiting" | "starting" | "in_progress" | "completed">("waiting")
+  const [gameStatus, setGameStatus] = useState<"waiting" | "starting" | "in_progress" | "completed" | "closed">("waiting")
   const [participants, setParticipants] = useState<Participant[]>([])
   const [newParticipant, setNewParticipant] = useState({ naverId: "", nickname: "", lives: 5 })
   const [bulkData, setBulkData] = useState("")
@@ -420,6 +420,84 @@ export default function AdminContent() {
     }
   }
 
+  const closeSession = async () => {
+    if (!sessionId) {
+      setGameMessage("❌ 세션 ID가 없습니다.")
+      return
+    }
+
+    if (!confirm("이 세션을 닫으시겠습니까? 닫힌 세션은 수정할 수 없습니다.")) {
+      return
+    }
+
+    try {
+      const response = await fetch("/api/game/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "close_session",
+          sessionId: sessionId,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "세션 닫기 실패")
+      }
+
+      setGameStatus("closed")
+      setIsEditing(false)
+      setGameMessage("✅ 세션이 닫혔습니다. 새 이벤트를 생성해주세요.")
+      console.log("[Admin] 세션 닫기 완료:", sessionId)
+    } catch (error: any) {
+      console.error("[Admin] 세션 닫기 실패:", error)
+      setGameMessage(`❌ ${error.message || "세션 닫기에 실패했습니다."}`)
+    }
+  }
+
+  const createNewSession = async () => {
+    if (!confirm("새 이벤트 세션을 생성하시겠습니까?")) {
+      return
+    }
+
+    try {
+      const response = await fetch("/api/game/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create_new_session",
+          sessionName: "가위바위보 하나빼기 게임",
+          initialLives: 5,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "세션 생성 실패")
+      }
+
+      const data = await response.json()
+      
+      // 새 세션 정보로 UI 업데이트
+      setSessionId(data.session.id)
+      setGameStatus("waiting")
+      setCafeName("")
+      setEventName("")
+      setPrize("")
+      setGameStartTime("")
+      setGameScheduled(false)
+      setParticipants([])
+      setIsEditing(true)
+      setIsSaved(false)
+      
+      setGameMessage("✅ 새 세션이 생성되었습니다! 정보를 입력하고 저장해주세요.")
+      console.log("[Admin] 새 세션 생성 완료:", data.session.id)
+    } catch (error: any) {
+      console.error("[Admin] 세션 생성 실패:", error)
+      setGameMessage(`❌ ${error.message || "세션 생성에 실패했습니다."}`)
+    }
+  }
+
 
   if (!isAuthenticated) {
     return (
@@ -514,7 +592,7 @@ export default function AdminContent() {
                   onChange={(e) => setCafeName(e.target.value)}
                   className="bg-black/40 border-red-800/50 text-white disabled:opacity-100 disabled:cursor-not-allowed"
                   placeholder="카페 이름을 입력하세요"
-                  disabled={!isEditing}
+                  disabled={!isEditing || gameStatus === "closed"}
                 />
               </div>
               <div>
@@ -524,7 +602,7 @@ export default function AdminContent() {
                   onChange={(e) => setEventName(e.target.value)}
                   className="bg-black/40 border-red-800/50 text-white disabled:opacity-100 disabled:cursor-not-allowed"
                   placeholder="이벤트 이름을 입력하세요"
-                  disabled={!isEditing}
+                  disabled={!isEditing || gameStatus === "closed"}
                 />
               </div>
               <div>
@@ -534,7 +612,7 @@ export default function AdminContent() {
                   onChange={(e) => setPrize(e.target.value)}
                   className="bg-black/40 border-red-800/50 text-white disabled:opacity-100 disabled:cursor-not-allowed"
                   placeholder="상품을 입력하세요 (예: 아이폰 16 Pro Max)"
-                  disabled={!isEditing}
+                  disabled={!isEditing || gameStatus === "closed"}
                 />
               </div>
               <div>
@@ -543,7 +621,7 @@ export default function AdminContent() {
                   type="datetime-local"
                   value={gameStartTime || ""}
                   onChange={(e) => setGameStartTime(e.target.value)}
-                  disabled={!isEditing}
+                  disabled={!isEditing || gameStatus === "closed"}
                   className="w-full bg-black/40 border-red-800/50 text-white disabled:opacity-100 text-base p-3 h-12"
                   style={{ colorScheme: 'dark' }}
                 />
@@ -562,9 +640,10 @@ export default function AdminContent() {
               {!isEditing ? (
                 <Button
                   onClick={() => setIsEditing(true)}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 font-semibold mt-4"
+                  disabled={gameStatus === "closed"}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 font-semibold mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  📝 정보 수정
+                  📝 정보 수정 {gameStatus === "closed" && "(닫힌 세션)"}
                 </Button>
               ) : (
                 <div className="flex gap-2 mt-4">
@@ -625,14 +704,42 @@ export default function AdminContent() {
                       {gameStatus === "in_progress" && "진행 중"}
                       {gameStatus === "starting" && "시작 중"}
                       {gameStatus === "completed" && "완료"}
+                      {gameStatus === "closed" && "닫힘"}
                     </Badge>
                   </div>
-                  <Button
-                    onClick={resetSession}
-                    className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-                  >
-                    🔄 세션 리셋 (대기 상태로)
-                  </Button>
+                  
+                  {gameStatus === "closed" ? (
+                    <div className="space-y-3">
+                      <div className="p-3 bg-red-900/30 border border-red-600/50 rounded-lg">
+                        <p className="text-sm text-red-300 text-center">
+                          🔒 이 세션은 닫혔습니다. 수정할 수 없습니다.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={createNewSession}
+                        className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        ✨ 새 이벤트 세션 생성
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={resetSession}
+                        className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+                      >
+                        🔄 세션 리셋
+                      </Button>
+                      {gameStatus === "completed" && (
+                        <Button
+                          onClick={closeSession}
+                          className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          🔒 세션 닫기
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

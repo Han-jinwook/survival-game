@@ -79,7 +79,7 @@ export interface GameSession {
   session_name: string
   cafe_name?: string
   prize?: string
-  status: "waiting" | "starting" | "in_progress" | "completed"
+  status: "waiting" | "starting" | "in_progress" | "completed" | "closed"
   initial_lives: number
   current_round: number
   winner_id?: string
