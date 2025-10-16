@@ -651,7 +651,7 @@ export default function GameInterface() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "start_round",
+          action: "create",
           sessionId,
           roundNumber: nextRoundNumber,
         }),
