@@ -85,6 +85,33 @@ export default function AdminContent() {
     
     console.log("[Admin] 초기 로드 시작 - DB에서 데이터를 불러옵니다")
     
+    // 🔒 관리자 페이지 접속 시 자동으로 로비에서 퇴장
+    const exitLobbyIfNeeded = async () => {
+      const participantInfo = localStorage.getItem("participantInfo")
+      if (participantInfo) {
+        try {
+          const participant = JSON.parse(participantInfo)
+          console.log("[Admin] 로비 퇴장 처리 중:", participant.nickname)
+          
+          await fetch("/api/game/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              action: "exit_lobby",
+              participantId: participant.id,
+            }),
+          })
+          
+          localStorage.removeItem("participantInfo")
+          console.log("[Admin] 로비 퇴장 완료 및 참가자 정보 삭제")
+        } catch (error) {
+          console.error("[Admin] 로비 퇴장 실패:", error)
+        }
+      }
+    }
+    
+    exitLobbyIfNeeded()
+    
     const loadSettings = async () => {
       try {
         const response = await fetch("/api/game/settings")
@@ -562,17 +589,6 @@ export default function AdminContent() {
                 저장됨 ({lastSavedTime.toLocaleTimeString("ko-KR")})
               </Badge>
             )}
-            <Badge
-              variant={
-                gameStatus === "waiting" ? "secondary" : gameStatus === "in_progress" ? "destructive" : "default"
-              }
-              className="px-3 py-1"
-            >
-              {gameStatus === "waiting" && "대기 중"}
-              {gameStatus === "starting" && "시작 중"}
-              {gameStatus === "in_progress" && "진행 중"}
-              {gameStatus === "completed" && "완료"}
-            </Badge>
             <Link href="/" className="text-gray-400 hover:text-white transition-colors">
               메인으로
             </Link>
