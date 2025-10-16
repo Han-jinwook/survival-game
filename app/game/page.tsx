@@ -339,62 +339,38 @@ export default function GameInterface() {
 
     loadGameData()
     
-    // 🔥 SSE 연결: 실시간 게임 상태 동기화
-    const eventSource = new EventSource('/api/game/stream')
-    console.log("[SSE] 게임 상태 동기화 연결 시작")
-    
-    eventSource.onmessage = async (event) => {
+    // 🔥 폴링: 2초마다 게임 상태 동기화
+    const syncInterval = setInterval(async () => {
       try {
-        const data = JSON.parse(event.data)
-        console.log("[SSE] 게임 업데이트 수신:", data)
-        
-        // 연결 확인 메시지는 무시
-        if (data.type === 'connected') {
-          console.log("[SSE] 연결 확인됨")
-          return
-        }
-        
-        // 🔥 게임 상태 변경 감지 → 전체 상태 다시 불러오기
-        if (data.type === 'player_choice' || data.type === 'lobby_update' || data.type === 'game_update') {
-          console.log("[SSE] 게임 상태 변경 감지, 최신 상태 불러오는 중...")
+        const response = await fetch("/api/game/state")
+        if (response.ok) {
+          const gameState = await response.json()
           
-          // 전체 게임 상태 다시 fetch
-          const response = await fetch("/api/game/state")
-          if (response.ok) {
-            const gameState = await response.json()
-            
-            // playing 상태인 참가자만 표시
-            const lobbyPlayers = gameState.participants?.filter((p: any) => p.status === "playing") || []
-            const currentParticipantId = localStorage.getItem("participantInfo") ? JSON.parse(localStorage.getItem("participantInfo")!).id : null
-            
-            const updatedPlayers = lobbyPlayers.map((p: any) => ({
-              id: p.id,
-              nickname: p.nickname,
-              lives: p.currentLives || 0,
-              isCurrentUser: p.id === currentParticipantId,
-              // 선택 정보도 함께 업데이트 (나중에 구현)
-            }))
-            
-            setPlayers(updatedPlayers)
-            console.log("[SSE] 플레이어 상태 동기화 완료:", updatedPlayers)
-          }
+          // playing 상태인 참가자만 표시
+          const lobbyPlayers = gameState.participants?.filter((p: any) => p.status === "playing") || []
+          const currentParticipantId = localStorage.getItem("participantInfo") ? JSON.parse(localStorage.getItem("participantInfo")!).id : null
+          
+          const updatedPlayers = lobbyPlayers.map((p: any) => ({
+            id: p.id,
+            nickname: p.nickname,
+            lives: p.currentLives || 0,
+            isCurrentUser: p.id === currentParticipantId,
+          }))
+          
+          setPlayers(updatedPlayers)
+          console.log("[폴링] 플레이어 동기화:", updatedPlayers.length, "명")
         }
       } catch (error) {
-        console.error("[SSE] 메시지 처리 오류:", error)
+        console.error("[폴링] 상태 업데이트 오류:", error)
       }
-    }
+    }, 2000) // 2초마다 업데이트
     
-    eventSource.onerror = (error) => {
-      console.error("[SSE] 연결 오류:", error)
-      eventSource.close()
-    }
-    
-    // cleanup: 컴포넌트 언마운트 시 로비 퇴장 + SSE 연결 종료
+    // cleanup: 컴포넌트 언마운트 시 로비 퇴장 + 폴링 종료
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload)
       exitLobby()
-      eventSource.close()
-      console.log("[SSE] 게임 상태 동기화 연결 종료")
+      clearInterval(syncInterval)
+      console.log("[폴링] 게임 상태 동기화 종료")
     }
   }, [])
 

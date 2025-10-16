@@ -1,0 +1,67 @@
+page-ca94ae1e07d1497a.js:1 [v0] GlobalAudioManager initializing
+page-ca94ae1e07d1497a.js:1 [v0] AudioSystem connecting to page: landing
+page-ca94ae1e07d1497a.js:1 [v0] Setting global track: https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Way%20Back%20then-1-%EC%A0%95%EC%9E%AC%EC%9D%BC-LXdaGoh2hrZXY2teQe6OxSuQPZj4tT.mp3
+page-ca94ae1e07d1497a.js:1 [v0] Global audio controls registered
+page-ca94ae1e07d1497a.js:1 [Home] SSE 연결 시도...
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] SSE 연결 성공
+page-ca94ae1e07d1497a.js:1 [v0] Global background music loaded successfully
+layout-bc5497bb4d73c800.js:1 [Vercel Web Analytics] Failed to load script from /_vercel/insights/script.js. Be sure to enable Web Analytics for your project and deploy again. See https://vercel.com/docs/analytics/quickstart for more information.
+page-ca94ae1e07d1497a.js:1 [Home] DB 데이터 로드 성공: Object
+18.b37faf6e2f772acc.js:1 [Admin] 초기 로드 시작 - DB에서 데이터를 불러옵니다
+18.b37faf6e2f772acc.js:1 [Admin] DB 데이터 로드 성공: Object
+18.b37faf6e2f772acc.js:1 [Admin] 시간 로드: Object
+18.b37faf6e2f772acc.js:1 [Admin] 참가자 로드 완료: 6 명
+18.b37faf6e2f772acc.js:1 [Admin] 세션 닫기 완료: b7fb7d97-0999-4b94-bd91-c3789e5a1649
+18.b37faf6e2f772acc.js:1 [Admin] 새 세션 생성 완료: ecd65caa-275d-42f1-8731-27f72c4f01f7
+18.b37faf6e2f772acc.js:1 [Admin] 시간 변환: Object
+18.b37faf6e2f772acc.js:1 [Admin] 게임 예약 완료, 시작까지: 2일 2시간 0분
+18.b37faf6e2f772acc.js:1 [Admin] 설정 DB 저장 완료, 참가자 수: 0
+18.b37faf6e2f772acc.js:1 [v0] 일괄 추가 완료: 6 명, 총 참가자: 6
+page-ca94ae1e07d1497a.js:1 [v0] AudioSystem connecting to page: landing
+page-ca94ae1e07d1497a.js:1 [v0] Global audio controls registered
+page-ca94ae1e07d1497a.js:1 [Home] SSE 연결 시도...
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] SSE 연결 성공
+page-ca94ae1e07d1497a.js:1 [Home] DB 데이터 로드 성공: Object
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] DB 데이터 로드 성공: Object
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] DB 데이터 로드 성공: Object
+page-ca94ae1e07d1497a.js:1 [Home] DB 데이터 로드 성공: Object
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 3
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 3
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 3
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 3
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 3
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
