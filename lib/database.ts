@@ -51,11 +51,10 @@ async function executeWithRetry<T>(
 
       console.log(`[DB] 재시도 ${attempt}/${retries} (${delay}ms 대기)`)
       
+      // 🔥 pool.end() 제거 - 풀을 종료하지 않고 재사용
       if (pool && shouldRetry) {
-        try {
-          await pool.end()
-        } catch {}
-        pool = null
+        // 단순히 재시도만 함, 풀은 유지
+        console.log('[DB] 연결 재시도, 풀 유지')
       }
 
       await new Promise(resolve => setTimeout(resolve, delay * attempt))
@@ -397,6 +396,7 @@ export class DatabaseService {
   ): Promise<() => void> {
     const db = getPool()
     const client = await db.connect()
+    let isReleased = false // 🔥 중복 release 방지
 
     console.log('[DB] LISTEN 클라이언트 연결 시작')
 
@@ -417,23 +417,33 @@ export class DatabaseService {
     // DB 에러 핸들링
     client.on('error', (err) => {
       console.error('[DB] LISTEN 클라이언트 에러:', err)
-      // 에러 발생 시 연결 파기 (풀에 반환하지 않음)
-      try {
-        client.release(true) // true = destroy connection
-        console.log('[DB] 손상된 LISTEN 연결 파기 완료')
-      } catch (e) {
-        console.error('[DB] LISTEN 연결 파기 오류:', e)
+      if (!isReleased) {
+        try {
+          client.release(true) // true = destroy connection
+          isReleased = true
+          console.log('[DB] 손상된 LISTEN 연결 파기 완료')
+        } catch (e) {
+          console.error('[DB] LISTEN 연결 파기 오류:', e)
+        }
       }
     })
 
     // 연결 해제 함수 반환
     return () => {
+      if (isReleased) {
+        console.log('[DB] LISTEN 이미 해제됨, 스킵')
+        return
+      }
+      
       console.log('[DB] LISTEN 해제 시작')
       client.query('UNLISTEN game_update')
         .catch((err) => console.error('[DB] UNLISTEN 오류:', err))
         .finally(() => {
-          client.release()
-          console.log('[DB] LISTEN 클라이언트 해제 완료')
+          if (!isReleased) {
+            client.release()
+            isReleased = true
+            console.log('[DB] LISTEN 클라이언트 해제 완료')
+          }
         })
     }
   }

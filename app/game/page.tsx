@@ -339,14 +339,21 @@ export default function GameInterface() {
 
     loadGameData()
     
-    // 🔥 폴링: 2초마다 게임 상태 동기화
-    const syncInterval = setInterval(async () => {
+    // 🔥 SSE: 실시간 게임 상태 동기화
+    const eventSource = new EventSource('/api/game/stream')
+    console.log("[SSE] 연결 시작")
+    
+    eventSource.onmessage = async (event) => {
       try {
+        const data = JSON.parse(event.data)
+        console.log("[SSE] 수신:", data.type)
+        
+        if (data.type === 'connected') return
+        
+        // 게임 상태 변경 시 전체 상태 리프레시
         const response = await fetch("/api/game/state")
         if (response.ok) {
           const gameState = await response.json()
-          
-          // playing 상태인 참가자만 표시
           const lobbyPlayers = gameState.participants?.filter((p: any) => p.status === "playing") || []
           const currentParticipantId = localStorage.getItem("participantInfo") ? JSON.parse(localStorage.getItem("participantInfo")!).id : null
           
@@ -358,19 +365,24 @@ export default function GameInterface() {
           }))
           
           setPlayers(updatedPlayers)
-          console.log("[폴링] 플레이어 동기화:", updatedPlayers.length, "명")
+          console.log("[SSE] 동기화 완료:", updatedPlayers.length, "명")
         }
       } catch (error) {
-        console.error("[폴링] 상태 업데이트 오류:", error)
+        console.error("[SSE] 오류:", error)
       }
-    }, 2000) // 2초마다 업데이트
+    }
     
-    // cleanup: 컴포넌트 언마운트 시 로비 퇴장 + 폴링 종료
+    eventSource.onerror = (error) => {
+      console.error("[SSE] 연결 오류, 재시도...")
+      eventSource.close()
+    }
+    
+    // cleanup
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload)
       exitLobby()
-      clearInterval(syncInterval)
-      console.log("[폴링] 게임 상태 동기화 종료")
+      eventSource.close()
+      console.log("[SSE] 연결 종료")
     }
   }, [])
 
