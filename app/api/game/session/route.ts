@@ -73,6 +73,15 @@ export async function POST(request: NextRequest) {
       })
       
       console.log(`[Lobby] 참가자 로비 입장: ${participant.nickname} (${participantId})`)
+      
+      // 🔥 실시간 동기화: 로비 입장 알림
+      await DatabaseService.notifyGameUpdate({
+        type: 'lobby_update',
+        action: 'enter',
+        participantId: participant.id,
+        nickname: participant.nickname
+      })
+      
       return NextResponse.json({ success: true, participant })
     }
 
@@ -87,6 +96,15 @@ export async function POST(request: NextRequest) {
       })
       
       console.log(`[Lobby] 참가자 로비 퇴장: ${participant.nickname} (${participantId})`)
+      
+      // 🔥 실시간 동기화: 로비 퇴장 알림
+      await DatabaseService.notifyGameUpdate({
+        type: 'lobby_update',
+        action: 'exit',
+        participantId: participant.id,
+        nickname: participant.nickname
+      })
+      
       return NextResponse.json({ success: true, participant })
     }
 

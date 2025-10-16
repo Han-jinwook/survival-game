@@ -438,6 +438,18 @@ export class DatabaseService {
     }
   }
 
+  // 🔥 게임 상태 변경 알림 (NOTIFY 발행)
+  static async notifyGameUpdate(update: any): Promise<void> {
+    try {
+      const db = getPool()
+      const payload = JSON.stringify(update)
+      await db.query("SELECT pg_notify('game_update', $1)", [payload])
+      console.log('[DB] NOTIFY 발행:', update.type || 'update')
+    } catch (error) {
+      console.error('[DB] NOTIFY 발행 실패:', error)
+    }
+  }
+
   // 참가자 활동 시간 업데이트 (heartbeat)
   static async updateParticipantActivity(participantId: string): Promise<void> {
     return executeWithRetry(async () => {

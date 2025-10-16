@@ -343,30 +343,44 @@ export default function GameInterface() {
     const eventSource = new EventSource('/api/game/stream')
     console.log("[SSE] 게임 상태 동기화 연결 시작")
     
-    eventSource.onmessage = (event) => {
+    eventSource.onmessage = async (event) => {
       try {
         const data = JSON.parse(event.data)
         console.log("[SSE] 게임 업데이트 수신:", data)
         
-        if (data.type === 'game_update') {
-          // 게임 상태 업데이트 처리
-          if (data.players) {
-            setPlayers(data.players)
-            console.log("[SSE] 플레이어 상태 업데이트:", data.players)
-          }
+        // 연결 확인 메시지는 무시
+        if (data.type === 'connected') {
+          console.log("[SSE] 연결 확인됨")
+          return
+        }
+        
+        // 🔥 게임 상태 변경 감지 → 전체 상태 다시 불러오기
+        if (data.type === 'player_choice' || data.type === 'lobby_update' || data.type === 'game_update') {
+          console.log("[SSE] 게임 상태 변경 감지, 최신 상태 불러오는 중...")
           
-          if (data.gameRound) {
-            setGameRound(data.gameRound)
-            console.log("[SSE] 라운드 상태 업데이트:", data.gameRound)
-          }
-          
-          if (data.choiceCounts) {
-            setChoiceCounts(data.choiceCounts)
-            console.log("[SSE] 선택 통계 업데이트:", data.choiceCounts)
+          // 전체 게임 상태 다시 fetch
+          const response = await fetch("/api/game/state")
+          if (response.ok) {
+            const gameState = await response.json()
+            
+            // playing 상태인 참가자만 표시
+            const lobbyPlayers = gameState.participants?.filter((p: any) => p.status === "playing") || []
+            const currentParticipantId = localStorage.getItem("participantInfo") ? JSON.parse(localStorage.getItem("participantInfo")!).id : null
+            
+            const updatedPlayers = lobbyPlayers.map((p: any) => ({
+              id: p.id,
+              nickname: p.nickname,
+              lives: p.currentLives || 0,
+              isCurrentUser: p.id === currentParticipantId,
+              // 선택 정보도 함께 업데이트 (나중에 구현)
+            }))
+            
+            setPlayers(updatedPlayers)
+            console.log("[SSE] 플레이어 상태 동기화 완료:", updatedPlayers)
           }
         }
       } catch (error) {
-        console.error("[SSE] 메시지 파싱 오류:", error)
+        console.error("[SSE] 메시지 처리 오류:", error)
       }
     }
     

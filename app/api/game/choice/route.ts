@@ -24,6 +24,15 @@ export async function POST(request: NextRequest) {
       finalChoice
     )
 
+    // 🔥 실시간 동기화: 플레이어 선택 알림
+    await DatabaseService.notifyGameUpdate({
+      type: 'player_choice',
+      roundId,
+      participantId,
+      selectedChoices: selectedChoices || null,
+      finalChoice: finalChoice || null
+    })
+
     return NextResponse.json({
       success: true,
       choice: {
