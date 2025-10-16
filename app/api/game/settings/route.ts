@@ -44,24 +44,42 @@ export async function POST(request: NextRequest) {
       console.log("[Settings API] 새 세션 생성:", session.id)
     }
 
-    // 참가자 등록 (기존 세션 업데이트 시에는 건너뛰기)
-    if (participants && Array.isArray(participants) && !activeSession) {
+    // 참가자 등록
+    if (participants && Array.isArray(participants) && participants.length > 0) {
+      console.log("[Settings API] 참가자 등록 시작:", participants.length, "명")
+      
       for (const p of participants) {
         // 사용자 확인 또는 생성
         let user = await DatabaseService.getUserByNaverId(p.naverId)
         
         if (!user) {
           user = await DatabaseService.createUser(p.naverId, p.nickname)
+          console.log("[Settings API] 새 사용자 생성:", p.naverId, p.nickname)
+        }
+        
+        if (!user) {
+          console.error("[Settings API] 사용자 생성 실패:", p.naverId)
+          continue
         }
 
-        // 게임 참가자로 등록
-        await DatabaseService.addParticipant(
-          session.id,
-          user.id,
-          p.nickname,
-          p.lives || initialLives
-        )
+        // 이미 참가자로 등록되어 있는지 확인
+        const existingParticipants = await DatabaseService.getParticipants(session.id)
+        const alreadyJoined = existingParticipants.find(ep => ep.user_id === user.id)
+        
+        if (!alreadyJoined) {
+          // 게임 참가자로 등록
+          await DatabaseService.addParticipant(
+            session.id,
+            user.id,
+            p.nickname,
+            p.lives || initialLives
+          )
+          console.log("[Settings API] 참가자 추가:", p.nickname)
+        } else {
+          console.log("[Settings API] 이미 등록된 참가자 건너뜀:", p.nickname)
+        }
       }
+      console.log("[Settings API] 참가자 등록 완료")
     }
 
     return NextResponse.json({
