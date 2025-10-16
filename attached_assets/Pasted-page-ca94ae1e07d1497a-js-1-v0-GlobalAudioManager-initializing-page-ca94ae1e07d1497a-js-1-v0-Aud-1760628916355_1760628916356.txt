@@ -1,0 +1,57 @@
+page-ca94ae1e07d1497a.js:1 [v0] GlobalAudioManager initializing
+page-ca94ae1e07d1497a.js:1 [v0] AudioSystem connecting to page: landing
+page-ca94ae1e07d1497a.js:1 [v0] Setting global track: https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Way%20Back%20then-1-%EC%A0%95%EC%9E%AC%EC%9D%BC-LXdaGoh2hrZXY2teQe6OxSuQPZj4tT.mp3
+page-ca94ae1e07d1497a.js:1 [v0] Global audio controls registered
+page-ca94ae1e07d1497a.js:1 [Home] SSE 연결 시도...
+page-ca94ae1e07d1497a.js:1 [v0] Global background music loaded successfully
+page-ca94ae1e07d1497a.js:1 [Home] SSE 연결 성공
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+layout-bc5497bb4d73c800.js:1 [Vercel Web Analytics] Failed to load script from /_vercel/insights/script.js. Be sure to enable Web Analytics for your project and deploy again. See https://vercel.com/docs/analytics/quickstart for more information.
+page-ca94ae1e07d1497a.js:1 [Home] DB 데이터 로드 성공: Object
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+212-a7be1fefc31f0ca5.js:1 [Home] SSE 연결 오류: EventisTrusted: truebubbles: falsecancelBubble: falsecancelable: falsecomposed: falsecurrentTarget: EventSource {url: 'https://survival-game-app-chiuking369.replit.app/api/game/stream', withCredentials: false, readyState: 2, onopen: ƒ, onmessage: ƒ, …}defaultPrevented: falseeventPhase: 0returnValue: truesrcElement: EventSource {url: 'https://survival-game-app-chiuking369.replit.app/api/game/stream', withCredentials: false, readyState: 2, onopen: ƒ, onmessage: ƒ, …}target: EventSource {url: 'https://survival-game-app-chiuking369.replit.app/api/game/stream', withCredentials: false, readyState: 2, onopen: ƒ, onmessage: ƒ, …}timeStamp: 302942type: "error"[[Prototype]]: Event
+window.console.error @ 212-a7be1fefc31f0ca5.js:1
+page-ca94ae1e07d1497a.js:1 [Home] 3초 후 SSE 재연결 시도...
+page-ca94ae1e07d1497a.js:1 [Home] SSE 연결 시도...
+page-ca94ae1e07d1497a.js:1 [Home] SSE 연결 성공
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 2
+212-a7be1fefc31f0ca5.js:1 [Home] SSE 연결 오류: EventisTrusted: truebubbles: falsecancelBubble: falsecancelable: falsecomposed: falsecurrentTarget: EventSource {url: 'https://survival-game-app-chiuking369.replit.app/api/game/stream', withCredentials: false, readyState: 2, onopen: ƒ, onmessage: ƒ, …}defaultPrevented: falseeventPhase: 0returnValue: truesrcElement: EventSource {url: 'https://survival-game-app-chiuking369.replit.app/api/game/stream', withCredentials: false, readyState: 2, onopen: ƒ, onmessage: ƒ, …}target: EventSource {url: 'https://survival-game-app-chiuking369.replit.app/api/game/stream', withCredentials: false, readyState: 2, onopen: ƒ, onmessage: ƒ, …}timeStamp: 609025.5type: "error"[[Prototype]]: Event
+window.console.error @ 212-a7be1fefc31f0ca5.js:1
+page-ca94ae1e07d1497a.js:1 [Home] 3초 후 SSE 재연결 시도...
+page-ca94ae1e07d1497a.js:1 [Home] SSE 연결 시도...
+page-ca94ae1e07d1497a.js:1 [Home] SSE 연결 성공
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+212-a7be1fefc31f0ca5.js:1 [Home] SSE 연결 오류: EventisTrusted: truebubbles: falsecancelBubble: falsecancelable: falsecomposed: falsecurrentTarget: EventSource {url: 'https://survival-game-app-chiuking369.replit.app/api/game/stream', withCredentials: false, readyState: 2, onopen: ƒ, onmessage: ƒ, …}defaultPrevented: falseeventPhase: 0returnValue: truesrcElement: EventSource {url: 'https://survival-game-app-chiuking369.replit.app/api/game/stream', withCredentials: false, readyState: 2, onopen: ƒ, onmessage: ƒ, …}target: EventSource {url: 'https://survival-game-app-chiuking369.replit.app/api/game/stream', withCredentials: false, readyState: 2, onopen: ƒ, onmessage: ƒ, …}timeStamp: 915075.4000000022type: "error"[[Prototype]]: Event
+window.console.error @ 212-a7be1fefc31f0ca5.js:1
+page-ca94ae1e07d1497a.js:1 [Home] 3초 후 SSE 재연결 시도...
+page-ca94ae1e07d1497a.js:1 [Home] SSE 연결 시도...
+page-ca94ae1e07d1497a.js:1 [Home] SSE 연결 성공
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
+page-ca94ae1e07d1497a.js:1 [Home] 실시간 접속자: 1
