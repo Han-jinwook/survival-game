@@ -405,9 +405,12 @@ export default function AdminContent() {
         throw new Error(data.error || "세션 리셋 실패")
       }
 
+      // 상태 초기화: 게임 상태 + 예약 관련 상태
       setGameStatus("waiting")
+      setGameScheduled(false)
+      setCountdown(0)
       setGameMessage("✅ 세션이 대기 상태로 리셋되었습니다!")
-      console.log("[Admin] 세션 리셋 완료:", sessionId)
+      console.log("[Admin] 세션 리셋 완료 (예약 취소):", sessionId)
     } catch (error: any) {
       console.error("[Admin] 세션 리셋 실패:", error)
       setGameMessage(`❌ ${error.message || "세션 리셋에 실패했습니다."}`)
