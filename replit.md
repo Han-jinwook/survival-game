@@ -3,8 +3,16 @@
 ## 프로젝트 현황
 
 ### 마지막 업데이트
-- 날짜: 2025-10-15
-- **쿠키 기반 사용자 인증 전환 완료** ✅ (LATEST)
+- 날짜: 2025-10-16
+- **긴급 버그 수정 완료 (이벤트 2일 전)** ✅ (LATEST)
+  - Bug #1 해결: 목숨 숫자 0개 표시 문제 → naverId 필드 추가로 해결
+  - Bug #2 해결: 테스트 버튼 비활성화 → cafeName/prize 필드 추가로 해결
+  - `/api/game/state`: naverId, cafeName, prize 필드 추가
+  - `/api/auth/me`: lives 필드 추가 (폴백용)
+  - 디버깅 로그 강화 (로비 페이지): 사용자 매칭/목숨 계산 추적
+  - TEST_SCENARIO.md 작성 (프로덕션 테스트 가이드)
+  - Architect 리뷰 통과 ✅
+- **쿠키 기반 사용자 인증 전환 완료** ✅
   - localStorage 삭제 시에도 사용자 세션 유지
   - httpOnly 쿠키(uid)로 userId 저장
   - `/api/auth/me` 엔드포인트 추가 (현재 사용자 정보 확인)
