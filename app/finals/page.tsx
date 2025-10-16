@@ -45,11 +45,9 @@ export default function FinalsPage() {
   const [gameMessage, setGameMessage] = useState("결승전을 준비하는 중...")
   const [selectedChoices, setSelectedChoices] = useState<GameChoice[]>([])
   const [losingChoices, setLosingChoices] = useState<GameChoice[]>([])
-  const [playersLostLife, setPlayersLostLife] = useState<string[]>([])
   const [voiceEnabled, setVoiceEnabled] = useState(true)
   const [choiceCounts, setChoiceCounts] = useState<Record<GameChoice, number>>({ rock: 0, paper: 0, scissors: 0 })
   const [initialized, setInitialized] = useState(false)
-  const [displayedCurrentUserLives, setDisplayedCurrentUserLives] = useState<number | null>(null)
   const [roundId, setRoundId] = useState<number | null>(null) // 서버 라운드 ID
 
   const opponents = players.filter((p) => !p.isCurrentUser)
@@ -290,61 +288,126 @@ export default function FinalsPage() {
         })
     }
     
+    // Helper function to update players from game state
+    const updatePlayersFromState = (gameState: any) => {
+      const activePlayers = gameState.participants?.filter((p: any) => p.status === "playing") || []
+      const participantInfo = localStorage.getItem("participantInfo")
+      const currentParticipantId = participantInfo ? JSON.parse(participantInfo).id : null
+      
+      const updatedPlayers = activePlayers.map((p: any) => ({
+        id: p.id,
+        nickname: p.nickname,
+        lives: p.currentLives || 0,
+        isCurrentUser: p.id === currentParticipantId,
+        maxLives: p.initialLives || 5,
+        selectedChoices: p.selectedChoices,
+        finalChoice: p.finalChoice
+      }))
+      
+      setPlayers(updatedPlayers)
+      console.log("[Finals SSE] 플레이어 상태 업데이트:", updatedPlayers.length, "명")
+    }
+
     // 🔥 SSE: 실시간 게임 상태 동기화
+    const sessionIdStr = sessionStorage.getItem("currentSessionId")
+    if (!sessionIdStr) {
+      console.error("[Finals] 세션 ID 없음, SSE 연결 불가")
+      return
+    }
+    const sessionId = parseInt(sessionIdStr, 10)
+    
     const eventSource = new EventSource('/api/game/stream')
     console.log("[Finals SSE] 연결 시작")
     
     eventSource.onmessage = async (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        console.log("[Finals SSE] 수신:", data.type)
+      const data = JSON.parse(event.data)
+      console.log("[Finals SSE] 수신:", data.type, data)
+      
+      if (data.type === 'connected') return
+      
+      // 이벤트 타입별 처리
+      if (data.type === 'player_choice') {
+        // 플레이어 선택만 업데이트
+        const response = await fetch(`/api/game/state?sessionId=${sessionId}`)
+        const gameState = await response.json()
+        updatePlayersFromState(gameState)
+      }
+      else if (data.type === 'phase_changed') {
+        // 페이즈 변경
+        console.log("[Finals SSE] 페이즈 변경:", data.phase)
+        setGameRound(prev => ({ ...prev, phase: data.phase as GamePhase }))
         
-        if (data.type === 'connected') return
-        
-        // 게임 상태 변경 시 전체 상태 리프레시
-        const response = await fetch("/api/game/state")
-        if (response.ok) {
-          const gameState = await response.json()
-          const activePlayers = gameState.participants?.filter((p: any) => p.status === "playing") || []
-          const currentParticipantId = localStorage.getItem("participantInfo") ? JSON.parse(localStorage.getItem("participantInfo")!).id : null
-          
-          const updatedPlayers = activePlayers.map((p: any) => ({
-            id: p.id,
-            nickname: p.nickname,
-            lives: p.currentLives || 0,
-            isCurrentUser: p.id === currentParticipantId,
-            maxLives: p.initialLives || 5,
-            selectedChoices: p.selectedChoices,
-            finalChoice: p.finalChoice
-          }))
-          
-          setPlayers(updatedPlayers)
-          console.log("[Finals SSE] 동기화 완료:", updatedPlayers.length, "명")
-          
-          // 라운드 정보 업데이트
-          if (gameState.round) {
-            setRoundId(gameState.round.id)
-            console.log("[Finals SSE] 라운드 ID 업데이트:", gameState.round.id, "Phase:", gameState.round.phase)
-            
-            // 페이즈 업데이트 (timeLeft도 함께 설정하여 클라이언트 타이머 방지)
-            if (gameState.round.phase === 'excludeOne') {
-              setGameRound((prev) => ({ ...prev, phase: 'excludeOne', timeLeft: 10 }))
-            } else if (gameState.round.phase === 'revealing') {
-              // 결과 표시
-              setGameRound((prev) => ({ ...prev, phase: 'revealing', timeLeft: 5 }))
-              if (gameState.round.losingChoice) {
-                setLosingChoices([gameState.round.losingChoice as GameChoice])
-                setChoiceCounts({
-                  rock: gameState.round.rockCount || 0,
-                  paper: gameState.round.paperCount || 0,
-                  scissors: gameState.round.scissorsCount || 0
-                })
-              }
-            }
-          }
+        // 페이즈별 타이머 설정
+        if (data.phase === 'selectTwo') {
+          setGameRound(prev => ({ ...prev, timeLeft: 10 }))
+        } else if (data.phase === 'excludeOne') {
+          setGameRound(prev => ({ ...prev, timeLeft: 10 }))
+        } else if (data.phase === 'revealing') {
+          setGameRound(prev => ({ ...prev, timeLeft: 5 }))
         }
-      } catch (error) {
-        console.error("[Finals SSE] 오류:", error)
+      }
+      else if (data.type === 'round_result') {
+        // 라운드 결과 - 서버가 이미 계산 완료
+        console.log("[Finals SSE] 라운드 결과:", data.result)
+        const { rockCount, paperCount, scissorsCount, losingChoice, losers } = data.result
+        
+        setChoiceCounts({ rock: rockCount, paper: paperCount, scissors: scissorsCount })
+        if (losingChoice) {
+          setLosingChoices([losingChoice])
+        }
+        
+        // 페이즈를 revealing으로 변경
+        setGameRound(prev => ({ ...prev, phase: 'revealing', timeLeft: 5 }))
+        
+        // 전체 게임 상태 리프레시 (목숨 업데이트 포함)
+        const response = await fetch(`/api/game/state?sessionId=${sessionId}`)
+        const gameState = await response.json()
+        updatePlayersFromState(gameState)
+        
+        // 결과 메시지 출력
+        if (losers && losers.length > 0) {
+          const loserNames = losers.map((l: any) => l.nickname).join(', ')
+          const message = `${loserNames}님이 목숨을 잃었습니다!`
+          setGameMessage(message)
+          speak(message)
+        }
+        
+        // 승자 확인
+        const alivePlayers = gameState.participants.filter((p: any) => p.currentLives > 0 && p.status === 'playing')
+        if (alivePlayers.length === 1) {
+          // 게임 종료
+          setTimeout(() => {
+            const winner = alivePlayers[0]
+            setGameMessage(`${winner.nickname}님이 우승했습니다! 축하합니다!`)
+            speak(`${winner.nickname}님이 우승했습니다! 축하합니다!`)
+            setGameRound(prev => ({ ...prev, phase: 'gameOver' }))
+          }, 5000)
+        } else {
+          // 다음 라운드
+          setTimeout(() => {
+            startNextRound()
+          }, 5000)
+        }
+      }
+      else if (data.type === 'round_created') {
+        // 새 라운드 시작
+        console.log("[Finals SSE] 새 라운드:", data.roundNumber)
+        setRoundId(data.roundId)
+        setGameRound(prev => ({ 
+          ...prev, 
+          round: data.roundNumber,
+          phase: 'selectTwo',
+          timeLeft: 10 
+        }))
+        setSelectedChoices([])
+        setChoiceCounts({ rock: 0, paper: 0, scissors: 0 })
+        setLosingChoices([])
+      }
+      else {
+        // 기타 업데이트 - 전체 상태 리프레시
+        const response = await fetch(`/api/game/state?sessionId=${sessionId}`)
+        const gameState = await response.json()
+        updatePlayersFromState(gameState)
       }
     }
     
@@ -387,59 +450,9 @@ export default function FinalsPage() {
           setGameRound((prev) => ({ ...prev, timeLeft: prev.timeLeft - 1 }))
         }, 1000)
         return () => clearTimeout(timer)
-      } else if (gameRound.timeLeft === 0 && !roundId) {
-        // 🔒 서버 모드 (roundId 있음)일 때는 클라이언트 계산 비활성화
-        // 테스트 모드 (roundId 없음)일 때만 로컬 계산 실행
-        if (gameRound.phase === "selectTwo") {
-          // Mark players who didn't select 2 choices as timed out
-          setPlayers((prev) =>
-            prev.map((p) => {
-              // Check if player has selected 2 choices (currentUser uses selectedChoices state, others use p.selectedChoices)
-              if (p.isCurrentUser) {
-                if (selectedChoices.length < 2) {
-                  return { ...p, timedOut: true }
-                }
-                return p
-              } else {
-                // Other players: check DB synced selectedChoices
-                if (!p.selectedChoices || p.selectedChoices.length < 2) {
-                  return { ...p, timedOut: true }
-                }
-                return p
-              }
-            }),
-          )
-
-          // Move to excludeOne phase
-          setGameRound((prev) => ({ ...prev, phase: "excludeOne", timeLeft: 10 }))
-        } else if (gameRound.phase === "excludeOne") {
-          // Mark players who didn't exclude as timed out
-          setPlayers((prev) =>
-            prev.map((p) => {
-              if (p.timedOut) {
-                // Already timed out in selectTwo phase
-                return p
-              }
-              if (!p.finalChoice) {
-                return { ...p, timedOut: true }
-              }
-              return p
-            }),
-          )
-
-          // Move to revealing phase
-          setGameRound((prev) => ({ ...prev, phase: "revealing", timeLeft: 0 }))
-          setGameMessage("결과를 확인하세요!")
-          speak("결과를 확인합니다")
-
-          // Calculate results after delay
-          setTimeout(() => {
-            calculateResults()
-          }, 2000)
-        }
       }
     }
-  }, [gameRound.phase, gameRound.timeLeft, selectedChoices, players, roundId])
+  }, [gameRound.phase, gameRound.timeLeft])
 
   useEffect(() => {
     if (players.length > 0) {
@@ -570,276 +583,42 @@ export default function FinalsPage() {
     }
   }
 
-  const calculateResults = () => {
-    console.log("[v0] ===== calculateResults START =====")
 
-    // Store current user's lives before elimination for delayed display update
-    const currentUserBeforeElimination = players.find((p) => p.isCurrentUser)
-    if (currentUserBeforeElimination) {
-      setDisplayedCurrentUserLives(currentUserBeforeElimination.lives)
-    }
-
-    const choices: Record<GameChoice, number> = { rock: 0, paper: 0, scissors: 0 }
-    players.forEach((p) => {
-      if (p.finalChoice && p.lives > 0 && !p.timedOut) {
-        choices[p.finalChoice]++
-        console.log(`[v0] Player ${p.nickname}: finalChoice = ${p.finalChoice}`)
-      }
-    })
-
-    console.log("[v0] Choice counts:", choices)
-    setChoiceCounts(choices)
-
-    // 🔧 타임아웃 플레이어 먼저 처리 (무승부 체크 전)
-    const timedOutPlayers = players.filter((p) => p.lives > 0 && p.timedOut)
-
-    const weaponTypes = [choices.rock > 0, choices.paper > 0, choices.scissors > 0].filter(Boolean).length
-
-    // Case 1: Only 1 weapon type → draw (타임아웃 제외)
-    if (weaponTypes === 1) {
-      console.log("[v0] Only 1 weapon type → draw")
-      
-      // 🔧 타임아웃 플레이어가 있으면 먼저 처리!
-      if (timedOutPlayers.length > 0) {
-        console.log("[v0] 타임아웃 플레이어 있음 → 무승부 전에 목숨 차감")
-        const losersIds = timedOutPlayers.map((p) => p.id)
-        setPlayersLostLife(losersIds)  // startNextRound에서 목숨 차감할 ID 저장
-        setLosingChoices([])
-        
-        const message = `가위바위보를 내지 않아 ${timedOutPlayers.length}개가 목숨을 잃었습니다`
-        setGameMessage(message)
-        speak(message, {
-          onComplete: () => {
-            // startNextRound에서 목숨 차감 처리 (중복 차감 방지)
-            setTimeout(() => startNextRound(), 1500)
-          },
-        })
-        return
-      }
-      
-      setLosingChoices([])
-      setPlayersLostLife([])
-      setGameMessage("이번 게임은 무승부라 바로 이어서 시작합니다")
-      speak("이번 게임은 무승부라 바로 이어서 시작합니다", {
-        onComplete: () => {
-          setTimeout(() => replayRound(), 1000)
-        },
-      })
+  const startNextRound = async () => {
+    console.log("[Finals] startNextRound - 서버에 다음 라운드 생성 요청")
+    
+    const sessionIdStr = sessionStorage.getItem("currentSessionId")
+    if (!sessionIdStr) {
+      console.error("[Finals] 세션 ID 없음")
       return
     }
-
-    // Case 2: All 3 weapons present → draw (타임아웃 제외)
-    if (weaponTypes === 3) {
-      console.log("[v0] All 3 weapons present → draw")
-      
-      // 🔧 타임아웃 플레이어가 있으면 먼저 처리!
-      if (timedOutPlayers.length > 0) {
-        console.log("[v0] 타임아웃 플레이어 있음 → 무승부 전에 목숨 차감")
-        const losersIds = timedOutPlayers.map((p) => p.id)
-        setPlayersLostLife(losersIds)  // startNextRound에서 목숨 차감할 ID 저장
-        setLosingChoices([])
-        
-        const message = `가위바위보를 내지 않아 ${timedOutPlayers.length}개가 목숨을 잃었습니다`
-        setGameMessage(message)
-        speak(message, {
-          onComplete: () => {
-            // startNextRound에서 목숨 차감 처리 (중복 차감 방지)
-            setTimeout(() => startNextRound(), 1500)
-          },
-        })
-        return
-      }
-      
-      setLosingChoices([])
-      setPlayersLostLife([])
-      setGameMessage("이번 게임은 무승부라 바로 이어서 시작합니다 (3종류 무기 출현)")
-      speak("이번 게임은 무승부라 바로 이어서 시작합니다", {
-        onComplete: () => {
-          setTimeout(() => replayRound(), 1000)
-        },
-      })
+    
+    const sessionId = parseInt(sessionIdStr, 10)
+    if (isNaN(sessionId)) {
+      console.error("[Finals] 세션 ID 파싱 실패:", sessionIdStr)
       return
     }
-
-    // Case 3: 2 different weapons → Determine winner by rock-paper-scissors rules
-    let losingWeapon: GameChoice | null = null
-
-    // Rock-paper-scissors rules:
-    // Rock beats Scissors
-    // Scissors beats Paper
-    // Paper beats Rock
-    if (choices.rock > 0 && choices.scissors > 0) {
-      losingWeapon = "scissors" // Rock beats Scissors
-    } else if (choices.scissors > 0 && choices.paper > 0) {
-      losingWeapon = "paper" // Scissors beats Paper
-    } else if (choices.paper > 0 && choices.rock > 0) {
-      losingWeapon = "rock" // Paper beats Rock
-    }
-
-    console.log("[v0] Losing weapon:", losingWeapon)
-
-    if (!losingWeapon) {
-      console.error("[v0] ERROR: Could not determine losing weapon!")
-      return
-    }
-
-    setLosingChoices([losingWeapon])
-
-    // Select losers from non-timed out players
-    const losersIds = [
-      ...players.filter((p) => !p.timedOut && p.finalChoice === losingWeapon && p.lives > 0).map((p) => p.id),
-      ...timedOutPlayers.map((p) => p.id),
-    ]
-
-    setPlayersLostLife(losersIds)
-    console.log("[v0] Players who lost life:", losersIds)
-
-    // 🔧 목숨 차감은 startNextRound에서만 처리 (중복 차감 방지)
-    // 승자 체크를 위해 예상 생존자 수 계산
-    const playersAfterLoss = players.map((p) => {
-      if (losersIds.includes(p.id)) {
-        console.log(`[v0] Will update ${p.nickname} lives: ${p.lives} -> ${p.lives - 1}`)
-        return { ...p, lives: p.lives - 1 }
-      }
-      return p
-    })
-
-    const actualSurvivors = playersAfterLoss.filter((p) => p.lives > 0).length
-
-    console.log("[v0] Survivors after elimination:", actualSurvivors)
-
-    const losingText = losingWeapon === "rock" ? "바위" : losingWeapon === "paper" ? "보" : "가위"
-    const eliminatedCount = losersIds.length - timedOutPlayers.length
-    const timedOutCount = timedOutPlayers.length
-    let message = ""
-    if (timedOutCount > 0 && eliminatedCount > 0) {
-      message = `가위바위보를 내지 않아 ${timedOutCount}개, ${losingText}를 낸 ${eliminatedCount}개가 목숨을 잃었습니다`
-    } else if (timedOutCount > 0) {
-      message = `가위바위보를 내지 않아 ${timedOutCount}개가 목숨을 잃었습니다`
-    } else {
-      message = `${losingText}를 낸 ${eliminatedCount}개가 목숨을 잃었습니다`
-    }
-
-    setGameMessage(message)
-    speak(message, {
-      onComplete: () => {
-        // Update displayed lives for current user (synchronized with subtitle timing)
-        const currentUserAfterElimination = playersAfterLoss.find((p) => p.isCurrentUser)
-        if (currentUserAfterElimination) {
-          setDisplayedCurrentUserLives(currentUserAfterElimination.lives)
-        }
-
-        if (actualSurvivors === 1) {
-          const winner = playersAfterLoss.find((p) => p.lives > 0)
-          if (winner) {
-            // 승자 목숨도 업데이트
-            setPlayers(playersAfterLoss)
-            setGameRound((prev) => ({ ...prev, phase: "gameOver" }))
-            setGameMessage(`🎉 ${winner.nickname}님이 우승했습니다! 🎉`)
-            speak(`우승자는 ${winner.nickname}입니다. 축하합니다!`)
-          }
-        } else {
-          // startNextRound에서 목숨 차감 처리
-          setTimeout(() => startNextRound(), 1500)
-        }
-      },
-    })
-
-    console.log("[v0] ===== calculateResults END =====")
-  }
-
-  const startNextRound = (updatedPlayersParam?: Player[]) => {
-    console.log("[v0] ===== startNextRound START =====")
-
-    const currentPlayers = updatedPlayersParam || players
-
-    console.log("[v0] Current players state BEFORE update:")
-    currentPlayers.forEach((p) => console.log(`[v0]   ${p.nickname}: ${p.lives} lives`))
-    console.log("[v0] Players who lost life this round:", playersLostLife)
-
-    const updatedPlayers = currentPlayers.map((p) => {
-      if (playersLostLife.includes(p.id)) {
-        const newLives = p.lives - 1
-        console.log(`[v0] Updating ${p.nickname}: ${p.lives} lives -> ${newLives} lives`)
-        return { ...p, lives: newLives, selectedChoices: undefined, finalChoice: undefined, timedOut: false }
-      }
-      return { ...p, selectedChoices: undefined, finalChoice: undefined, timedOut: false }
-    })
-
-    console.log("[v0] Updated players array AFTER calculation:")
-    updatedPlayers.forEach((p) => console.log(`[v0]   ${p.nickname}: ${p.lives} lives`))
-
-    const alivePlayers = updatedPlayers.filter((p) => p.lives > 0)
-    const survivors = alivePlayers.length
-    const totalLives = alivePlayers.reduce((sum, p) => sum + p.lives, 0)
-    const nextRound = gameRound.round + 1
-
-    console.log(
-      "[v0] Alive players:",
-      alivePlayers.map((p) => `${p.nickname}(${p.lives})`),
-    )
-    console.log("[v0] Survivors:", survivors, "Total lives:", totalLives)
-    console.log("[v0] Calling setPlayers with updatedPlayers...")
-
-    setPlayers(updatedPlayers)
-    setSelectedChoices([])
-    setLosingChoices([])
-    setPlayersLostLife([])
-    setDisplayedCurrentUserLives(null) // Reset for next round
-
-    setGameRound({
-      round: nextRound,
-      phase: "waiting",
-      timeLeft: 0,
-      survivors,
-    })
-
-    const message = `이제 총 ${survivors}명, 목숨 ${totalLives}개로, 결승 ${nextRound}라운드를 시작합니다`
-    setGameMessage(message)
-
-    setTimeout(() => {
-      speak(message, {
-        onComplete: () => {
-          setTimeout(() => {
-            console.log("[v0] About to start next round selection phase")
-            console.log("[v0] Current players state at this point:")
-            // Note: This will log the OLD state because we're in a closure
-            setGameRound((prev) => ({ ...prev, phase: "selectTwo", timeLeft: 10 }))
-          }, 500)
-        },
+    
+    try {
+      const response = await fetch("/api/game/round", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "start_round",
+          sessionId,
+          roundNumber: gameRound.round + 1,
+        }),
       })
-    }, 500)
-
-    console.log("[v0] ===== startNextRound END =====")
-  }
-
-  const replayRound = () => {
-    console.log("[v0] ===== replayRound START (no round increment) =====")
-
-    // Reset choices
-    setSelectedChoices([])
-    setLosingChoices([])
-    setPlayersLostLife([])
-    setDisplayedCurrentUserLives(null) // Reset for replay round
-    setPlayers((prev) =>
-      prev.map((p) => ({
-        ...p,
-        selectedChoices: undefined,
-        finalChoice: undefined,
-        timedOut: false,
-      })),
-    )
-
-    const survivors = players.filter((p) => p.lives > 0).length
-
-    setGameRound({
-      round: gameRound.round,
-      phase: "selectTwo",
-      timeLeft: 10,
-      survivors,
-    })
-
-    console.log("[v0] ===== replayRound END =====")
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log("[Finals] 다음 라운드 생성 성공:", data.round.id)
+      } else {
+        console.error("[Finals] 다음 라운드 생성 실패:", response.status)
+      }
+    } catch (error) {
+      console.error("[Finals] 다음 라운드 생성 에러:", error)
+    }
   }
 
   const getPlayerPositions = () => {
@@ -1075,7 +854,6 @@ export default function FinalsPage() {
                 player={pos.player}
                 phase={gameRound.phase}
                 losingChoices={losingChoices}
-                lostLife={playersLostLife.includes(pos.player.id)}
               />
             </div>
           ))}
@@ -1084,16 +862,12 @@ export default function FinalsPage() {
           {!isSpectator && currentUser && currentUser.lives > 0 && (
             <div className={`absolute ${playerPositions.userStyle}`}>
               <CurrentUserCard
-                player={{
-                  ...currentUser,
-                  lives: displayedCurrentUserLives ?? currentUser.lives,
-                }}
+                player={currentUser}
                 phase={gameRound.phase}
                 selectedChoices={selectedChoices}
                 onSelectChoice={handleSelectChoice}
                 onExcludeChoice={handleExcludeChoice}
                 losingChoices={losingChoices}
-                lostLife={playersLostLife.includes(currentUser.id)}
               />
             </div>
           )}
@@ -1109,8 +883,7 @@ function OpponentCard({
   player,
   phase,
   losingChoices = [],
-  lostLife = false,
-}: { player: Player; phase: GamePhase; losingChoices?: GameChoice[]; lostLife?: boolean }) {
+}: { player: Player; phase: GamePhase; losingChoices?: GameChoice[] }) {
   const getChoiceIcon = (choice: GameChoice) => {
     switch (choice) {
       case "rock":
@@ -1290,7 +1063,6 @@ function CurrentUserCard({
   onSelectChoice,
   onExcludeChoice,
   losingChoices = [],
-  lostLife = false,
 }: {
   player: Player
   phase: GamePhase
@@ -1298,7 +1070,6 @@ function CurrentUserCard({
   onSelectChoice: (choice: GameChoice) => void
   onExcludeChoice: (choice: GameChoice) => void
   losingChoices?: GameChoice[]
-  lostLife?: boolean
 }) {
   const getChoiceIcon = (choice: GameChoice) => {
     switch (choice) {
