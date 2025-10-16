@@ -197,3 +197,81 @@
 - Vercel 배포
 - Supabase 프로덕션 환경 설정
 - 환경 변수 설정
+
+---
+
+## 🐛 알려진 에러 및 이슈 (2025-10-16)
+
+### 1. DB LISTEN 연결 끊김 문제 ⚠️
+**증상:**
+- 에러 메시지: "terminating connection due to administrator command"
+- PostgreSQL LISTEN 클라이언트가 예기치 않게 종료됨
+- SSE 연결이 끊어져 실시간 동기화 실패
+
+**원인:**
+- Neon(Replit PostgreSQL) 서버의 연결 타임아웃 또는 관리자 명령
+- 장시간 idle 연결 유지 시 서버가 강제 종료
+
+**해결 필요:**
+- [ ] DB LISTEN 클라이언트 재연결 로직 강화
+- [ ] Heartbeat/keep-alive 메커니즘 추가
+- [ ] 연결 끊김 감지 및 자동 재연결
+- [ ] 에러 로깅 및 모니터링
+
+**임시 해결책:**
+- SSE 클라이언트 재연결 로직 존재 (3초 후 재시도)
+- 하지만 서버측 LISTEN 재연결 필요
+
+### 2. SSE 연결 안정성 문제 ⚠️
+**증상:**
+- 브라우저 콘솔: "[Home] SSE 연결 오류"
+- 간헐적 SSE 연결 실패
+
+**원인:**
+- DB LISTEN 연결 문제로 인한 영향
+- 네트워크 불안정성
+
+**해결 필요:**
+- [ ] 서버측 LISTEN 재연결 로직 구현
+- [ ] SSE 연결 상태 모니터링
+- [ ] 재연결 시 상태 복구 로직
+
+### 3. 수정 완료된 버그 ✅
+
+#### 3.1 서버-클라이언트 아키텍처 불일치
+**문제:** 클라이언트에서 게임 로직(calculateResults, processElimination 등) 실행
+**해결:** 모든 게임 로직을 서버로 이동, 클라이언트는 UI만 담당
+
+#### 3.2 SSE 이벤트 핸들러 sessionId 버그
+**문제:** `sessionId` 없으면 조용히 실패 (`if (!sessionIdStr) return`)
+**해결:** `/api/game/state`는 sessionId 없이도 작동하므로 불필요한 체크 제거
+
+#### 3.3 API 호출 오류
+**문제:** `action: "start_round"` → 서버에 존재하지 않는 액션
+**해결:** `action: "create"`로 수정
+
+### 4. 프로덕션 배포 이슈 ✅
+
+#### 4.1 PWA 빌드 실패
+**문제:** Next.js 프로덕션 빌드 시 PWA 관련 에러
+**해결:** `next.config.mjs`에서 PWA 비활성화 (`disable: true`)
+
+#### 4.2 Database 연결 풀 관리
+**문제:** "Cannot use pool after calling end" 에러
+**해결:** `executeWithRetry()`에서 `pool.end()` 제거
+
+---
+
+## 📌 우선순위 수정 사항
+
+### High Priority (프로덕션 영향)
+1. **DB LISTEN 재연결 로직 구현** - 실시간 동기화 안정성
+2. **SSE 연결 모니터링 및 복구** - 사용자 경험 개선
+
+### Medium Priority
+3. 에러 로깅 및 모니터링 시스템 추가
+4. 네트워크 에러 핸들링 개선
+
+### Low Priority
+5. 성능 최적화
+6. UX 미세 조정
