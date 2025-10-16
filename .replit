@@ -60,4 +60,4 @@ externalPort = 3003
 [deployment]
 deploymentTarget = "autoscale"
 run = ["pnpm", "run", "start"]
-build = ["pnpm", "run", "build"]
+build = ["sh", "-c", "rm -rf .next && pnpm run build"]
