@@ -327,6 +327,38 @@ export default function GameInterface() {
         const startMessage = `이제 총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} 1라운드를 시작합니다`
         setGameMessage(startMessage)
         
+        // 🔒 서버 모드: 라운드가 없으면 자동으로 라운드 생성
+        if (!data.round) {
+          const sessionIdStr = sessionStorage.getItem("currentSessionId")
+          if (sessionIdStr) {
+            const sessionId = parseInt(sessionIdStr, 10)
+            if (!isNaN(sessionId)) {
+              console.log("[Game] 라운드 생성 API 호출...")
+              try {
+                const roundResponse = await fetch("/api/game/round", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "start_round",
+                    sessionId,
+                    roundNumber: 1,
+                  }),
+                })
+                
+                if (roundResponse.ok) {
+                  const roundData = await roundResponse.json()
+                  setRoundId(roundData.round.id)
+                  console.log("[Game] 라운드 생성 성공:", roundData.round.id)
+                } else {
+                  console.error("[Game] 라운드 생성 실패:", roundResponse.status)
+                }
+              } catch (error) {
+                console.error("[Game] 라운드 생성 에러:", error)
+              }
+            }
+          }
+        }
+        
         setTimeout(() => {
           speak(startMessage, {
             onComplete: () => {

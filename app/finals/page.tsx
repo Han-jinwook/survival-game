@@ -126,6 +126,38 @@ export default function FinalsPage() {
 
         setInitialized(true)
 
+        // 🔒 서버 모드: 예선전에서 넘어온 경우, 결승전용 라운드 생성
+        const sessionIdStr = sessionStorage.getItem("currentSessionId")
+        if (sessionIdStr) {
+          const sessionId = parseInt(sessionIdStr, 10)
+          if (!isNaN(sessionId)) {
+            console.log("[Finals] 결승전 라운드 생성 API 호출...")
+            ;(async () => {
+              try {
+                const roundResponse = await fetch("/api/game/round", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    action: "start_round",
+                    sessionId,
+                    roundNumber: 1,
+                  }),
+                })
+                
+                if (roundResponse.ok) {
+                  const roundData = await roundResponse.json()
+                  setRoundId(roundData.round.id)
+                  console.log("[Finals] 결승전 라운드 생성 성공:", roundData.round.id)
+                } else {
+                  console.error("[Finals] 결승전 라운드 생성 실패:", roundResponse.status)
+                }
+              } catch (error) {
+                console.error("[Finals] 결승전 라운드 생성 에러:", error)
+              }
+            })()
+          }
+        }
+
         setTimeout(() => {
           speak(message, {
             onComplete: () => {
@@ -206,6 +238,38 @@ export default function FinalsPage() {
           setGameMessage(message)
 
           setInitialized(true)
+
+          // 🔒 서버 모드: 라운드가 없으면 자동으로 라운드 생성
+          if (!data.round) {
+            const sessionIdStr = sessionStorage.getItem("currentSessionId")
+            if (sessionIdStr) {
+              const sessionId = parseInt(sessionIdStr, 10)
+              if (!isNaN(sessionId)) {
+                console.log("[Finals] 라운드 생성 API 호출...")
+                try {
+                  const roundResponse = await fetch("/api/game/round", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      action: "start_round",
+                      sessionId,
+                      roundNumber: 1,
+                    }),
+                  })
+                  
+                  if (roundResponse.ok) {
+                    const roundData = await roundResponse.json()
+                    setRoundId(roundData.round.id)
+                    console.log("[Finals] 라운드 생성 성공:", roundData.round.id)
+                  } else {
+                    console.error("[Finals] 라운드 생성 실패:", roundResponse.status)
+                  }
+                } catch (error) {
+                  console.error("[Finals] 라운드 생성 에러:", error)
+                }
+              }
+            }
+          }
 
           setTimeout(() => {
             speak(message, {
