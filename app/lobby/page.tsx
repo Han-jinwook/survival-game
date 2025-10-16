@@ -432,6 +432,7 @@ export default function GameLobby() {
   }, [scheduledStartDate, autoStartTriggered, gameStartCountdown, sessionStatus])
 
   const currentUserStatus = players.find((p) => p.naverId === currentUser?.naverId)?.status || "waiting"
+  const currentUserLives = players.find((p) => p.naverId === currentUser?.naverId)?.lives || currentUser?.lives || 0
   const totalLives = players.reduce((sum, player) => sum + player.lives, 0)
 
   const sortedPlayers = [...players].sort((a, b) => {
@@ -909,11 +910,14 @@ export default function GameLobby() {
                   <div className="text-xl md:text-2xl font-bold text-purple-400 mb-3 md:mb-4">대기중</div>
                   {/* 개발 테스트용 버튼 (프로덕션에서 제거 예정) */}
                   <Button
-                    onClick={handleTestStart}
+                    onClick={() => {
+                      console.log("[Lobby] 테스트 버튼 클릭 - sessionStatus:", sessionStatus)
+                      handleTestStart()
+                    }}
                     disabled={sessionStatus !== "waiting"}
                     className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {sessionStatus === "waiting" ? "테스트 시작" : "게임 준비 중..."}
+                    테스트 시작 {sessionStatus !== "waiting" && `(${sessionStatus})`}
                   </Button>
                   {startErrorMessage && (
                     <div className={`mt-2 md:mt-3 p-2 md:p-3 rounded-lg text-xs md:text-sm text-center ${
@@ -949,15 +953,15 @@ export default function GameLobby() {
             <span className="text-xl font-semibold text-white">{currentUser.nickname},</span>
             <span className="text-gray-300">나의 목숨은</span>
             <div className="flex items-center gap-1">
-              {Array.from({ length: Math.min(currentUser.lives, 10) }).map((_, i) => (
+              {Array.from({ length: Math.min(currentUserLives, 10) }).map((_, i) => (
                 <span key={i} className="text-yellow-400 text-xl">
                   💛
                 </span>
               ))}
-              {currentUser.lives > 10 && (
-                <span className="text-yellow-400 text-sm ml-1">+{currentUser.lives - 10}</span>
+              {currentUserLives > 10 && (
+                <span className="text-yellow-400 text-sm ml-1">+{currentUserLives - 10}</span>
               )}
-              <span className="text-yellow-400 font-bold ml-2 text-xl">{currentUser.lives}개</span>
+              <span className="text-yellow-400 font-bold ml-2 text-xl">{currentUserLives}개</span>
             </div>
           </div>
         </Card>
