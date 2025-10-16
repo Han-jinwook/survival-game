@@ -46,10 +46,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { action, sessionId, roundNumber, updates } = await request.json()
+    const { action, sessionId, roundNumber, roundId, updates, gameMode } = await request.json()
 
+    // 라운드 생성
     if (action === "create") {
-      if (!sessionId || !roundNumber) {
+      if (!sessionId || roundNumber === undefined) {
         return NextResponse.json(
           { error: "세션 ID와 라운드 번호가 필요합니다." },
           { status: 400 }
@@ -57,9 +58,100 @@ export async function POST(request: NextRequest) {
       }
 
       const round = await DatabaseService.createRound(sessionId, roundNumber)
+      
+      // NOTIFY 발행
+      await DatabaseService.notifyGameUpdate({
+        type: 'round_created',
+        roundId: round.id,
+        roundNumber: round.round_number
+      })
+
       return NextResponse.json({ success: true, round })
     }
 
+    // 페이즈 전환
+    if (action === "advance_phase") {
+      if (!roundId) {
+        return NextResponse.json({ error: "라운드 ID가 필요합니다." }, { status: 400 })
+      }
+
+      const round = await DatabaseService.getCurrentRound(sessionId!)
+      if (!round || round.id !== roundId) {
+        return NextResponse.json({ error: "유효하지 않은 라운드입니다." }, { status: 400 })
+      }
+
+      let newPhase: string = round.phase
+      if (round.phase === "selectTwo") newPhase = "excludeOne"
+      else if (round.phase === "excludeOne") newPhase = "revealing"
+
+      const updatedRound = await DatabaseService.updateRound(roundId, { phase: newPhase as any })
+      
+      if (!updatedRound) {
+        return NextResponse.json({ error: "라운드 업데이트 실패" }, { status: 500 })
+      }
+      
+      // NOTIFY 발행
+      await DatabaseService.notifyGameUpdate({
+        type: 'phase_changed',
+        roundId: updatedRound.id,
+        phase: newPhase
+      })
+
+      return NextResponse.json({ success: true, round: updatedRound })
+    }
+
+    // 결과 계산
+    if (action === "calculate_result") {
+      if (!roundId || !gameMode || !sessionId) {
+        return NextResponse.json(
+          { error: "라운드 ID, 게임 모드, 세션 ID가 필요합니다." },
+          { status: 400 }
+        )
+      }
+
+      // 라운드 검증
+      const currentRound = await DatabaseService.getCurrentRound(sessionId)
+      if (!currentRound || currentRound.id !== roundId) {
+        return NextResponse.json({ error: "유효하지 않은 라운드입니다." }, { status: 400 })
+      }
+
+      // 🔒 트랜잭션: 결과 계산 + 목숨 차감 원자적 실행
+      const txResult = await DatabaseService.calculateAndDeductLivesTransaction(roundId, gameMode)
+      
+      if (!txResult.success) {
+        console.log('[Round API] Transaction failed:', txResult.message)
+        return NextResponse.json({
+          success: true,
+          message: txResult.message,
+          result: txResult.result
+        })
+      }
+
+      // NOTIFY 발행
+      await DatabaseService.notifyGameUpdate({
+        type: 'round_result',
+        roundId,
+        result: {
+          ...txResult.result!,
+          losers: (txResult.losers || []).map(p => ({
+            id: p.id,
+            nickname: p.nickname,
+            currentLives: p.current_lives,
+            status: p.status
+          }))
+        }
+      })
+
+      return NextResponse.json({
+        success: true,
+        result: {
+          ...txResult.result,
+          losers: txResult.losers
+        }
+      })
+    }
+
+    // 기존 update 액션
     if (action === "update") {
       const { roundId, ...updateData } = updates
       

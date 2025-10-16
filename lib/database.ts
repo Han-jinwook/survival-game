@@ -327,8 +327,9 @@ export class DatabaseService {
 
   static async updateRound(
     roundId: string,
-    updates: Partial<GameRound>
-  ): Promise<GameRound> {
+    updates: Partial<GameRound>,
+    whereCondition?: string  // 추가 WHERE 조건 (예: "phase != 'revealing'")
+  ): Promise<GameRound | null> {
     const db = getPool()
     const fields: string[] = []
     const values: any[] = []
@@ -355,11 +356,17 @@ export class DatabaseService {
     }
 
     values.push(roundId)
+    const whereClause = whereCondition 
+      ? `WHERE id = $${paramCount} AND ${whereCondition}`
+      : `WHERE id = $${paramCount}`
+    
     const result = await db.query<GameRound>(
-      `UPDATE game_rounds SET ${fields.join(', ')} WHERE id = $${paramCount} RETURNING *`,
+      `UPDATE game_rounds SET ${fields.join(', ')} ${whereClause} RETURNING *`,
       values
     )
-    return result.rows[0]
+    
+    // whereCondition이 있고 업데이트된 행이 없으면 null 반환 (이미 처리됨)
+    return result.rows[0] || null
   }
 
   // 플레이어 선택 관련
@@ -493,6 +500,221 @@ export class DatabaseService {
     if (pool) {
       await pool.end()
       pool = null
+    }
+  }
+
+  // 🎮 게임 로직: 모든 플레이어가 선택했는지 확인
+  static async checkAllPlayersReady(roundId: string, phase: string): Promise<boolean> {
+    const db = getPool()
+    
+    // 현재 라운드 정보 가져오기
+    const roundResult = await db.query<GameRound>(
+      'SELECT * FROM game_rounds WHERE id = $1',
+      [roundId]
+    )
+    const round = roundResult.rows[0]
+    if (!round) return false
+
+    // 살아있는 플레이어 수 확인
+    const participantsResult = await db.query<GameParticipant>(
+      `SELECT COUNT(*) as count FROM game_participants 
+       WHERE game_session_id = $1 AND status = 'playing' AND current_lives > 0`,
+      [round.game_session_id]
+    )
+    const aliveCount = parseInt(participantsResult.rows[0].count as any)
+
+    // 선택 완료된 플레이어 수 확인
+    const choicesResult = await db.query<PlayerChoice>(
+      `SELECT COUNT(*) as count FROM player_choices 
+       WHERE round_id = $1 AND ${phase === 'selectTwo' ? 'selected_choices IS NOT NULL' : 'final_choice IS NOT NULL'}`,
+      [roundId]
+    )
+    const choiceCount = parseInt(choicesResult.rows[0].count as any)
+
+    console.log(`[Game Logic] Phase: ${phase}, Alive: ${aliveCount}, Choices: ${choiceCount}`)
+    return aliveCount === choiceCount && aliveCount > 0
+  }
+
+  // 🎮 게임 로직: 결과 계산 (어떤 무기가 졌는지)
+  static async calculateRoundResult(roundId: string, gameMode: 'preliminary' | 'final'): Promise<{
+    rockCount: number
+    paperCount: number
+    scissorsCount: number
+    losingChoice: string | null
+  }> {
+    const db = getPool()
+    
+    // 모든 선택 조회
+    const choices = await db.query<PlayerChoice>(
+      'SELECT final_choice FROM player_choices WHERE round_id = $1 AND final_choice IS NOT NULL',
+      [roundId]
+    )
+
+    const counts = { rock: 0, paper: 0, scissors: 0 }
+    choices.rows.forEach(choice => {
+      if (choice.final_choice) {
+        counts[choice.final_choice]++
+      }
+    })
+
+    let losingChoice: string | null = null
+
+    if (gameMode === 'final') {
+      // 결승: 가위바위보 승부
+      const nonZero = Object.entries(counts).filter(([_, count]) => count > 0)
+      
+      if (nonZero.length === 2) {
+        // 2개만 있으면 승부 결정
+        const [choice1, choice2] = nonZero.map(([choice]) => choice)
+        if (counts.rock > 0 && counts.scissors > 0) losingChoice = 'scissors'
+        else if (counts.rock > 0 && counts.paper > 0) losingChoice = 'rock'
+        else if (counts.paper > 0 && counts.scissors > 0) losingChoice = 'paper'
+      }
+      // 3개 or 1개 = 무승부 (losingChoice = null)
+    } else {
+      // 예선: 가장 적은 수가 탈락
+      const nonZero = Object.entries(counts).filter(([_, count]) => count > 0)
+      if (nonZero.length > 0) {
+        const minCount = Math.min(...nonZero.map(([_, count]) => count))
+        const losers = nonZero.filter(([_, count]) => count === minCount)
+        if (losers.length === 1) {
+          losingChoice = losers[0][0]
+        }
+      }
+    }
+
+    return {
+      rockCount: counts.rock,
+      paperCount: counts.paper,
+      scissorsCount: counts.scissors,
+      losingChoice
+    }
+  }
+
+  // 🎮 게임 로직: 목숨 차감
+  static async deductLives(roundId: string, losingChoice: string): Promise<GameParticipant[]> {
+    const db = getPool()
+    
+    // 진 플레이어들의 participant_id 조회
+    const losersResult = await db.query<PlayerChoice>(
+      'SELECT participant_id FROM player_choices WHERE round_id = $1 AND final_choice = $2',
+      [roundId, losingChoice]
+    )
+    
+    const loserIds = losersResult.rows.map(r => r.participant_id)
+    if (loserIds.length === 0) return []
+
+    // 목숨 차감
+    const updatedResult = await db.query<GameParticipant>(
+      `UPDATE game_participants 
+       SET current_lives = GREATEST(0, current_lives - 1),
+           status = CASE WHEN current_lives - 1 <= 0 THEN 'eliminated'::varchar ELSE status END
+       WHERE id = ANY($1)
+       RETURNING *`,
+      [loserIds]
+    )
+
+    return updatedResult.rows
+  }
+
+  // 🔒 트랜잭션: 결과 계산 + 목숨 차감 원자적 실행
+  static async calculateAndDeductLivesTransaction(
+    roundId: string,
+    gameMode: 'preliminary' | 'final'
+  ): Promise<{
+    success: boolean
+    result?: {
+      rockCount: number
+      paperCount: number
+      scissorsCount: number
+      losingChoice: string | null
+    }
+    losers?: GameParticipant[]
+    message?: string
+  }> {
+    const pool = getPool()
+    const client = await pool.connect()
+    
+    try {
+      await client.query('BEGIN')
+      
+      // 🔒 SELECT FOR UPDATE: 라운드 잠금 (다른 트랜잭션 대기)
+      const lockResult = await client.query<GameRound>(
+        'SELECT * FROM game_rounds WHERE id = $1 FOR UPDATE',
+        [roundId]
+      )
+      const round = lockResult.rows[0]
+      
+      if (!round) {
+        await client.query('ROLLBACK')
+        return { success: false, message: 'Round not found' }
+      }
+      
+      // 이미 revealing이면 skip (중복 방지)
+      if (round.phase === 'revealing') {
+        await client.query('ROLLBACK')
+        return {
+          success: false,
+          message: 'Already calculated',
+          result: {
+            rockCount: round.rock_count,
+            paperCount: round.paper_count,
+            scissorsCount: round.scissors_count,
+            losingChoice: round.losing_choice || null
+          }
+        }
+      }
+      
+      // 결과 계산
+      const result = await this.calculateRoundResult(roundId, gameMode)
+      
+      // 라운드 업데이트
+      await client.query(
+        `UPDATE game_rounds 
+         SET phase = 'revealing', 
+             rock_count = $1, 
+             paper_count = $2, 
+             scissors_count = $3, 
+             losing_choice = $4, 
+             ended_at = NOW() 
+         WHERE id = $5`,
+        [result.rockCount, result.paperCount, result.scissorsCount, result.losingChoice, roundId]
+      )
+      
+      // 목숨 차감
+      let losers: GameParticipant[] = []
+      if (result.losingChoice) {
+        const losersResult = await client.query<PlayerChoice>(
+          'SELECT participant_id FROM player_choices WHERE round_id = $1 AND final_choice = $2',
+          [roundId, result.losingChoice]
+        )
+        
+        const loserIds = losersResult.rows.map(r => r.participant_id)
+        if (loserIds.length > 0) {
+          const updatedResult = await client.query<GameParticipant>(
+            `UPDATE game_participants 
+             SET current_lives = GREATEST(0, current_lives - 1),
+                 status = CASE WHEN current_lives - 1 <= 0 THEN 'eliminated'::varchar ELSE status END
+             WHERE id = ANY($1)
+             RETURNING *`,
+            [loserIds]
+          )
+          losers = updatedResult.rows
+        }
+      }
+      
+      await client.query('COMMIT')
+      
+      return {
+        success: true,
+        result,
+        losers
+      }
+    } catch (error) {
+      await client.query('ROLLBACK')
+      throw error
+    } finally {
+      client.release()
     }
   }
 }
