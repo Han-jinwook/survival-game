@@ -1,0 +1,23 @@
+page-0a2ac0ef0c8000bc.js:1 [v0] Life breakdown: []
+page-0a2ac0ef0c8000bc.js:1 [v0] Opponents: []
+929-f0dfa77603c30ca3.js:1 [v0] GlobalAudioManager initializing
+929-f0dfa77603c30ca3.js:1 [v0] AudioSystem connecting to page: game
+929-f0dfa77603c30ca3.js:1 [v0] Setting global track: https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Way%20Back%20then-1-%EC%A0%95%EC%9E%AC%EC%9D%BC-LXdaGoh2hrZXY2teQe6OxSuQPZj4tT.mp3
+929-f0dfa77603c30ca3.js:1 [v0] Global audio controls registered
+page-0a2ac0ef0c8000bc.js:1 [v0] Current participant ID: 831789ab-c9f0-4f6a-9783-54fcddf7df71
+page-0a2ac0ef0c8000bc.js:1 [v0] Loading game data from DB...
+929-f0dfa77603c30ca3.js:1 [v0] Global background music loaded successfully
+page-0a2ac0ef0c8000bc.js:1 [v0] DB game data: {session: {…}, participants: Array(6), round: null, choices: Array(0)}
+page-0a2ac0ef0c8000bc.js:1 [v0] Playing participants: (2) [{…}, {…}]
+page-0a2ac0ef0c8000bc.js:1 [v0] Created game player: {id: '831789ab-c9f0-4f6a-9783-54fcddf7df71', nickname: '멀린', lives: 3, isCurrentUser: true}
+page-0a2ac0ef0c8000bc.js:1 [v0] Created game player: {id: '23ee91ba-91be-4708-8e0a-a4b3dd16ef16', nickname: '스타크', lives: 1, isCurrentUser: false}
+page-0a2ac0ef0c8000bc.js:1 [v0] All game players: (2) [{…}, {…}]
+page-0a2ac0ef0c8000bc.js:1 [v0] Life breakdown: [{…}]
+page-0a2ac0ef0c8000bc.js:1 [v0] Opponents: ['스타크:1']
+layout-bc5497bb4d73c800.js:1 [Vercel Web Analytics] Failed to load script from /_vercel/insights/script.js. Be sure to enable Web Analytics for your project and deploy again. See https://vercel.com/docs/analytics/quickstart for more information.
+page-0a2ac0ef0c8000bc.js:1 [TTS] speak() called with text: 이제 총 2명, 목숨 4개로, 결승 1라운드를 시작합니다
+page-0a2ac0ef0c8000bc.js:1 [TTS] Creating utterance for: 이제 총 2명, 목숨 4개로, 결승 1라운드를 시작합니다
+929-f0dfa77603c30ca3.js:1 [v0] AudioSystem connecting to page: game
+929-f0dfa77603c30ca3.js:1 [v0] Global audio controls registered
+page-0a2ac0ef0c8000bc.js:1 [TTS] speak() called with text: 가위 바위 보, 2개를 선택하세요
+page-0a2ac0ef0c8000bc.js:1 [TTS] Creating utterance for: 가위 바위 보, 2개를 선택하세요
