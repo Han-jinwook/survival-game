@@ -7,7 +7,18 @@ This project is a "Rock-Paper-Scissors One-Exclusion Survival Game" designed for
 
 ### 마지막 업데이트
 - 날짜: 2025-10-16
-- **프로덕션 배포 완료** ✅ (LATEST)
+- **서버 중심 아키텍처로 완전 전환** ✅ (LATEST)
+  - 문제: 클라이언트에서 게임 로직 실행 (calculateResults, processElimination 등)으로 인한 아키텍처 불일치
+  - 원인: 서버 API는 잘 구현되어 있었지만, 클라이언트가 여전히 로컬에서 결과 계산
+  - 해결: 모든 게임 로직을 서버로 완전 이동, 클라이언트는 UI 업데이트만 담당
+  - 변경사항:
+    - `app/game/page.tsx`: calculateResults, processElimination, 타임아웃 처리 함수 등 5개 함수 삭제
+    - `app/finals/page.tsx`: 동일한 클라이언트 게임 로직 함수 삭제
+    - SSE 이벤트 핸들러 개선: player_choice, phase_changed, round_result, round_created 타입별 정확한 처리
+    - API 호출 버그 수정: action "start_round" → "create", /api/game/state에 sessionId 파라미터 추가
+  - 게임 플로우: 라운드 시작(round_created) → 플레이어 선택(player_choice) → 자동 페이즈 전환(phase_changed) → 결과 계산+목숨 차감(round_result)
+  - 결과: 서버가 모든 승패 계산, 목숨 차감, 페이즈 전환 처리. 클라이언트는 SSE 이벤트만 받아서 UI 업데이트
+- **프로덕션 배포 완료** ✅
   - 문제: Next.js 프로덕션 빌드 오류 (webpack runtime 모듈 누락, PWA 관련 빌드 실패)
   - 해결: PWA 비활성화 (`next.config.mjs`에서 `disable: true` 설정)
   - 결과: 프로덕션 배포 성공, 모든 기능 정상 작동
@@ -80,7 +91,8 @@ The project utilizes a modern web stack with **Next.js 14.2.16 (App Router)** fo
 - **Deployment:** Hosted on Replit with Autoscale deployment.
 
 **System Design Choices:**
-- **Server-side game logic:** Planned for future phases to handle round progression, win/loss determination, and elimination.
+- **Server-side game logic:** ✅ **Fully implemented** - All game logic (round progression, win/loss determination, life deduction, phase transitions) is handled server-side. Clients receive real-time updates via SSE and only update UI accordingly.
+- **Client responsibility:** UI rendering, user input handling, and displaying server-calculated results. No game logic execution on client.
 - **Test Mode:** A simplified test mode for local development allows a single user to play against AI participants.
 
 ## External Dependencies
