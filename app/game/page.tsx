@@ -541,6 +541,29 @@ export default function GameInterface() {
       // Finals mode: Use rock-paper-scissors battle logic
       console.log("[v0] Finals mode: Using rock-paper-scissors battle logic")
 
+      if (numDifferentChoices === 0) {
+        // 아무도 선택하지 않음 → 모두 타임아웃
+        console.log("[v0] No one made a choice → all timed out")
+        setLosingChoice(null)
+        setLosingChoices([])
+        setCurrentRoundLog((prev) => ({
+          ...prev,
+          choiceCounts: counts,
+          losingChoice: null,
+        }))
+
+        setGameRound((prev) => ({ ...prev, phase: "revealing", timeLeft: 5 }))
+
+        const message = `아무도 선택하지 않아 ${timeoutEliminatedPlayers.length}명 모두 목숨 1개를 잃었습니다!`
+        setGameMessage(message)
+        speak(message)
+        setTimeout(() => {
+          console.log("[v0] All timed out, calling processElimination")
+          processElimination([], counts)
+        }, 3000)
+        return
+      }
+
       if (numDifferentChoices === 1) {
         // Everyone chose the same weapon → draw
         console.log("[v0] All players chose the same weapon → draw")
@@ -651,6 +674,30 @@ export default function GameInterface() {
         if (losingWeapon) {
           processElimination([losingWeapon], counts)
         }
+      }, 3000)
+      return
+    }
+
+    // 예선 모드 (다수결 방식)
+    if (numDifferentChoices === 0) {
+      // 아무도 선택하지 않음 → 모두 타임아웃
+      console.log("[v0] (Preliminary) No one made a choice → all timed out")
+      setLosingChoice(null)
+      setLosingChoices([])
+      setCurrentRoundLog((prev) => ({
+        ...prev,
+        choiceCounts: counts,
+        losingChoice: null,
+      }))
+
+      setGameRound((prev) => ({ ...prev, phase: "revealing", timeLeft: 5 }))
+
+      const message = `아무도 선택하지 않아 ${timeoutEliminatedPlayers.length}명 모두 목숨 1개를 잃었습니다!`
+      setGameMessage(message)
+      speak(message)
+      setTimeout(() => {
+        console.log("[v0] (Preliminary) All timed out, calling processElimination")
+        processElimination([], counts)
       }, 3000)
       return
     }
