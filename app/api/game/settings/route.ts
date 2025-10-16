@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
       console.log("[Settings API] 새 세션 생성:", session.id)
     }
 
-    // 참가자 등록
-    if (participants && Array.isArray(participants)) {
+    // 참가자 등록 (기존 세션 업데이트 시에는 건너뛰기)
+    if (participants && Array.isArray(participants) && !activeSession) {
       for (const p of participants) {
         // 사용자 확인 또는 생성
         let user = await DatabaseService.getUserByNaverId(p.naverId)
