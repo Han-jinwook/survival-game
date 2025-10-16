@@ -22,12 +22,13 @@ export default function AdminContent() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [adminPassword, setAdminPassword] = useState("")
   const [isEditing, setIsEditing] = useState(false)
+  const [sessionId, setSessionId] = useState("")
   const [cafeName, setCafeName] = useState("")
   const [eventName, setEventName] = useState("")
   const [prize, setPrize] = useState("")
   const [gameStartTime, setGameStartTime] = useState("")
   const [gameScheduled, setGameScheduled] = useState(false)
-  const [gameStatus, setGameStatus] = useState<"waiting" | "starting" | "in-progress" | "completed">("waiting")
+  const [gameStatus, setGameStatus] = useState<"waiting" | "starting" | "in_progress" | "completed">("waiting")
   const [participants, setParticipants] = useState<Participant[]>([])
   const [newParticipant, setNewParticipant] = useState({ naverId: "", nickname: "", lives: 5 })
   const [bulkData, setBulkData] = useState("")
@@ -91,9 +92,11 @@ export default function AdminContent() {
           console.log("[Admin] DB 데이터 로드 성공:", data)
           
           if (data.session) {
+            setSessionId(data.session.id || "")
             setCafeName(data.session.cafeName || "")
             setEventName(data.session.sessionName || "")
             setPrize(data.session.prize || "")
+            setGameStatus(data.session.status || "waiting")
             
             // UTC 시간을 브라우저 로컬 시간(한국 시간)으로 변환
             if (data.session.startedAt) {
@@ -168,7 +171,7 @@ export default function AdminContent() {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000)
       return () => clearTimeout(timer)
     } else if (countdown === 0 && gameStatus === "starting") {
-      setGameStatus("in-progress")
+      setGameStatus("in_progress")
       window.location.href = "/game"
     }
   }, [countdown, gameStatus])
@@ -377,6 +380,40 @@ export default function AdminContent() {
     }
   }
 
+  const resetSession = async () => {
+    if (!sessionId) {
+      setGameMessage("❌ 세션 ID가 없습니다. 먼저 게임 설정을 저장해주세요.")
+      return
+    }
+
+    if (!confirm("세션을 대기 상태로 리셋하시겠습니까?")) {
+      return
+    }
+
+    try {
+      const response = await fetch("/api/game/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "reset_session",
+          sessionId: sessionId,
+        }),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || "세션 리셋 실패")
+      }
+
+      setGameStatus("waiting")
+      setGameMessage("✅ 세션이 대기 상태로 리셋되었습니다!")
+      console.log("[Admin] 세션 리셋 완료:", sessionId)
+    } catch (error: any) {
+      console.error("[Admin] 세션 리셋 실패:", error)
+      setGameMessage(`❌ ${error.message || "세션 리셋에 실패했습니다."}`)
+    }
+  }
+
 
   if (!isAuthenticated) {
     return (
@@ -443,13 +480,13 @@ export default function AdminContent() {
             )}
             <Badge
               variant={
-                gameStatus === "waiting" ? "secondary" : gameStatus === "in-progress" ? "destructive" : "default"
+                gameStatus === "waiting" ? "secondary" : gameStatus === "in_progress" ? "destructive" : "default"
               }
               className="px-3 py-1"
             >
               {gameStatus === "waiting" && "대기 중"}
               {gameStatus === "starting" && "시작 중"}
-              {gameStatus === "in-progress" && "진행 중"}
+              {gameStatus === "in_progress" && "진행 중"}
               {gameStatus === "completed" && "완료"}
             </Badge>
             <Link href="/" className="text-gray-400 hover:text-white transition-colors">
@@ -571,6 +608,25 @@ export default function AdminContent() {
                     <p className="text-sm text-blue-300 mb-2">게임 시작까지</p>
                     <p className="text-2xl font-bold text-blue-400">{timeRemaining}</p>
                   </div>
+                </div>
+              )}
+
+              {gameStatus !== "waiting" && (
+                <div className="p-4 bg-orange-950/30 border border-orange-600/50 rounded-lg">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-orange-300">현재 상태</span>
+                    <Badge variant="outline" className="border-orange-600 text-orange-400">
+                      {gameStatus === "in_progress" && "진행 중"}
+                      {gameStatus === "starting" && "시작 중"}
+                      {gameStatus === "completed" && "완료"}
+                    </Badge>
+                  </div>
+                  <Button
+                    onClick={resetSession}
+                    className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+                  >
+                    🔄 세션 리셋 (대기 상태로)
+                  </Button>
                 </div>
               )}
 

@@ -4,7 +4,12 @@
 
 ### 마지막 업데이트
 - 날짜: 2025-10-16
-- **긴급 버그 수정 완료 (이벤트 2일 전)** ✅ (LATEST)
+- **세션 리셋 기능 추가** ✅ (LATEST)
+  - 관리자 페이지에 "세션 리셋" 버튼 추가
+  - `/api/game/session` POST: `reset_session` 액션 추가
+  - 세션 상태를 "waiting"으로 되돌리는 기능
+  - 프로덕션 배포 후 세션이 "in_progress" 상태일 때 사용 가능
+- **긴급 버그 수정 완료 (이벤트 2일 전)** ✅
   - Bug #1 해결: 목숨 숫자 0개 표시 문제 → naverId 필드 추가로 해결
   - Bug #2 해결: 테스트 버튼 비활성화 → cafeName/prize 필드 추가로 해결
   - `/api/game/state`: naverId, cafeName, prize 필드 추가

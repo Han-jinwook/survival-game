@@ -78,6 +78,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, participant })
     }
 
+    if (action === "reset_session") {
+      // 세션 리셋: status → 'waiting', current_round → 0
+      if (!sessionId) {
+        return NextResponse.json({ error: "세션 ID가 필요합니다." }, { status: 400 })
+      }
+      
+      const session = await DatabaseService.updateGameSession(sessionId, {
+        status: "waiting",
+        current_round: 0,
+      })
+      
+      console.log(`[세션 리셋] 세션 ${sessionId}을 대기 상태로 변경`)
+      return NextResponse.json({ success: true, session })
+    }
+
     if (action === "start_countdown") {
       // 카운트다운 시작: status → 'starting'
       const session = await DatabaseService.updateGameSession(sessionId, {
