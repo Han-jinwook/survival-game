@@ -394,10 +394,7 @@ export default function GameInterface() {
         // 이벤트 타입별 처리
         if (data.type === 'player_choice') {
           // 플레이어 선택만 업데이트 (전체 리프레시 불필요)
-          const sessionIdStr = sessionStorage.getItem("currentSessionId")
-          if (!sessionIdStr) return
-          
-          const response = await fetch(`/api/game/state?sessionId=${sessionIdStr}`)
+          const response = await fetch(`/api/game/state`)
           if (response.ok) {
             const gameState = await response.json()
             const lobbyPlayers = gameState.participants?.filter((p: any) => p.status === "playing") || []
@@ -445,10 +442,7 @@ export default function GameInterface() {
           setGameRound(prev => ({ ...prev, phase: 'revealing', timeLeft: 5 }))
           
           // 전체 게임 상태 리프레시 (목숨 업데이트 포함)
-          const sessionIdStr = sessionStorage.getItem("currentSessionId")
-          if (!sessionIdStr) return
-          
-          const response = await fetch(`/api/game/state?sessionId=${sessionIdStr}`)
+          const response = await fetch(`/api/game/state`)
           if (response.ok) {
             const gameState = await response.json()
             const lobbyPlayers = gameState.participants?.filter((p: any) => p.status === "playing") || []
@@ -501,10 +495,7 @@ export default function GameInterface() {
         }
         else {
           // 기타 업데이트 - 전체 상태 리프레시
-          const sessionIdStr = sessionStorage.getItem("currentSessionId")
-          if (!sessionIdStr) return
-          
-          const response = await fetch(`/api/game/state?sessionId=${sessionIdStr}`)
+          const response = await fetch(`/api/game/state`)
           if (response.ok) {
             const gameState = await response.json()
             const lobbyPlayers = gameState.participants?.filter((p: any) => p.status === "playing") || []

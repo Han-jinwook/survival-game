@@ -309,13 +309,6 @@ export default function FinalsPage() {
     }
 
     // 🔥 SSE: 실시간 게임 상태 동기화
-    const sessionIdStr = sessionStorage.getItem("currentSessionId")
-    if (!sessionIdStr) {
-      console.error("[Finals] 세션 ID 없음, SSE 연결 불가")
-      return
-    }
-    const sessionId = parseInt(sessionIdStr, 10)
-    
     const eventSource = new EventSource('/api/game/stream')
     console.log("[Finals SSE] 연결 시작")
     
@@ -328,7 +321,7 @@ export default function FinalsPage() {
       // 이벤트 타입별 처리
       if (data.type === 'player_choice') {
         // 플레이어 선택만 업데이트
-        const response = await fetch(`/api/game/state?sessionId=${sessionId}`)
+        const response = await fetch(`/api/game/state`)
         const gameState = await response.json()
         updatePlayersFromState(gameState)
       }
@@ -360,7 +353,7 @@ export default function FinalsPage() {
         setGameRound(prev => ({ ...prev, phase: 'revealing', timeLeft: 5 }))
         
         // 전체 게임 상태 리프레시 (목숨 업데이트 포함)
-        const response = await fetch(`/api/game/state?sessionId=${sessionId}`)
+        const response = await fetch(`/api/game/state`)
         const gameState = await response.json()
         updatePlayersFromState(gameState)
         
@@ -405,7 +398,7 @@ export default function FinalsPage() {
       }
       else {
         // 기타 업데이트 - 전체 상태 리프레시
-        const response = await fetch(`/api/game/state?sessionId=${sessionId}`)
+        const response = await fetch(`/api/game/state`)
         const gameState = await response.json()
         updatePlayersFromState(gameState)
       }
