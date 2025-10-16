@@ -186,6 +186,39 @@ export default function GameInterface() {
     // 로비에서 게임 시작 플래그 제거
     sessionStorage.removeItem('gameStarting')
     
+    // 🔒 게임 페이지 퇴장 시 로비 퇴장 처리
+    const exitLobby = () => {
+      const participantInfo = localStorage.getItem("participantInfo")
+      if (!participantInfo) return
+
+      try {
+        const participant = JSON.parse(participantInfo)
+        console.log("[Game] 로비 퇴장 처리 중:", participant.nickname)
+
+        fetch("/api/game/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "exit_lobby",
+            participantId: participant.id,
+          }),
+          keepalive: true, // 페이지 닫힐 때도 요청 완료
+        })
+
+        localStorage.removeItem("participantInfo")
+        console.log("[Game] 로비 퇴장 완료 및 참가자 정보 삭제")
+      } catch (error) {
+        console.error("[Game] 로비 퇴장 실패:", error)
+      }
+    }
+
+    // beforeunload: 브라우저 닫거나 다른 페이지로 이동할 때
+    const handleBeforeUnload = () => {
+      exitLobby()
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    
     const loadGameData = async () => {
       if (hasLoadedDataRef.current) {
         console.log("[v0] Already loaded game data, skipping")
@@ -305,6 +338,12 @@ export default function GameInterface() {
     }
 
     loadGameData()
+    
+    // cleanup: 컴포넌트 언마운트 시 로비 퇴장
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+      exitLobby()
+    }
   }, [])
 
   useEffect(() => {

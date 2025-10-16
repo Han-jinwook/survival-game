@@ -60,6 +60,38 @@ export default function FinalsPage() {
       return
     }
 
+    // 🔒 결승전 페이지 퇴장 시 로비 퇴장 처리
+    const exitLobby = () => {
+      const participantInfo = localStorage.getItem("participantInfo")
+      if (!participantInfo) return
+
+      try {
+        const participant = JSON.parse(participantInfo)
+        console.log("[Finals] 로비 퇴장 처리 중:", participant.nickname)
+
+        fetch("/api/game/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "exit_lobby",
+            participantId: participant.id,
+          }),
+          keepalive: true,
+        })
+
+        localStorage.removeItem("participantInfo")
+        console.log("[Finals] 로비 퇴장 완료 및 참가자 정보 삭제")
+      } catch (error) {
+        console.error("[Finals] 로비 퇴장 실패:", error)
+      }
+    }
+
+    const handleBeforeUnload = () => {
+      exitLobby()
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+
     // 먼저 finalistsData 확인
     const storedData = sessionStorage.getItem("finalistsData")
 
@@ -191,6 +223,12 @@ export default function FinalsPage() {
           console.error("[Finals] Error loading session data:", error)
           router.push("/")
         })
+    }
+    
+    // cleanup: 컴포넌트 언마운트 시 로비 퇴장
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+      exitLobby()
     }
   }, [router, initialized]) // Add initialized to dependencies
 
