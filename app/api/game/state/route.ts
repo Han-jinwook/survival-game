@@ -47,6 +47,8 @@ export async function GET(request: NextRequest) {
       session: {
         id: session.id,
         sessionName: session.session_name,
+        cafeName: session.cafe_name,
+        prize: session.prize,
         status: session.status,
         initialLives: session.initial_lives,
         currentRound: session.current_round,
@@ -57,6 +59,7 @@ export async function GET(request: NextRequest) {
       participants: participants.map(p => ({
         id: p.id,
         userId: p.user_id,
+        naverId: (p as any).naver_id,
         nickname: p.nickname,
         initialLives: p.initial_lives,
         currentLives: p.current_lives,

@@ -84,6 +84,11 @@ export default function GameLobby() {
           setCafeName(data.session.cafeName || "썬드림 즐빛카페")
           setEventName(data.session.sessionName || "가위바위보 하나빼기 이벤트")
           setSessionStatus(data.session.status || "waiting")
+          console.log("[Lobby] 🎯 세션 상태 업데이트:", {
+            status: data.session.status,
+            cafeName: data.session.cafeName,
+            sessionName: data.session.sessionName,
+          })
           
           // 게임 시작 감지: 세션 상태별 처리
           if (data.session.status === "starting") {
@@ -208,6 +213,17 @@ export default function GameLobby() {
             // playing 상태만 로비에 표시 (실제 입장자)
             isInLobby: p.status === "playing",
           }))
+          
+          console.log("[Lobby] 💛 참가자 매핑 완료:", {
+            원본참가자수: data.participants.length,
+            매핑된참가자: dbPlayers.map(p => ({
+              naverId: p.naverId,
+              nickname: p.nickname,
+              lives: p.lives,
+              status: p.status
+            }))
+          })
+          
           setPlayers(dbPlayers)
           
           // 로비 입장자만 저장
@@ -307,7 +323,11 @@ export default function GameLobby() {
           const data = await response.json()
           if (data.user) {
             setCurrentUser(data.user)
-            console.log("[Lobby] 🍪 쿠키 인증 성공:", data.user)
+            console.log("[Lobby] 🍪 쿠키 인증 성공:", {
+              naverId: data.user.naverId,
+              nickname: data.user.nickname,
+              lives: data.user.lives
+            })
             
             // 🍪 초기 데이터 로드 (자동 입장 활성화 + 쿠키 userId 전달)
             fetchGameData(true, data.user.id)
@@ -430,6 +450,23 @@ export default function GameLobby() {
     
     return () => clearInterval(interval)
   }, [scheduledStartDate, autoStartTriggered, gameStartCountdown, sessionStatus])
+  
+  // 디버깅: currentUser와 players 변경 시 목숨 계산 추적
+  useEffect(() => {
+    if (currentUser && players.length > 0) {
+      const matchedPlayer = players.find((p) => p.naverId === currentUser.naverId)
+      const calculatedLives = matchedPlayer?.lives || currentUser?.lives || 0
+      
+      console.log("[Lobby] 💛 목숨 계산 추적:", {
+        currentUserNaverId: currentUser.naverId,
+        currentUserLives_from_auth: currentUser.lives,
+        playersCount: players.length,
+        playersInfo: players.map(p => ({ naverId: p.naverId, nickname: p.nickname, lives: p.lives })),
+        matchedPlayer: matchedPlayer ? { naverId: matchedPlayer.naverId, lives: matchedPlayer.lives } : null,
+        finalCalculatedLives: calculatedLives,
+      })
+    }
+  }, [currentUser, players])
 
   const currentUserStatus = players.find((p) => p.naverId === currentUser?.naverId)?.status || "waiting"
   const currentUserLives = players.find((p) => p.naverId === currentUser?.naverId)?.lives || currentUser?.lives || 0
