@@ -225,10 +225,48 @@ export default function FinalsPage() {
         })
     }
     
-    // cleanup: 컴포넌트 언마운트 시 로비 퇴장
+    // 🔥 SSE 연결: 실시간 게임 상태 동기화
+    const eventSource = new EventSource('/api/game/stream')
+    console.log("[Finals SSE] 게임 상태 동기화 연결 시작")
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        console.log("[Finals SSE] 게임 업데이트 수신:", data)
+        
+        if (data.type === 'game_update') {
+          // 게임 상태 업데이트 처리
+          if (data.players) {
+            setPlayers(data.players)
+            console.log("[Finals SSE] 플레이어 상태 업데이트:", data.players)
+          }
+          
+          if (data.gameRound) {
+            setGameRound(data.gameRound)
+            console.log("[Finals SSE] 라운드 상태 업데이트:", data.gameRound)
+          }
+          
+          if (data.choiceCounts) {
+            setChoiceCounts(data.choiceCounts)
+            console.log("[Finals SSE] 선택 통계 업데이트:", data.choiceCounts)
+          }
+        }
+      } catch (error) {
+        console.error("[Finals SSE] 메시지 파싱 오류:", error)
+      }
+    }
+    
+    eventSource.onerror = (error) => {
+      console.error("[Finals SSE] 연결 오류:", error)
+      eventSource.close()
+    }
+    
+    // cleanup: 컴포넌트 언마운트 시 로비 퇴장 + SSE 연결 종료
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload)
       exitLobby()
+      eventSource.close()
+      console.log("[Finals SSE] 게임 상태 동기화 연결 종료")
     }
   }, [router, initialized]) // Add initialized to dependencies
 
