@@ -730,14 +730,12 @@ export default function AdminContent() {
                       >
                         🔄 세션 리셋
                       </Button>
-                      {gameStatus === "completed" && (
-                        <Button
-                          onClick={closeSession}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                        >
-                          🔒 세션 닫기
-                        </Button>
-                      )}
+                      <Button
+                        onClick={closeSession}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                      >
+                        🔒 세션 닫기
+                      </Button>
                     </div>
                   )}
                 </div>
