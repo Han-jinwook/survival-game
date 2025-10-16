@@ -142,13 +142,15 @@ export default function GameLobby() {
             const lobbyClosingTime = new Date(gameDate.getTime() - 1 * 60 * 1000) // 게임 시작 1분 전
             
             console.log("[Lobby] 입장 시간 체크:", {
-              gameStartTime: gameDate.toISOString(),
-              currentTime: now.toISOString(),
-              lobbyClosingTime: lobbyClosingTime.toISOString(),
-              canEnter: now <= lobbyClosingTime,
-              gameStartMs: gameDate.getTime(),
-              nowMs: now.getTime(),
-              closingMs: lobbyClosingTime.getTime()
+              원본_API응답: data.session.startedAt,
+              게임시작_한국시간: gameDate.toLocaleString('ko-KR'),
+              게임시작_ISO: gameDate.toISOString(),
+              현재시간_한국시간: now.toLocaleString('ko-KR'),
+              현재시간_ISO: now.toISOString(),
+              마감시간_한국시간: lobbyClosingTime.toLocaleString('ko-KR'),
+              마감시간_ISO: lobbyClosingTime.toISOString(),
+              입장가능: now <= lobbyClosingTime,
+              시간차_분: Math.floor((gameDate.getTime() - now.getTime()) / 60000)
             })
             
             if (now > lobbyClosingTime) {

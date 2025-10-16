@@ -24,15 +24,14 @@ export async function POST(request: NextRequest) {
     
     let session
     if (activeSession) {
-      // 기존 세션을 완료 처리하고 새 세션 생성
-      await DatabaseService.updateGameSession(activeSession.id, { status: 'completed' })
-      session = await DatabaseService.createGameSession(
-        sessionName,
-        initialLives,
-        gameStartTime,
-        cafeName,
-        prize
-      )
+      // ⚠️ 기존 세션 업데이트 (새 세션 생성 안 함!)
+      session = await DatabaseService.updateGameSession(activeSession.id, {
+        session_name: sessionName,
+        started_at: gameStartTime,
+        cafe_name: cafeName,
+        prize: prize,
+      })
+      console.log("[Settings API] 기존 세션 업데이트:", session.id)
     } else {
       // 새 게임 세션 생성
       session = await DatabaseService.createGameSession(
@@ -42,6 +41,7 @@ export async function POST(request: NextRequest) {
         cafeName,
         prize
       )
+      console.log("[Settings API] 새 세션 생성:", session.id)
     }
 
     // 참가자 등록
