@@ -474,30 +474,20 @@ export default function GameLobby() {
       return;
     }
 
-    // 2. 🎮 서버 중심 게임 시작 요청
+    // 2. 🎮 기존 게임 시작 방식으로 임시 복구
     try {
-      const response = await fetch("/api/game/master", {
+      const response = await fetch("/api/game/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "start_game",
+          action: "start_countdown",
           sessionId: sessionId,
         }),
       });
 
       if (response.ok) {
-        const data = await response.json();
-        console.log("[Lobby] 🚀 서버 중심 게임 시작 성공:", data.gameState);
-        
-        // 게임 페이지로 즉시 이동
-        sessionStorage.setItem('currentSessionId', sessionId.toString());
-        sessionStorage.setItem('gameStarting', 'server-controlled');
-        
-        if (currentLobbyPlayers >= 5) {
-          window.location.href = "/game";
-        } else {
-          window.location.href = "/finals";
-        }
+        console.log("[Lobby] 🚀 게임 시작 성공 - 카운트다운 시작");
+        // 실시간 구독이 세션 변경을 감지하여 카운트다운 시작
       } else {
         const errorData = await response.json();
         console.error("[Lobby] 게임 시작 실패:", errorData);

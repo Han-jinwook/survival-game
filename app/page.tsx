@@ -65,17 +65,52 @@ export default function GameLanding() {
     
     loadEventInfo()
     
-    // 폴링 방식으로 실시간 동기화 (Realtime 대체)
-    console.log('[Home] Realtime 대신 폴링 방식 사용')
+    // Supabase Realtime 구독 설정
+    console.log('[Home] Supabase Realtime 구독 시작')
     
-    const pollingInterval = setInterval(() => {
-      loadEventInfo()
-    }, 3000) // 3초마다 데이터 새로고침
-    
-    const setupPolling = () => {
+    const setupRealtimeSubscription = async () => {
+      const { supabase } = await import('@/lib/supabaseClient')
+      
+      // 게임 세션 변경 감지
+      const sessionChannel = supabase
+        .channel('home-sessions-global')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'game_sessions' },
+          (payload) => {
+            console.log('[Home] 게임 세션 변경 감지:', payload.eventType)
+            setTimeout(() => loadEventInfo(), 200)
+          }
+        )
+        .subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('[Home] 세션 채널 구독 성공!')
+          } else {
+            console.error('[Home] 세션 채널 구독 실패:', status, err)
+          }
+        });
+
+      // 게임 참가자 변경 감지  
+      const participantsChannel = supabase
+        .channel('home-participants-global')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'game_participants' },
+          (payload) => {
+            console.log('[Home] 참가자 변경 감지:', payload.eventType)
+            setTimeout(() => loadEventInfo(), 100)
+          }
+        )
+        .subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('[Home] 참가자 채널 구독 성공!')
+          } else {
+            console.error('[Home] 참가자 채널 구독 실패:', status, err)
+          }
+        })
+      
       return () => {
-        console.log('[Home] 폴링 정리')
-        clearInterval(pollingInterval)
+        console.log('[Home] Realtime 채널 정리')
+        supabase.removeChannel(sessionChannel)
+        supabase.removeChannel(participantsChannel)
       }
     }
     
