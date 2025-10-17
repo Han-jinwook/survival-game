@@ -71,6 +71,10 @@ export async function POST(request: NextRequest) {
       const participant = await DatabaseService.updateParticipant(participantId, {
         status: "playing"
       })
+
+      if (!participant) {
+        return NextResponse.json({ error: "참가자 상태를 업데이트할 수 없습니다." }, { status: 500 });
+      }
       
       console.log(`[Lobby] 참가자 로비 입장: ${participant.nickname} (${participantId})`)
       
@@ -94,6 +98,12 @@ export async function POST(request: NextRequest) {
       const participant = await DatabaseService.updateParticipant(participantId, {
         status: "waiting"
       })
+
+      if (!participant) {
+        // 퇴장 시 에러는 클라이언트에 큰 영향을 주지 않으므로, 서버에만 로그를 남기고 성공으로 처리
+        console.error(`[Lobby] 참가자(${participantId}) 퇴장 처리 실패: 참가자를 찾을 수 없거나 업데이트에 실패했습니다.`);
+        return NextResponse.json({ success: true, message: "Participant not found or update failed, but proceeding." });
+      }
       
       console.log(`[Lobby] 참가자 로비 퇴장: ${participant.nickname} (${participantId})`)
       

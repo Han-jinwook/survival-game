@@ -210,10 +210,10 @@ export default function GameLobby() {
             naverId: p.naverId || p.userId,
             nickname: p.nickname,
             lives: p.currentLives,
-            status: p.status === "eliminated" ? "disconnected" : (p.status === "playing" ? "ready" : "waiting"),
+            status: p.status === "eliminated" ? "disconnected" : (p.status === "in_lobby" || p.status === "playing" ? "ready" : "waiting"),
             joinTime: new Date(p.joinedAt),
-            // playing 상태만 로비에 표시 (실제 입장자)
-            isInLobby: p.status === "playing",
+            // 'in_lobby' 또는 'playing' 상태를 로비 입장으로 간주
+            isInLobby: p.status === "in_lobby" || p.status === "playing",
           }))
           
           console.log("[Lobby] 💛 참가자 매핑 완료:", {
@@ -298,32 +298,33 @@ export default function GameLobby() {
     loadCurrentUser()
 
     // Supabase Realtime 구독 설정
-    const channel = supabase.channel('lobby-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'game_participants' },
-        (payload: RealtimePostgresChangesPayload<any>) => {
-          console.log('[Realtime] 참가자 변경 감지:', payload)
-          fetchGameData(false)
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'game_sessions' },
-        (payload: RealtimePostgresChangesPayload<any>) => {
-          console.log('[Realtime] 세션 변경 감지:', payload)
-          fetchGameData(false)
-        }
-      )
-      .subscribe((status: 'SUBSCRIBED' | 'CLOSED' | 'CHANNEL_ERROR' | 'TIMED_OUT', err?: Error) => {
-        if (status === 'SUBSCRIBED') {
-          console.log('[Realtime] Supabase 구독 성공!')
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('[Realtime] 구독 에러:', err)
-        } else if (status === 'TIMED_OUT') {
-          console.warn('[Realtime] 구독 시간 초과')
-        }
+    const participantsChannel = supabase
+      .channel('lobby-participants-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_participants' }, (payload) => {
+        console.log('[Realtime] 참가자 변경 감지:', payload);
+        fetchGameData(false);
       })
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Realtime] 참가자 채널 구독 성공!');
+        } else {
+          console.error('[Realtime] 참가자 채널 구독 에러:', err);
+        }
+      });
+
+    const sessionsChannel = supabase
+      .channel('lobby-sessions-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_sessions' }, (payload) => {
+        console.log('[Realtime] 세션 변경 감지:', payload);
+        fetchGameData(false);
+      })
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Realtime] 세션 채널 구독 성공!');
+        } else {
+          console.error('[Realtime] 세션 채널 구독 에러:', err);
+        }
+      });
 
     // beforeunload: 브라우저 닫을 때
     const handleBeforeUnload = () => {
@@ -346,7 +347,8 @@ export default function GameLobby() {
     // Cleanup 함수
     return () => {
       console.log('[Lobby] 페이지 이탈, Realtime 구독 해제 및 퇴장 처리')
-      supabase.removeChannel(channel)
+      supabase.removeChannel(participantsChannel);
+      supabase.removeChannel(sessionsChannel);
       window.removeEventListener("beforeunload", handleBeforeUnload)
       
       const gameStartingFlag = sessionStorage.getItem('gameStarting')
