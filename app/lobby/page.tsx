@@ -312,19 +312,58 @@ export default function GameLobby() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Supabase Realtime 구독 설정 (Realtime 활성화 후)
+    // [수정됨] Supabase Realtime 구독 최적화
     console.log('[Lobby] Supabase Realtime 구독 시작');
-    
+
     const participantsChannel = supabase
       .channel('lobby-participants-global')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'game_participants' 
-      }, (payload) => {
-        console.log('[Realtime] 참가자 변경 감지:', payload.eventType, payload.new?.nickname || payload.old?.nickname);
-        fetchGameData(false);
-      })
+      .on('postgres_changes', 
+        { event: 'INSERT', schema: 'public', table: 'game_participants' }, 
+        (payload) => {
+          console.log('[Realtime] 새 참가자:', payload.new.nickname);
+          const newPlayer: Player = {
+            id: payload.new.id,
+            naverId: payload.new.naverId || payload.new.userId,
+            nickname: payload.new.nickname,
+            lives: payload.new.currentLives,
+            status: payload.new.status === 'in_lobby' || payload.new.status === 'playing' ? 'ready' : 'waiting',
+            joinTime: new Date(payload.new.joinedAt),
+            isInLobby: payload.new.status === 'in_lobby' || payload.new.status === 'playing',
+          };
+          setPlayers(prevPlayers => {
+            // 중복 추가 방지
+            if (prevPlayers.some(p => p.id === newPlayer.id)) {
+              return prevPlayers;
+            }
+            return [...prevPlayers, newPlayer];
+          });
+        }
+      )
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'game_participants' }, 
+        (payload) => {
+          console.log('[Realtime] 참가자 업데이트:', payload.new.nickname, '상태:', payload.new.status);
+          setPlayers(prevPlayers => 
+            prevPlayers.map(p => 
+              p.id === payload.new.id 
+                ? { 
+                    ...p, 
+                    lives: payload.new.currentLives,
+                    status: payload.new.status === 'eliminated' ? 'disconnected' : (payload.new.status === 'in_lobby' || payload.new.status === 'playing' ? 'ready' : 'waiting'),
+                    isInLobby: payload.new.status === 'in_lobby' || payload.new.status === 'playing',
+                  }
+                : p
+            )
+          );
+        }
+      )
+      .on('postgres_changes', 
+        { event: 'DELETE', schema: 'public', table: 'game_participants' }, 
+        (payload) => {
+          console.log('[Realtime] 참가자 삭제:', payload.old.id);
+          setPlayers(prevPlayers => prevPlayers.filter(p => p.id !== payload.old.id));
+        }
+      )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
           console.log('[Realtime] 참가자 채널 구독 성공!');
@@ -335,14 +374,35 @@ export default function GameLobby() {
 
     const sessionsChannel = supabase
       .channel('lobby-sessions-global')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'game_sessions' 
-      }, (payload) => {
-        console.log('[Realtime] 세션 변경 감지:', payload.eventType, payload.new?.status || payload.old?.status);
-        fetchGameData(false);
-      })
+      .on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'game_sessions' }, 
+        (payload) => {
+          const newStatus = payload.new.status;
+          console.log('[Realtime] 세션 상태 변경 감지:', newStatus);
+          setSessionStatus(newStatus);
+
+          if (newStatus === 'starting') {
+            console.log('[Realtime] 카운트다운 신호 수신!');
+            // 중요: 로컬 상태를 기준으로 참가자 수 계산
+            setPlayers(prevPlayers => {
+              const playingCount = prevPlayers.filter(p => p.isInLobby).length;
+              let destination = '/game';
+              if (playingCount >= 5) {
+                destination = '/game';
+              } else if (playingCount >= 2) {
+                destination = '/finals';
+              }
+              
+              sessionStorage.setItem('gameStarting', 'true');
+              sessionStorage.setItem('currentSessionId', payload.new.id);
+              setGameDestination(destination);
+              setGameStartCountdown(10); // 카운트다운 즉시 시작
+              
+              return prevPlayers; // 상태 업데이트 후 반환
+            });
+          }
+        }
+      )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
           console.log('[Realtime] 세션 채널 구독 성공!');
