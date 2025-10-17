@@ -331,46 +331,16 @@ export default function GameLobby() {
         }
       });
 
-    // beforeunload: 브라우저 닫을 때
-    const handleBeforeUnload = () => {
-      const gameStartingFlag = sessionStorage.getItem('gameStarting')
-      
-      if (gameStartingFlag === 'completed') {
-        console.log('[Lobby] 게임 시작 완료 - beforeunload 퇴장 건너뛰기')
-        return
-      }
-      
-      if (gameStartingFlag === 'true') {
-        console.log('[Lobby] Countdown 취소 - beforeunload exitLobby 실행')
-      }
-      
-      exitLobby()
-    }
-    
-    window.addEventListener("beforeunload", handleBeforeUnload)
-
     // Cleanup 함수
     return () => {
-      console.log('[Lobby] 페이지 이탈, Realtime 구독 해제 및 퇴장 처리')
+      console.log('[Lobby] 페이지 이탈, Realtime 구독 및 이벤트 리스너 해제');
       supabase.removeChannel(participantsChannel);
       supabase.removeChannel(sessionsChannel);
-      window.removeEventListener("beforeunload", handleBeforeUnload)
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       
-      const gameStartingFlag = sessionStorage.getItem('gameStarting')
-      
-      if (gameStartingFlag === 'completed') {
-        console.log('[Lobby] 게임 시작 완료 - cleanup 퇴장 건너뛰기')
-        sessionStorage.removeItem('gameStarting')
-        return
-      }
-      
-      if (gameStartingFlag === 'true') {
-        console.log('[Lobby] Countdown 취소 - cleanup exitLobby 실행')
-        sessionStorage.removeItem('gameStarting')
-      }
-      
-      exitLobby()
-    }
+      // 컴포넌트가 완전히 사라질 때 (예: 브라우저 닫기) 퇴장 처리
+      exitLobby();
+    };
   }, [])
 
   useEffect(() => {
