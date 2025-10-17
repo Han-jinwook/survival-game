@@ -9,6 +9,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import AudioSystem from "@/components/audio-system"
+import { supabase } from "@/lib/supabaseClient"
+import { RealtimePostgresChangesPayload } from "@supabase/supabase-js"
 
 interface Player {
   id: string
@@ -39,9 +41,9 @@ export default function GameLobby() {
   const [sessionStatus, setSessionStatus] = useState<string>("waiting")
 
   const minPlayers = 3
-  const readyPlayers = players.filter((p) => p.status === "ready").length
+  const readyPlayers = players.filter((p: Player) => p.status === "ready").length
   const totalPlayers = players.length
-  const lobbyPlayers = players.filter((p) => p.isInLobby).length
+  const lobbyPlayers = players.filter((p: Player) => p.isInLobby).length
 
   // 로비 입장 처리
   const enterLobby = async (participantId: string) => {
@@ -242,12 +244,6 @@ export default function GameLobby() {
   useEffect(() => {
     console.log("[Lobby] 페이지 로드, 사용자 확인 중...")
     
-    let eventSource: EventSource | null = null
-    let reconnectTimeout: NodeJS.Timeout | null = null
-    let pollingInterval: NodeJS.Timeout | null = null
-    let isActive = true
-    let sseConnected = false
-    
     // 로비 떠날 때 즉시 상태 변경
     const exitLobby = async () => {
       try {
@@ -269,52 +265,7 @@ export default function GameLobby() {
         console.error("[Lobby] 로비 퇴장 처리 실패:", error)
       }
     }
-    
-    // SSE 실시간 연결 - 재연결 로직 포함
-    const connectSSE = () => {
-      if (!isActive) return
-      
-      console.log("[Lobby] SSE 연결 시도...")
-      eventSource = new EventSource('/api/game/stream')
-      
-      eventSource.onopen = () => {
-        console.log('[Lobby] SSE 연결 성공!')
-        sseConnected = true
-        
-        if (pollingInterval) {
-          clearInterval(pollingInterval)
-          pollingInterval = null
-          console.log('[Lobby] SSE 연결 성공 - 폴링 중지')
-        }
-      }
-      
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          console.log('[Lobby] SSE 메시지 수신:', data)
-          
-          if (data.type === 'game_update') {
-            fetchGameData(false)
-          }
-        } catch (error) {
-          console.error('[Lobby] SSE 메시지 파싱 오류:', error)
-        }
-      }
-      
-      eventSource.onerror = (error) => {
-        console.error('[Lobby] SSE 연결 오류:', error)
-        eventSource?.close()
-        sseConnected = false
-        
-        if (isActive) {
-          console.log('[Lobby] 3초 후 SSE 재연결 시도...')
-          reconnectTimeout = setTimeout(() => {
-            connectSSE()
-          }, 3000)
-        }
-      }
-    }
-    
+
     // 쿠키 기반 인증으로 현재 사용자 확인
     const loadCurrentUser = async () => {
       try {
@@ -332,22 +283,6 @@ export default function GameLobby() {
             // 🍪 초기 데이터 로드 (자동 입장 활성화 + 쿠키 userId 전달)
             fetchGameData(true, data.user.id)
             
-            // SSE 연결 시작
-            connectSSE()
-            
-            // 폴링 백업 (5초 후 SSE 상태 확인)
-            setTimeout(() => {
-              if (!sseConnected && isActive) {
-                console.log('[Lobby] SSE 연결 실패 - 폴링 백업 시작 (2초 간격)')
-                pollingInterval = setInterval(() => {
-                  if (!sseConnected && isActive) {
-                    console.log('[Lobby] 폴링으로 게임 상태 확인...')
-                    fetchGameData(false)
-                  }
-                }, 2000)
-              }
-            }, 5000)
-            
             return
           }
         }
@@ -361,7 +296,35 @@ export default function GameLobby() {
     }
     
     loadCurrentUser()
-    
+
+    // Supabase Realtime 구독 설정
+    const channel = supabase.channel('lobby-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'game_participants' },
+        (payload: RealtimePostgresChangesPayload<any>) => {
+          console.log('[Realtime] 참가자 변경 감지:', payload)
+          fetchGameData(false)
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'game_sessions' },
+        (payload: RealtimePostgresChangesPayload<any>) => {
+          console.log('[Realtime] 세션 변경 감지:', payload)
+          fetchGameData(false)
+        }
+      )
+      .subscribe((status: 'SUBSCRIBED' | 'CLOSED' | 'CHANNEL_ERROR' | 'TIMED_OUT', err?: Error) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Realtime] Supabase 구독 성공!')
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('[Realtime] 구독 에러:', err)
+        } else if (status === 'TIMED_OUT') {
+          console.warn('[Realtime] 구독 시간 초과')
+        }
+      })
+
     // beforeunload: 브라우저 닫을 때
     const handleBeforeUnload = () => {
       const gameStartingFlag = sessionStorage.getItem('gameStarting')
@@ -379,13 +342,11 @@ export default function GameLobby() {
     }
     
     window.addEventListener("beforeunload", handleBeforeUnload)
-    
+
+    // Cleanup 함수
     return () => {
-      console.log('[Lobby] SSE 연결 종료')
-      isActive = false
-      if (reconnectTimeout) clearTimeout(reconnectTimeout)
-      if (pollingInterval) clearInterval(pollingInterval)
-      eventSource?.close()
+      console.log('[Lobby] 페이지 이탈, Realtime 구독 해제 및 퇴장 처리')
+      supabase.removeChannel(channel)
       window.removeEventListener("beforeunload", handleBeforeUnload)
       
       const gameStartingFlag = sessionStorage.getItem('gameStarting')
@@ -417,7 +378,7 @@ export default function GameLobby() {
   useEffect(() => {
     if (gameStartCountdown !== null && gameStartCountdown > 0) {
       const timer = setTimeout(() => {
-        setGameStartCountdown((prev) => (prev !== null ? prev - 1 : null))
+        setGameStartCountdown((prev: number | null) => (prev !== null ? prev - 1 : null))
       }, 1000)
       return () => clearTimeout(timer)
     } else if (gameStartCountdown === 0) {
@@ -468,9 +429,9 @@ export default function GameLobby() {
     }
   }, [currentUser, players])
 
-  const currentUserStatus = players.find((p) => p.naverId === currentUser?.naverId)?.status || "waiting"
-  const currentUserLives = players.find((p) => p.naverId === currentUser?.naverId)?.lives || currentUser?.lives || 0
-  const totalLives = players.reduce((sum, player) => sum + player.lives, 0)
+  const currentUserStatus = players.find((p: Player) => p.naverId === currentUser?.naverId)?.status || "waiting"
+  const currentUserLives = players.find((p: Player) => p.naverId === currentUser?.naverId)?.lives || currentUser?.lives || 0
+  const totalLives = players.reduce((sum: number, player: Player) => sum + player.lives, 0)
 
   const sortedPlayers = [...players].sort((a, b) => {
     if (sortBy === "name") {

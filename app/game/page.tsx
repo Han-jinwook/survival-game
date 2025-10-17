@@ -8,6 +8,8 @@ import { Progress } from "@/components/ui/progress"
 import AudioSystem from "@/components/audio-system"
 import { useRouter } from "next/navigation"
 import { speak, setVoiceEnabled } from "@/lib/voice"
+import { supabase } from "@/lib/supabaseClient"
+import { RealtimePostgresChangesPayload } from "@supabase/supabase-js"
 import { Volume2, VolumeX } from "lucide-react"
 
 type GameChoice = "rock" | "paper" | "scissors"
@@ -105,8 +107,8 @@ export default function GameInterface() {
   const [roundId, setRoundId] = useState<string | null>(null)
   const [gameRoundId, setGameRoundId] = useState<string>("")
 
-  const currentUser = players.find((p) => p.isCurrentUser)
-  const alivePlayers = players.filter((p) => p.lives > 0)
+  const currentUser = players.find((p: Player) => p.isCurrentUser)
+  const alivePlayers = players.filter((p: Player) => p.lives > 0)
 
   const [voiceEnabled, setVoiceEnabledState] = useState(true)
   const [displayedCurrentUserLives, setDisplayedCurrentUserLives] = useState<number | null>(null)
@@ -127,12 +129,12 @@ export default function GameInterface() {
     const opponents = getPositionedOpponents()
     const lifeMap = new Map<number, number>()
 
-    opponents.forEach((p) => {
+    opponents.forEach((p: Player) => {
       lifeMap.set(p.lives, (lifeMap.get(p.lives) || 0) + 1)
     })
 
     const breakdown = Array.from(lifeMap.entries())
-      .map(([lives, count]) => ({ lives, count }))
+      .map(([lives, count]: [number, number]) => ({ lives, count }))
       .sort((a, b) => b.lives - a.lives)
 
     console.log("[v0] Life breakdown:", breakdown)
@@ -152,13 +154,13 @@ export default function GameInterface() {
     if (gameRound.phase !== "revealing" || losingChoices.length === 0) return false
 
     const opponents = getPositionedOpponents()
-    const result = opponents.some((p) => p.lives === lives && p.finalChoice && losingChoices.includes(p.finalChoice))
+    const result = opponents.some((p: Player) => p.lives === lives && p.finalChoice && losingChoices.includes(p.finalChoice))
 
     console.log(`[v0] hasPlayerWithLivesLost(${lives}):`, result)
     console.log(`[v0] Losing choices:`, losingChoices)
     console.log(
       `[v0] Players with ${lives} lives:`,
-      opponents.filter((p) => p.lives === lives).map((p) => `${p.nickname}:${p.finalChoice}`),
+      opponents.filter((p: Player) => p.lives === lives).map((p: Player) => `${p.nickname}:${p.finalChoice}`),
     )
 
     return result
@@ -167,9 +169,9 @@ export default function GameInterface() {
   const getOtherPlayersWeaponCounts = (): ChoiceCount => {
     const counts: ChoiceCount = { rock: 0, paper: 0, scissors: 0 }
 
-    alivePlayers.forEach((player) => {
+    alivePlayers.forEach((player: Player) => {
       if (!player.isCurrentUser && player.selectedChoices) {
-        player.selectedChoices.forEach((choice) => {
+        player.selectedChoices.forEach((choice: GameChoice) => {
           counts[choice]++
         })
       }
@@ -378,159 +380,45 @@ export default function GameInterface() {
 
     loadGameData()
     
-    // 🔥 SSE: 실시간 게임 상태 동기화
-    const eventSource = new EventSource('/api/game/stream')
-    console.log("[SSE] 연결 시작")
-    
-    eventSource.onmessage = async (event) => {
-      try {
-        const data = JSON.parse(event.data)
-        console.log("[SSE] 수신:", data.type, data)
-        
-        if (data.type === 'connected') return
-        
-        const currentParticipantId = localStorage.getItem("participantInfo") ? JSON.parse(localStorage.getItem("participantInfo")!).id : null
-        
-        // 이벤트 타입별 처리
-        if (data.type === 'player_choice') {
-          // 플레이어 선택만 업데이트 (전체 리프레시 불필요)
-          const response = await fetch(`/api/game/state`)
-          if (response.ok) {
-            const gameState = await response.json()
-            const lobbyPlayers = gameState.participants?.filter((p: any) => p.status === "playing") || []
-            const updatedPlayers = lobbyPlayers.map((p: any) => ({
-              id: p.id,
-              nickname: p.nickname,
-              lives: p.currentLives || 0,
-              isCurrentUser: p.id === currentParticipantId,
-            }))
-            setPlayers(updatedPlayers)
-            console.log("[SSE] 플레이어 선택 동기화:", updatedPlayers.length, "명")
+    // Supabase Realtime 구독 설정
+    const channel = supabase.channel(`game-${gameRoundId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_rounds' }, 
+        (payload: RealtimePostgresChangesPayload<any>) => {
+          console.log('[Realtime] 라운드 변경 감지:', payload);
+          // 필요한 데이터만 선택적으로 업데이트하거나, 전체 데이터를 다시 불러올 수 있습니다.
+          // 예: loadGameData() 또는 특정 상태만 업데이트
+          if (payload.new && 'phase' in payload.new) {
+            setGameRound((prev: GameRound) => ({ ...prev, phase: payload.new.phase as GamePhase }));
           }
         }
-        else if (data.type === 'phase_changed') {
-          // 페이즈 변경
-          console.log("[SSE] 페이즈 변경:", data.phase)
-          setGameRound(prev => ({ ...prev, phase: data.phase as GamePhase }))
-          
-          // 페이즈별 타이머 설정
-          if (data.phase === 'selectTwo') {
-            setGameRound(prev => ({ ...prev, timeLeft: 10 }))
-          } else if (data.phase === 'excludeOne') {
-            setGameRound(prev => ({ ...prev, timeLeft: 10 }))
-          } else if (data.phase === 'revealing') {
-            setGameRound(prev => ({ ...prev, timeLeft: 5 }))
-          }
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'player_choices' }, 
+        (payload: RealtimePostgresChangesPayload<any>) => {
+          console.log('[Realtime] 선택 변경 감지:', payload);
+          // 다른 플레이어의 선택을 실시간으로 반영할 수 있습니다.
+          // loadGameData(); // 간단하게 전체 데이터 리로드
         }
-        else if (data.type === 'round_result') {
-          // 라운드 결과 - 서버가 이미 계산 완료
-          console.log("[SSE] 라운드 결과:", data.result)
-          const { rockCount, paperCount, scissorsCount, losingChoice, losers } = data.result || {}
-          
-          setChoiceCounts({ 
-            rock: rockCount || 0, 
-            paper: paperCount || 0, 
-            scissors: scissorsCount || 0 
-          })
-          
-          if (losingChoice) {
-            setLosingChoice(losingChoice as GameChoice)
-            setLosingChoices([losingChoice as GameChoice])
-          }
-          
-          // 페이즈를 revealing으로 변경
-          setGameRound(prev => ({ ...prev, phase: 'revealing', timeLeft: 5 }))
-          
-          // 전체 게임 상태 리프레시 (목숨 업데이트 포함)
-          const response = await fetch(`/api/game/state`)
-          if (response.ok) {
-            const gameState = await response.json()
-            const lobbyPlayers = gameState.participants?.filter((p: any) => p.status === "playing") || []
-            const updatedPlayers = lobbyPlayers.map((p: any) => ({
-              id: p.id,
-              nickname: p.nickname,
-              lives: p.currentLives || 0,
-              isCurrentUser: p.id === currentParticipantId,
-            }))
-            setPlayers(updatedPlayers)
-            
-            // 결과 메시지 출력
-            if (losers && losers.length > 0) {
-              const loserNames = losers.map((l: any) => l.nickname).join(', ')
-              const message = `${loserNames}님이 목숨을 잃었습니다!`
-              setGameMessage(message)
-              speak(message)
-            }
-            
-            // 5초 후 다음 라운드 또는 게임 종료 처리
-            setTimeout(() => {
-              const alivePlayers = updatedPlayers.filter((p: any) => p.lives > 0)
-              if (alivePlayers.length === 1) {
-                // 우승자 결정
-                setGameRound((prev) => ({ ...prev, phase: "gameOver", timeLeft: 0 }))
-              } else if (alivePlayers.length <= 4 && gameMode === "preliminary") {
-                // 결승 진출
-                setShowFinalsConfirmation(true)
-              } else {
-                // 다음 라운드
-                startNextRound()
-              }
-            }, 5000)
-          }
+      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_participants' }, 
+        (payload: RealtimePostgresChangesPayload<any>) => {
+          console.log('[Realtime] 참가자 변경 감지 (목숨 등):', payload);
+          loadGameData(); // 목숨 변경 등 중요 업데이트이므로 전체 데이터 리로드
         }
-        else if (data.type === 'round_created') {
-          // 새 라운드 시작
-          console.log("[SSE] 새 라운드:", data.roundNumber)
-          setRoundId(data.roundId)
-          setGameRound(prev => ({ 
-            ...prev, 
-            round: data.roundNumber,
-            phase: 'selectTwo',
-            timeLeft: 10 
-          }))
-          setSelectedChoices([])
-          setChoiceCounts({ rock: 0, paper: 0, scissors: 0 })
-          setLosingChoice(null)
-          setLosingChoices([])
+      )
+      .subscribe((status: 'SUBSCRIBED' | 'CLOSED' | 'CHANNEL_ERROR' | 'TIMED_OUT', err?: Error) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Realtime] 게임 구독 성공!')
+        } else {
+          console.error('[Realtime] 게임 구독 실패:', err)
         }
-        else {
-          // 기타 업데이트 - 전체 상태 리프레시
-          const response = await fetch(`/api/game/state`)
-          if (response.ok) {
-            const gameState = await response.json()
-            const lobbyPlayers = gameState.participants?.filter((p: any) => p.status === "playing") || []
-            const updatedPlayers = lobbyPlayers.map((p: any) => ({
-              id: p.id,
-              nickname: p.nickname,
-              lives: p.currentLives || 0,
-              isCurrentUser: p.id === currentParticipantId,
-            }))
-            setPlayers(updatedPlayers)
-            console.log("[SSE] 동기화 완료:", updatedPlayers.length, "명")
+      });
 
-            // 라운드 정보 업데이트
-            if (gameState.round) {
-              setRoundId(gameState.round.id)
-              console.log("[SSE] 라운드 ID 업데이트:", gameState.round.id, "Phase:", gameState.round.phase)
-            }
-          }
-        }
-      } catch (error) {
-        console.error("[SSE] 오류:", error)
-      }
-    }
-    
-    eventSource.onerror = (error) => {
-      console.error("[SSE] 연결 오류, 재시도...")
-      eventSource.close()
-    }
-    
     // cleanup
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload)
       exitLobby()
-      eventSource.close()
-      console.log("[SSE] 연결 종료")
+      supabase.removeChannel(channel)
+      console.log("[Realtime] 연결 종료")
     }
   }, [])
 
@@ -543,8 +431,8 @@ export default function GameInterface() {
     } else if (showFinalsConfirmation && finalsCountdown === 0) {
       // Prepare finalist data for the finals page
       const finalists = players
-        .filter((p) => p.lives > 0)
-        .map((p) => ({
+        .filter((p: Player) => p.lives > 0)
+        .map((p: Player) => ({
           id: p.id,
           nickname: p.nickname,
           lives: p.lives,
@@ -592,7 +480,7 @@ export default function GameInterface() {
   useEffect(() => {
     if (gameRound.timeLeft > 0 && (gameRound.phase === "selectTwo" || gameRound.phase === "excludeOne")) {
       const timer = setTimeout(() => {
-        setGameRound((prev) => ({ ...prev, timeLeft: prev.timeLeft - 1 }))
+        setGameRound((prev: GameRound) => ({ ...prev, timeLeft: prev.timeLeft - 1 }))
       }, 1000)
       return () => clearTimeout(timer)
     }
@@ -737,7 +625,7 @@ export default function GameInterface() {
     if (!finalChoice) return
 
     // UI 업데이트 (즉시 피드백)
-    setPlayers((prev) => prev.map((p) => (p.isCurrentUser ? { ...p, finalChoice } : p)))
+    setPlayers((prev: Player[]) => prev.map((p: Player) => (p.isCurrentUser ? { ...p, finalChoice } : p)))
 
     // 서버에 하나빼기 저장
     try {

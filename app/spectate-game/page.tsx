@@ -1,6 +1,8 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
+import { supabase } from "@/lib/supabaseClient"
+import { RealtimePostgresChangesPayload } from "@supabase/supabase-js"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -20,6 +22,7 @@ interface Player {
   finalChoice?: GameChoice
   eliminated?: boolean
   timedOut?: boolean
+  status?: 'waiting' | 'playing' | 'eliminated' | 'disconnected';
 }
 
 interface GameRound {
@@ -37,80 +40,82 @@ interface ChoiceCount {
 
 export default function SpectateGamePage() {
   const router = useRouter()
-  const [players, setPlayers] = useState<Player[]>([
-    { id: "1", nickname: "게임마스터", lives: 2, finalChoice: "rock" },
-    { id: "2", nickname: "테스트유저", lives: 1, finalChoice: "paper" },
-    { id: "3", nickname: "멀린", lives: 2, finalChoice: "paper" },
-    { id: "4", nickname: "시시", lives: 1, finalChoice: "scissors" },
-  ])
+  const [players, setPlayers] = useState<Player[]>([])
   const [gameRound, setGameRound] = useState<GameRound>({
-    round: 1,
-    phase: "revealing",
-    timeLeft: 3,
-    survivors: 4,
+    round: 0,
+    phase: "waiting",
+    timeLeft: 0,
+    survivors: 0,
   })
-  const [choiceCounts, setChoiceCounts] = useState<ChoiceCount>({ rock: 1, paper: 2, scissors: 1 })
-  const [gameMessage, setGameMessage] = useState("결과를 공개합니다...")
-  const [losingChoices, setLosingChoices] = useState<GameChoice[]>(["rock"])
+  const [choiceCounts, setChoiceCounts] = useState<ChoiceCount>({ rock: 0, paper: 0, scissors: 0 })
+  const [gameMessage, setGameMessage] = useState("게임 데이터를 불러오는 중입니다...")
+  const [losingChoices, setLosingChoices] = useState<GameChoice[]>([])
   const [voiceEnabled, setVoiceEnabledState] = useState(true)
   const [showFinalsRoster, setShowFinalsRoster] = useState(false)
   const [finalsCountdown, setFinalsCountdown] = useState(60)
 
-  const alivePlayers = players.filter((p) => p.lives > 0)
+  const alivePlayers = players.filter((p: Player) => p.lives > 0)
 
-  useEffect(() => {
-    const gameState = localStorage.getItem("gameState")
-    if (gameState) {
-      try {
-        const state = JSON.parse(gameState)
-        if (state.players && state.players.length > 0) {
-          setPlayers(state.players)
-        }
-        if (state.gameRound) {
-          setGameRound(state.gameRound)
-        }
-        if (state.choiceCounts) {
-          setChoiceCounts(state.choiceCounts)
-        }
-        if (state.gameMessage) {
-          setGameMessage(state.gameMessage)
-        }
-        if (state.losingChoices) {
-          setLosingChoices(state.losingChoices)
-        }
-        if (state.showFinalsRoster !== undefined) {
-          setShowFinalsRoster(state.showFinalsRoster)
-        }
-        if (state.finalsCountdown !== undefined) {
-          setFinalsCountdown(state.finalsCountdown)
-        }
-      } catch (e) {
-        console.error("[v0] Failed to parse gameState:", e)
+  const fetchGameState = async () => {
+    try {
+      const response = await fetch('/api/game/state');
+      if (!response.ok) {
+        throw new Error('게임 상태를 불러오는데 실패했습니다.');
       }
+      const data = await response.json();
+      console.log("[Spectate] Game state loaded:", data);
+
+      if (data.participants) {
+        setPlayers(data.participants.map((p: Player) => ({
+          id: p.id,
+          nickname: p.nickname,
+          lives: p.lives,
+          finalChoice: p.finalChoice,
+          eliminated: p.eliminated,
+        })));
+      }
+
+      if (data.round) {
+        setGameRound({
+          round: data.round.round_number,
+          phase: data.round.phase,
+          timeLeft: 10, // 타이머는 클라이언트에서 관리
+          survivors: data.participants?.filter((p: Player) => p.status !== 'eliminated').length || 0,
+        });
+      }
+
+      // TODO: choiceCounts, gameMessage, losingChoices 등 추가 데이터 처리
+
+    } catch (error) {
+      console.error("[Spectate] Error fetching game state:", error);
+      setGameMessage("게임 상태를 불러올 수 없습니다.");
     }
-  }, [])
+  };
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const gameState = localStorage.getItem("gameState")
-      if (gameState) {
-        try {
-          const state = JSON.parse(gameState)
-          if (state.players && state.players.length > 0) setPlayers(state.players)
-          if (state.gameRound) setGameRound(state.gameRound)
-          if (state.choiceCounts) setChoiceCounts(state.choiceCounts)
-          if (state.gameMessage) setGameMessage(state.gameMessage)
-          if (state.losingChoices) setLosingChoices(state.losingChoices)
-          if (state.showFinalsRoster !== undefined) setShowFinalsRoster(state.showFinalsRoster)
-          if (state.finalsCountdown !== undefined) setFinalsCountdown(state.finalsCountdown)
-        } catch (e) {
-          console.error("[v0] Failed to parse gameState:", e)
-        }
-      }
-    }, 500)
+    // 초기 데이터 로드
+    fetchGameState();
 
-    return () => clearInterval(interval)
-  }, [])
+    // Supabase Realtime 구독
+    const channel = supabase.channel('spectate-game-changes')
+      .on('postgres_changes', { event: '*', schema: 'public' }, 
+        (payload: RealtimePostgresChangesPayload<any>) => {
+          console.log('[Spectate] Realtime change received:', payload);
+          fetchGameState();
+        }
+      )
+      .subscribe((status: 'SUBSCRIBED' | 'CLOSED' | 'CHANNEL_ERROR' | 'TIMED_OUT', err?: Error) => {
+        if (status === 'SUBSCRIBED') {
+          console.log('[Spectate] Realtime 구독 성공');
+        } else {
+          console.error('[Spectate] Realtime 구독 실패:', err);
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const getChoiceIcon = (choice: GameChoice) => {
     switch (choice) {
@@ -141,19 +146,19 @@ export default function SpectateGamePage() {
   const totalLifeBreakdown = useMemo(() => {
     const lifeMap = new Map<number, number>()
 
-    alivePlayers.forEach((p) => {
+    alivePlayers.forEach((p: Player) => {
       lifeMap.set(p.lives, (lifeMap.get(p.lives) || 0) + 1)
     })
 
     return Array.from(lifeMap.entries())
-      .map(([lives, count]) => ({ lives, count }))
+      .map(([lives, count]: [number, number]) => ({ lives, count }))
       .sort((a, b) => b.lives - a.lives)
   }, [players])
 
   if (showFinalsRoster || alivePlayers.length <= 4) {
     const finalists = alivePlayers
       .sort((a, b) => b.lives - a.lives)
-      .map((p) => ({
+      .map((p: Player) => ({
         ...p,
         isCurrentUser: false, // 관전자는 참가자가 아님
       }))
