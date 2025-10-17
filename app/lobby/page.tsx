@@ -58,11 +58,16 @@ export default function GameLobby() {
       })
       
       if (response.ok) {
-        const data = await response.json()
-        console.log("[Lobby] 로비 입장 완료:", data.participant)
-        // 참가자 정보 저장 (exit_lobby용)
-        localStorage.setItem("participantInfo", JSON.stringify(data.participant))
-        return true
+        const data = await response.json();
+        console.log("[Lobby] 로비 입장 완료:", data.participant);
+
+        // 로컬 상태 즉시 업데이트 (UI 즉각 반응)
+        setPlayers(prevPlayers => prevPlayers.map(p => 
+          p.id === participantId ? { ...p, status: 'ready', isInLobby: true } : p
+        ));
+
+        localStorage.setItem("participantInfo", JSON.stringify(data.participant));
+        return true;
       } else {
         console.error("[Lobby] 로비 입장 실패:", response.status)
         return false

@@ -33,11 +33,11 @@ export async function POST(request: NextRequest) {
     let userLives = 5 // 기본값
     try {
       const result = await pool.query(
-        `SELECT initial_lives FROM game_participants WHERE user_id = $1 ORDER BY joined_at DESC LIMIT 1`,
+        `SELECT current_lives FROM game_participants WHERE user_id = $1 ORDER BY joined_at DESC LIMIT 1`,
         [user.id]
       )
       if (result.rows.length > 0) {
-        userLives = result.rows[0].initial_lives
+        userLives = result.rows[0].current_lives
       }
     } catch (err) {
       console.log("Participant info not found, using default lives:", err)
