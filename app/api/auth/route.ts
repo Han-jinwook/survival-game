@@ -1,8 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { DatabaseService } from "@/lib/database"
-import { Pool } from "pg"
-
-const pool = new Pool({ connectionString: process.env.DATABASE_URL })
+// pg Pool은 더 이상 사용하지 않으므로 제거합니다.
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,19 +27,9 @@ export async function POST(request: NextRequest) {
       user = await DatabaseService.createUser(trimmedNaverId, nickname)
     }
 
-    // DB에서 참가자 정보 조회 (행운권 개수)
-    let userLives = 5 // 기본값
-    try {
-      const result = await pool.query(
-        `SELECT current_lives FROM game_participants WHERE user_id = $1 ORDER BY joined_at DESC LIMIT 1`,
-        [user.id]
-      )
-      if (result.rows.length > 0) {
-        userLives = result.rows[0].current_lives
-      }
-    } catch (err) {
-      console.log("Participant info not found, using default lives:", err)
-    }
+    // DatabaseService를 사용하여 참가자 정보 조회
+    const participant = await DatabaseService.getParticipantByUserId(user.id);
+    const userLives = participant ? participant.current_lives : 5; // 참가자 정보가 없으면 기본값 5
 
     // 인증 성공 - 쿠키 발급
     const response = NextResponse.json({

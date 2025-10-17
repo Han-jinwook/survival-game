@@ -108,6 +108,22 @@ export class DatabaseService {
     return data;
   }
 
+  static async getParticipantByUserId(userId: string): Promise<GameParticipant | null> {
+    const { data, error } = await db
+      .from('game_participants')
+      .select('*')
+      .eq('user_id', userId)
+      .order('joined_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error getting participant by user ID:', error);
+      return null;
+    }
+    return data;
+  }
+
   static async getParticipants(sessionId: number): Promise<(GameParticipant & { naver_id: string })[]> {
     const { data, error } = await db
       .from('game_participants')
