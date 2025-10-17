@@ -1,23 +1,34 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
+// 클라이언트 측에서 사용하는 공개 클라이언트
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-let supabase: SupabaseClient;
-
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ Supabase 환경 변수가 설정되지 않았습니다. .env.local 파일을 확인해주세요.');
-  console.warn('필요한 환경 변수:');
-  console.warn('- NEXT_PUBLIC_SUPABASE_URL');
-  console.warn('- NEXT_PUBLIC_SUPABASE_ANON_KEY');
-  
-  // 개발 환경에서는 더미 클라이언트 생성 (에러 방지)
-  supabase = createClient(
-    'https://dummy.supabase.co', 
-    'dummy-key'
-  );
-} else {
-  supabase = createClient(supabaseUrl, supabaseAnonKey);
+  throw new Error('Supabase URL 혹은 Anon Key가 설정되지 않았습니다.');
 }
 
-export { supabase };
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// 서버 측에서 사용하는 관리자용 클라이언트 (싱글턴 패턴)
+let supabaseAdmin: SupabaseClient | null = null;
+
+export const getSupabaseAdmin = () => {
+  if (supabaseAdmin) {
+    return supabaseAdmin;
+  }
+
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다.');
+  }
+
+  // auth 옵션을 통해 서버 측 클라이언트임을 명시
+  supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+    },
+  });
+
+  return supabaseAdmin;
+};

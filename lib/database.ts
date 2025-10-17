@@ -1,4 +1,6 @@
-import { supabase } from './supabaseClient';
+import { getSupabaseAdmin } from './supabaseClient';
+
+const db = getSupabaseAdmin();
 import type { User, GameSession, GameParticipant, GameRound, PlayerChoice } from './types';
 
 // Supabase 기반의 새로운 데이터베이스 서비스
@@ -6,7 +8,7 @@ export class DatabaseService {
 
   // 사용자 관련
   static async getUserById(userId: string): Promise<User | null> {
-    const { data, error } = await supabase.from('users').select('*').eq('id', userId).single();
+    const { data, error } = await db.from('users').select('*').eq('id', userId).single();
     if (error) {
       console.error('Error getting user by ID:', error);
       return null;
@@ -15,7 +17,7 @@ export class DatabaseService {
   }
 
   static async getUserByNaverId(naverId: string): Promise<User | null> {
-    const { data, error } = await supabase.from('users').select('*').eq('naver_id', naverId).limit(1).single();
+    const { data, error } = await db.from('users').select('*').eq('naver_id', naverId).limit(1).single();
     if (error && error.code !== 'PGRST116') { // PGRST116: No rows found
       console.error('Error getting user by Naver ID:', error);
       return null;
@@ -24,7 +26,7 @@ export class DatabaseService {
   }
 
   static async createUser(naverId: string, nickname: string): Promise<User | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('users')
       .insert({ naver_id: naverId, nickname: nickname })
       .select()
@@ -37,7 +39,7 @@ export class DatabaseService {
   }
 
   static async upsertUser(naverId: string, nickname: string): Promise<User | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('users')
       .upsert({ naver_id: naverId, nickname: nickname }, { onConflict: 'naver_id' })
       .select()
@@ -51,7 +53,7 @@ export class DatabaseService {
 
   // 게임 세션 관련
   static async createGameSession(sessionName: string, initialLives: number, startedAt?: string, cafeName?: string, prize?: string): Promise<GameSession | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('game_sessions')
       .insert({ session_name: sessionName, initial_lives: initialLives, started_at: startedAt, cafe_name: cafeName, prize: prize, status: 'waiting' })
       .select()
@@ -64,7 +66,7 @@ export class DatabaseService {
   }
 
   static async getActiveGameSession(): Promise<GameSession | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('game_sessions')
       .select('*')
       .in('status', ['waiting', 'starting', 'in_progress'])
@@ -79,7 +81,7 @@ export class DatabaseService {
   }
 
   static async updateGameSession(sessionId: number, updates: Partial<Omit<GameSession, 'id'>>): Promise<GameSession | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('game_sessions')
       .update(updates)
       .eq('id', sessionId)
@@ -94,7 +96,7 @@ export class DatabaseService {
 
   // 참가자 관련
   static async addParticipant(sessionId: number, userId: string, nickname: string, initialLives: number): Promise<GameParticipant | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('game_participants')
       .insert({ game_session_id: sessionId, user_id: userId, nickname: nickname, initial_lives: initialLives, current_lives: initialLives, status: 'waiting' })
       .select()
@@ -107,7 +109,7 @@ export class DatabaseService {
   }
 
   static async getParticipants(sessionId: number): Promise<(GameParticipant & { naver_id: string })[]> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('game_participants')
       .select('*, users(naver_id)')
       .eq('game_session_id', sessionId)
@@ -121,7 +123,7 @@ export class DatabaseService {
   }
 
   static async updateParticipant(participantId: string, updates: Partial<Omit<GameParticipant, 'id'>>): Promise<GameParticipant | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('game_participants')
       .update(updates)
       .eq('id', participantId)
@@ -136,7 +138,7 @@ export class DatabaseService {
 
   // 라운드 관련
   static async createRound(sessionId: number, roundNumber: number, phase: GameRound['phase']): Promise<GameRound | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('game_rounds')
       .insert({ game_session_id: sessionId, round_number: roundNumber, phase: phase })
       .select()
@@ -149,7 +151,7 @@ export class DatabaseService {
   }
 
   static async getCurrentRound(sessionId: number): Promise<GameRound | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('game_rounds')
       .select('*')
       .eq('game_session_id', sessionId)
@@ -164,7 +166,7 @@ export class DatabaseService {
   }
 
   static async updateRound(roundId: string, updates: Partial<Omit<GameRound, 'id'>>): Promise<GameRound | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('game_rounds')
       .update(updates)
       .eq('id', roundId)
@@ -179,7 +181,7 @@ export class DatabaseService {
 
   // 선택 관련
   static async savePlayerChoice(choice: Partial<PlayerChoice>): Promise<PlayerChoice | null> {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('player_choices')
       .upsert(choice, { onConflict: 'round_id,participant_id' })
       .select()
@@ -193,7 +195,7 @@ export class DatabaseService {
 
   // 🔒 트랜잭션: 결과 계산 및 목숨 차감 (DB 함수 호출)
   static async processRoundResults(roundId: string, gameMode: 'preliminary' | 'final'): Promise<any> {
-    const { data, error } = await supabase.rpc('process_round_results', {
+    const { data, error } = await db.rpc('process_round_results', {
       round_id_param: roundId,
       game_mode_param: gameMode
     });
