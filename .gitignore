@@ -34,3 +34,15 @@ public/worker-*.js
 public/sw.js.map
 public/workbox-*.js.map
 public/worker-*.js.map
+
+# Docker files (not needed for Netlify deployment)
+Dockerfile
+docker-compose.yml
+
+# Development assets and screenshots
+attached_assets/
+*.bat
+
+# Development documentation (keep plan.md and GAME_RULES.md)
+DB스키마.md
+replit.md

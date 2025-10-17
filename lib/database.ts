@@ -23,6 +23,19 @@ export class DatabaseService {
     return data;
   }
 
+  static async createUser(naverId: string, nickname: string): Promise<User | null> {
+    const { data, error } = await supabase
+      .from('users')
+      .insert({ naver_id: naverId, nickname: nickname })
+      .select()
+      .single();
+    if (error) {
+      console.error('Error creating user:', error);
+      return null;
+    }
+    return data;
+  }
+
   static async upsertUser(naverId: string, nickname: string): Promise<User | null> {
     const { data, error } = await supabase
       .from('users')
