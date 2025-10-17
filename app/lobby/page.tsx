@@ -81,7 +81,7 @@ export default function GameLobby() {
   // 실시간 게임 데이터 가져오기
   const fetchGameData = async (autoEnter = false, cookieUserId?: string) => {
     try {
-      const response = await fetch("/api/game/state")
+      const response = await fetch("/api/game/settings")
       if (response.ok) {
         const data = await response.json()
         console.log("[Lobby] DB 데이터 로드 성공:", data)
@@ -470,14 +470,15 @@ export default function GameLobby() {
       return;
     }
 
-    // 1. 현재 세션 ID 가져오기
+    // 1. 현재 세션 ID 가져오기 (활성 세션 우선)
     let sessionId: number | null = null;
     try {
-      const response = await fetch("/api/game/state");
+      const response = await fetch("/api/game/settings");
       if (response.ok) {
         const data = await response.json();
         if (data.session) {
           sessionId = data.session.id;
+          console.log("[Lobby] 활성 세션 ID 확인:", sessionId);
         }
       }
     } catch (error) {
@@ -485,8 +486,8 @@ export default function GameLobby() {
     }
 
     if (!sessionId) {
-      setStartErrorMessage("❌ 게임 세션을 찾을 수 없습니다");
-      setTimeout(() => setStartErrorMessage(""), 3000);
+      setStartErrorMessage("❌ 활성 게임 세션을 찾을 수 없습니다. 관리자 페이지에서 세션을 생성해주세요.");
+      setTimeout(() => setStartErrorMessage(""), 5000);
       return;
     }
 
