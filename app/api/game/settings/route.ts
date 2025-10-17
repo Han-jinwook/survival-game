@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+export const dynamic = 'force-dynamic' // 캐시 비활성화
 import { DatabaseService } from "@/lib/database"
 
 export async function POST(request: NextRequest) {

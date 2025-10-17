@@ -448,6 +448,63 @@ export default function GameLobby() {
     }
   })
 
+  const handleTestStart = async () => {
+    // 로비에 입장한 플레이어 기준으로 인원 체크
+    if (lobbyPlayers < 2) {
+      setStartErrorMessage(`최소 2명 이상이어야 게임을 시작할 수 있습니다. (현재: ${lobbyPlayers}명)`);
+      setTimeout(() => setStartErrorMessage(""), 3000);
+      return;
+    }
+
+    // 1. 현재 세션 ID 가져오기
+    let sessionId: number | null = null;
+    try {
+      const response = await fetch("/api/game/state");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.session) {
+          sessionId = data.session.id;
+        }
+      }
+    } catch (error) {
+      console.error("[Lobby] 세션 ID 가져오기 실패:", error);
+    }
+
+    if (!sessionId) {
+      setStartErrorMessage("❌ 게임 세션을 찾을 수 없습니다");
+      setTimeout(() => setStartErrorMessage(""), 3000);
+      return;
+    }
+
+    // 세션 상태를 'starting'으로 업데이트하여 모든 클라이언트의 카운트다운을 시작
+    try {
+      const response = await fetch("/api/game/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "start_countdown",
+          sessionId: sessionId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("[Lobby] 게임 시작 API 실패:", response.status, errorData);
+        setStartErrorMessage(errorData.error || "❌ 게임 시작 실패");
+        setTimeout(() => setStartErrorMessage(""), 3000);
+        return;
+      }
+
+      console.log("[Lobby] 카운트다운 시작 신호 전송 완료");
+      // 실시간 구독이 세션 변경을 감지하여 모든 클라이언트에서 카운트다운을 시작합니다.
+
+    } catch (error) {
+      console.error("[Lobby] 게임 시작 에러:", error);
+      setStartErrorMessage("❌ 게임 시작 실패");
+      setTimeout(() => setStartErrorMessage(""), 3000);
+    }
+  };
+
   const ruleCards = [
     {
       title: "게임 목표",
@@ -727,46 +784,39 @@ export default function GameLobby() {
   // ========================================
   // 개발 테스트용 함수 (프로덕션에서 제거 예정)
   // 로컬 테스트: "나"만 로비 입장 → 테스트 시작 → AI가 나머지 플레이어 역할
-  // ========================================
-  const handleTestStart = async () => {
-    // 로비 입장자 수 확인 (playing 상태만)
-    const lobbyPlayerCount = players.filter((p) => p.isInLobby).length
-    
-    // 최소 인원 검증 (2명 이상)
-    if (lobbyPlayerCount < 2) {
-      setStartErrorMessage("❌ 최소 2명 이상이어야 게임을 시작할 수 있습니다 (현재: " + lobbyPlayerCount + "명)")
-      setTimeout(() => setStartErrorMessage(""), 3000)
-      return
     }
+  } catch (error) {
+    console.error("[Lobby] 세션 ID 가져오기 실패:", error)
+  }
+  
+  if (!sessionId) {
+    setStartErrorMessage("❌ 게임 세션을 찾을 수 없습니다")
+    setTimeout(() => setStartErrorMessage(""), 3000)
+    return
+  }
+  
+  // 목적지 결정 (5명 이상 예선, 4명 이하 본선)
+  let destination = "/game";
+  if (lobbyPlayers >= 5) {
+    destination = "/game";
+  } else {
+    destination = "/finals";
+  }
+  
+  // 세션 상태를 'starting'으로 업데이트 (countdown 시작 신호)
+  try {
+    const response = await fetch("/api/game/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "start_countdown",
+        sessionId: sessionId,
+        destination: destination,
+      }),
+    })
     
-    // 세션 ID 가져오기
-    let sessionId: string | null = null
-    try {
-      const stateResponse = await fetch("/api/game/state")
-      if (stateResponse.ok) {
-        const stateData = await stateResponse.json()
-        sessionId = stateData.session?.id
-      }
-    } catch (error) {
-      console.error("[Lobby] 세션 ID 가져오기 실패:", error)
-    }
-    
-    if (!sessionId) {
-      setStartErrorMessage("❌ 게임 세션을 찾을 수 없습니다")
-      setTimeout(() => setStartErrorMessage(""), 3000)
-      return
-    }
-    
-    // 참가자 수에 따라 게임 페이지 결정
-    let destination = "/game"
-    if (lobbyPlayerCount >= 5) {
-      destination = "/game" // 예선전
-      console.log("[Lobby] 예선전 시작:", lobbyPlayerCount, "명")
-    } else if (lobbyPlayerCount >= 2 && lobbyPlayerCount <= 4) {
-      destination = "/finals" // 본선 직행
-      console.log("[Lobby] 본선 직행:", lobbyPlayerCount, "명")
-      setStartErrorMessage("✅ " + lobbyPlayerCount + "명 입장! 본선으로 바로 이동합니다...")
-    }
+    if (!response.ok) {
+      console.error("[Lobby] 게임 시작 API 실패:", response.status)
     
     // 세션 상태를 'starting'으로 업데이트 (countdown 시작 신호)
     try {
