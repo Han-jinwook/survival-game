@@ -781,76 +781,7 @@ export default function GameLobby() {
     },
   ]
 
-  // ========================================
-  // 개발 테스트용 함수 (프로덕션에서 제거 예정)
-  // 로컬 테스트: "나"만 로비 입장 → 테스트 시작 → AI가 나머지 플레이어 역할
-    }
-  } catch (error) {
-    console.error("[Lobby] 세션 ID 가져오기 실패:", error)
-  }
-  
-  if (!sessionId) {
-    setStartErrorMessage("❌ 게임 세션을 찾을 수 없습니다")
-    setTimeout(() => setStartErrorMessage(""), 3000)
-    return
-  }
-  
-  // 목적지 결정 (5명 이상 예선, 4명 이하 본선)
-  let destination = "/game";
-  if (lobbyPlayers >= 5) {
-    destination = "/game";
-  } else {
-    destination = "/finals";
-  }
-  
-  // 세션 상태를 'starting'으로 업데이트 (countdown 시작 신호)
-  try {
-    const response = await fetch("/api/game/session", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "start_countdown",
-        sessionId: sessionId,
-        destination: destination,
-      }),
-    })
-    
-    if (!response.ok) {
-      console.error("[Lobby] 게임 시작 API 실패:", response.status)
-    
-    // 세션 상태를 'starting'으로 업데이트 (countdown 시작 신호)
-    try {
-      const response = await fetch("/api/game/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "start_countdown",
-          sessionId: sessionId,
-          destination: destination,
-        }),
-      })
-      
-      if (!response.ok) {
-        console.error("[Lobby] 게임 시작 API 실패:", response.status)
-        setStartErrorMessage("❌ 게임 시작 실패")
-        setTimeout(() => setStartErrorMessage(""), 3000)
-        return
-      }
-      
-      console.log("[Lobby] 카운트다운 시작 신호 전송 완료")
-    } catch (error) {
-      console.error("[Lobby] 게임 시작 에러:", error)
-      setStartErrorMessage("❌ 게임 시작 실패")
-      setTimeout(() => setStartErrorMessage(""), 3000)
-      return
-    }
-    
-    // 로컬에서도 카운트다운 시작
-    sessionStorage.setItem('gameStarting', 'true')
-    sessionStorage.setItem('currentSessionId', sessionId)
-    setGameDestination(destination)
-    setGameStartCountdown(10)
-  }
+  // 이 부분은 handleTestStart 함수 내에 이미 구현되어 있으므로 중복 코드를 삭제합니다.
 
   if (!currentUser) {
     return (
