@@ -1,12 +1,31 @@
-version: '3.8'
+# version 키는 최신 버전에서 더 이상 필요하지 않습니다.
 services:
   web:
     build: .
+    volumes:
+      # 로컬 코드를 컨테이너와 실시간으로 동기화합니다.
+      - .:/app
+      # node_modules는 컨테이너 내부의 것을 사용하도록 분리합니다.
+      - /app/node_modules
     ports:
       - "5000:5000"
-    volumes:
-      - .:/app
-      - /app/node_modules
-    # .env.local 파일이 있으면 자동으로 환경 변수를 로드합니다.
+    # .env 파일이 있으면 자동으로 환경 변수를 로드합니다.
     env_file:
-      - .env.local
+      - .env
+    # Supabase 키는 .env 파일에 없으므로 직접 설정합니다.
+    environment:
+      - NEXT_PUBLIC_SUPABASE_URL=https://jnpbwfvywazjcexdhrif.supabase.co
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpucGJ3ZnZ5d2F6amNleGRocmlmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk4ODU5OTUsImV4cCI6MjAyNTQ2MTk5NX0.c4y_92N1s1sTf_aG9z-P9Yda1-s2e3J9s1h123abcDE
+
+  ngrok:
+    image: ngrok/ngrok:alpine
+    # web 서비스가 시작된 후에 ngrok이 실행되도록 합니다.
+    depends_on:
+      - web
+    ports:
+      - "4040:4040"
+    # .env 파일에서 NGROK_AUTHTOKEN을 명시적으로 읽어옵니다.
+    env_file:
+      - .env
+    # web 컨테이너의 5000번 포트를 터널링합니다.
+    command: http web:5000
