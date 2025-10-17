@@ -152,6 +152,19 @@ export class DatabaseService {
     return data;
   }
 
+  static async deleteParticipant(participantId: string): Promise<boolean> {
+    const { error } = await db
+      .from('game_participants')
+      .delete()
+      .eq('id', participantId);
+
+    if (error) {
+      console.error('Error deleting participant:', error);
+      return false;
+    }
+    return true;
+  }
+
   // 라운드 관련
   static async createRound(sessionId: number, roundNumber: number, phase: GameRound['phase']): Promise<GameRound | null> {
     const { data, error } = await DatabaseService.supabase

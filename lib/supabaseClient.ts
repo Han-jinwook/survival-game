@@ -19,13 +19,13 @@ export const getSupabaseAdmin = () => {
     return supabaseAdmin;
   }
 
-  // 서비스 키 대신 공개 키를 사용하여 RLS 정책을 따르도록 함
-  if (!supabaseAnonKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY가 설정되지 않았습니다.');
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다.');
   }
 
   // auth 옵션을 통해 서버 측 클라이언트임을 명시
-  supabaseAdmin = createClient(supabaseUrl, supabaseAnonKey, {
+  supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       persistSession: false,
     },

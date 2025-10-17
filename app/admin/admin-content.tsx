@@ -361,28 +361,49 @@ export default function AdminContent() {
     }
   }
 
-  const removeParticipant = (id: string) => {
-    const updatedParticipants = participants.filter((p) => p.id !== id)
-    setParticipants(updatedParticipants)
-    setIsSaved(false)
-    console.log("[v0] 참가자 제거됨:", id, "남은 참가자:", updatedParticipants.length)
-  }
+  const removeParticipant = async (id: string) => {
+    if (!confirm("이 참가자를 삭제하시겠습니까?")) return;
 
-  const updateParticipantLives = (id: string, lives: number) => {
-    console.log("[v0] 목숨 업데이트 시도:", id, "새 목숨:", lives)
-    setParticipants((prevParticipants) => {
-      const updated = prevParticipants.map((p) => {
-        if (p.id === id) {
-          console.log("[v0] 참가자 업데이트:", p.nickname, "목숨:", p.lives, "→", lives)
-          return { ...p, lives }
-        }
-        return p
-      })
-      console.log("[v0] 업데이트 후 참가자 목록:", updated.map((p) => `${p.nickname}:${p.lives}`).join(", "))
-      return updated
-    })
-    setIsSaved(false)
-  }
+    try {
+      const response = await fetch(`/api/participants/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || '참가자 삭제 실패');
+      }
+
+      // 성공 시 로컬 state 업데이트
+      setParticipants(participants.filter((p) => p.id !== id));
+      setSaveMessage('✅ 참가자가 삭제되었습니다.');
+    } catch (error: any) {
+      console.error('[Admin] 참가자 삭제 실패:', error);
+      setSaveMessage(`❌ ${error.message}`);
+    }
+  };
+
+  const updateParticipantLives = async (id: string, lives: number) => {
+    try {
+      const response = await fetch(`/api/participants/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lives }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || '목숨 업데이트 실패');
+      }
+
+      // 성공 시 로컬 state 업데이트
+      setParticipants(participants.map((p) => (p.id === id ? { ...p, lives } : p)));
+      setSaveMessage('✅ 목숨이 업데이트되었습니다.');
+    } catch (error: any) {
+      console.error('[Admin] 목숨 업데이트 실패:', error);
+      setSaveMessage(`❌ ${error.message}`);
+    }
+  };
 
   const processBulkData = () => {
     const lines = bulkData.trim().split("\n")
