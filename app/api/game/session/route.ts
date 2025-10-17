@@ -63,13 +63,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "enter_lobby") {
-      // 로비 입장: 참가자 상태를 "playing"으로 변경
+      // 로비 입장: 참가자 상태를 "in_lobby"로 변경
       if (!participantId) {
         return NextResponse.json({ error: "참가자 ID가 필요합니다." }, { status: 400 })
       }
       
       const participant = await DatabaseService.updateParticipant(participantId, {
-        status: "playing"
+        status: "in_lobby" // 'playing'이 아니라 'in_lobby'가 올바른 상태입니다.
       })
 
       if (!participant) {
@@ -77,8 +77,6 @@ export async function POST(request: NextRequest) {
       }
       
       console.log(`[Lobby] 참가자 로비 입장: ${participant.nickname} (${participantId})`)
-      
-      // 실시간 구독이 이 변경을 감지하므로 별도 알림이 필요 없습니다.
       
       return NextResponse.json({ success: true, participant })
     }
@@ -94,17 +92,16 @@ export async function POST(request: NextRequest) {
       })
 
       if (!participant) {
-        // 퇴장 시 에러는 클라이언트에 큰 영향을 주지 않으므로, 서버에만 로그를 남기고 성공으로 처리
         console.error(`[Lobby] 참가자(${participantId}) 퇴장 처리 실패: 참가자를 찾을 수 없거나 업데이트에 실패했습니다.`);
         return NextResponse.json({ success: true, message: "Participant not found or update failed, but proceeding." });
       }
       
       console.log(`[Lobby] 참가자 로비 퇴장: ${participant.nickname} (${participantId})`)
       
-      // 실시간 구독이 이 변경을 감지하므로 별도 알림이 필요 없습니다.
-      
       return NextResponse.json({ success: true, participant })
     }
+
+    // ... (이하 다른 action들은 그대로 유지) ...
 
     if (action === "reset_session") {
       // 세션 리셋: status → 'waiting', current_round → 0, 모든 참가자 → 'waiting'
@@ -112,7 +109,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "세션 ID가 필요합니다." }, { status: 400 })
       }
       
-      // 1. 모든 참가자를 "waiting" 상태로 변경
       const participants = await DatabaseService.getParticipants(sessionId)
       for (const participant of participants) {
         await DatabaseService.updateParticipant(participant.id, {
@@ -120,7 +116,6 @@ export async function POST(request: NextRequest) {
         })
       }
       
-      // 2. 세션 상태를 "waiting"으로 변경
       const session = await DatabaseService.updateGameSession(sessionId, {
         status: "waiting",
         current_round: 0,
@@ -139,10 +134,8 @@ export async function POST(request: NextRequest) {
       
       console.log(`[카운트다운 시작] 세션: ${session.id}, 10초 후 게임 시작`)
       
-      // 10초 후 자동으로 in-progress로 변경 + 로비 미입장자 제거
       setTimeout(async () => {
         try {
-          // 🔒 세션 상태 재확인: 카운트다운 중 닫혔거나 상태가 변경되었으면 건너뛰기
           const currentSession = await DatabaseService.getGameSession(sessionId)
           if (!currentSession || currentSession.status !== "starting") {
             console.log(`[게임 시작] 세션 상태 변경됨 (${currentSession?.status}), 자동 시작 취소`)
@@ -151,18 +144,20 @@ export async function POST(request: NextRequest) {
 
           const participants = await DatabaseService.getParticipants(sessionId)
           
-          // status !== 'playing'인 참가자를 eliminated로 변경
           for (const participant of participants) {
-            if (participant.status !== 'playing') {
+            if (participant.status !== 'in_lobby') {
               await DatabaseService.updateParticipant(participant.id, {
                 status: 'eliminated',
                 eliminated_at: new Date().toISOString()
               })
               console.log(`[게임 시작] 로비 미입장자 제거: ${participant.nickname}`)
+            } else {
+              await DatabaseService.updateParticipant(participant.id, {
+                status: 'playing'
+              })
             }
           }
           
-          // 게임 시작
           await DatabaseService.updateGameSession(sessionId, {
             status: "in_progress",
             started_at: new Date().toISOString(),
@@ -178,16 +173,19 @@ export async function POST(request: NextRequest) {
     }
     
     if (action === "start") {
-      // 즉시 게임 시작 (기존 로직 유지)
       const participants = await DatabaseService.getParticipants(sessionId)
       
       for (const participant of participants) {
-        if (participant.status !== 'playing') {
+        if (participant.status !== 'in_lobby') {
           await DatabaseService.updateParticipant(participant.id, {
             status: 'eliminated',
             eliminated_at: new Date().toISOString()
           })
           console.log(`[게임 시작] 로비 미입장자 제거: ${participant.nickname}`)
+        } else {
+          await DatabaseService.updateParticipant(participant.id, {
+            status: 'playing'
+          })
         }
       }
       
@@ -216,7 +214,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "close_session") {
-      // 완료된 세션을 닫기 (수정 불가능하게 만들기)
       if (!sessionId) {
         return NextResponse.json({ error: "세션 ID가 필요합니다." }, { status: 400 })
       }
@@ -230,7 +227,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "create_new_session") {
-      // 완전히 새로운 세션 생성
       const { sessionName, startedAt, cafeName, prize } = body
       
       const newSession = await DatabaseService.createGameSession(
