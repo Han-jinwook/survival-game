@@ -18,7 +18,13 @@ export async function GET(request: NextRequest) {
     }
     
     if (!session || !sessionId) {
-      return NextResponse.json({ error: "게임 세션을 찾을 수 없습니다." }, { status: 404 })
+      console.log('[API] 활성 게임 세션 없음 - 빈 응답 반환')
+      return NextResponse.json({ 
+        session: null, 
+        participants: [], 
+        round: null, 
+        choices: [] 
+      })
     }
 
     const participants = await DatabaseService.getParticipants(sessionId)

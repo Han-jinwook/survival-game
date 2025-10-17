@@ -65,37 +65,72 @@ export default function GameLanding() {
     
     loadEventInfo()
     
-    // Supabase Realtime 실시간 동기화
+    // Supabase Realtime 실시간 동기화 (프로덕션 최적화)
     const setupRealtimeSubscription = async () => {
       const { supabase } = await import('@/lib/supabaseClient')
       
       // 게임 세션 변경 감지
       const sessionChannel = supabase
-        .channel('game_sessions_changes')
+        .channel(`home-sessions-${Date.now()}`, {
+          config: {
+            broadcast: { self: false },
+            presence: { key: 'home' }
+          }
+        })
         .on('postgres_changes', 
           { event: '*', schema: 'public', table: 'game_sessions' },
           (payload) => {
-            console.log('[Home] 게임 세션 변경 감지:', payload)
-            loadEventInfo()
+            console.log('[Home] 게임 세션 변경 감지:', payload.eventType, payload.new?.status || payload.old?.status)
+            // 디바운스를 위해 약간의 지연 후 데이터 새로고침
+            setTimeout(() => loadEventInfo(), 200)
           }
         )
-        .subscribe()
+        .subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('[Home] 세션 채널 구독 성공!')
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('[Home] 세션 채널 구독 에러:', err)
+            // 재연결 시도
+            setTimeout(() => {
+              console.log('[Home] 세션 채널 재연결 시도...')
+              sessionChannel.subscribe()
+            }, 3000)
+          }
+        })
 
       // 게임 참가자 변경 감지  
       const participantsChannel = supabase
-        .channel('game_participants_changes')
+        .channel(`home-participants-${Date.now()}`, {
+          config: {
+            broadcast: { self: false },
+            presence: { key: 'home' }
+          }
+        })
         .on('postgres_changes',
           { event: '*', schema: 'public', table: 'game_participants' },
           (payload) => {
-            console.log('[Home] 참가자 변경 감지:', payload)
-            loadEventInfo()
+            console.log('[Home] 참가자 변경 감지:', payload.eventType, payload.new?.nickname || payload.old?.nickname)
+            // 참가자 수 변경은 즉시 반영
+            setTimeout(() => loadEventInfo(), 100)
           }
         )
-        .subscribe()
+        .subscribe((status, err) => {
+          if (status === 'SUBSCRIBED') {
+            console.log('[Home] 참가자 채널 구독 성공!')
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('[Home] 참가자 채널 구독 에러:', err)
+            // 재연결 시도
+            setTimeout(() => {
+              console.log('[Home] 참가자 채널 재연결 시도...')
+              participantsChannel.subscribe()
+            }, 3000)
+          }
+        })
       
       return () => {
-        sessionChannel.unsubscribe()
-        participantsChannel.unsubscribe()
+        console.log('[Home] Realtime 채널 정리')
+        supabase.removeChannel(sessionChannel)
+        supabase.removeChannel(participantsChannel)
       }
     }
     

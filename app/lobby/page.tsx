@@ -302,43 +302,87 @@ export default function GameLobby() {
     
     loadCurrentUser()
 
-    // Supabase Realtime 구독 설정
+    // 페이지 가시성 변경 감지 (브라우저 탭 전환, 최소화 등)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        console.log('[Lobby] 페이지 숨김 감지 - 퇴장 처리');
+        exitLobby();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Supabase Realtime 구독 설정 (프로덕션 최적화)
     const participantsChannel = supabase
-      .channel('lobby-participants-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_participants' }, (payload) => {
-        console.log('[Realtime] 참가자 변경 감지:', payload);
-        fetchGameData(false);
+      .channel(`lobby-participants-${Date.now()}`, {
+        config: {
+          broadcast: { self: false },
+          presence: { key: 'lobby' }
+        }
+      })
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'game_participants' 
+      }, (payload) => {
+        console.log('[Realtime] 참가자 변경 감지:', payload.eventType, payload.new?.nickname || payload.old?.nickname);
+        // 디바운스를 위해 약간의 지연 후 데이터 새로고침
+        setTimeout(() => fetchGameData(false), 100);
       })
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
           console.log('[Realtime] 참가자 채널 구독 성공!');
-        } else {
+        } else if (status === 'CHANNEL_ERROR') {
           console.error('[Realtime] 참가자 채널 구독 에러:', err);
+          // 재연결 시도
+          setTimeout(() => {
+            console.log('[Realtime] 참가자 채널 재연결 시도...');
+            participantsChannel.subscribe();
+          }, 3000);
         }
       });
 
     const sessionsChannel = supabase
-      .channel('lobby-sessions-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_sessions' }, (payload) => {
-        console.log('[Realtime] 세션 변경 감지:', payload);
+      .channel(`lobby-sessions-${Date.now()}`, {
+        config: {
+          broadcast: { self: false },
+          presence: { key: 'lobby' }
+        }
+      })
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'game_sessions' 
+      }, (payload) => {
+        console.log('[Realtime] 세션 변경 감지:', payload.eventType, payload.new?.status || payload.old?.status);
+        // 세션 상태 변경은 즉시 반영
         fetchGameData(false);
       })
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
           console.log('[Realtime] 세션 채널 구독 성공!');
-        } else {
+        } else if (status === 'CHANNEL_ERROR') {
           console.error('[Realtime] 세션 채널 구독 에러:', err);
+          // 재연결 시도
+          setTimeout(() => {
+            console.log('[Realtime] 세션 채널 재연결 시도...');
+            sessionsChannel.subscribe();
+          }, 3000);
         }
       });
 
     // Cleanup 함수
     return () => {
       console.log('[Lobby] 페이지 이탈, Realtime 구독 및 이벤트 리스너 해제');
+      
+      // Realtime 채널 정리
       supabase.removeChannel(participantsChannel);
       supabase.removeChannel(sessionsChannel);
+      
+      // 이벤트 리스너 정리
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       
-      // 컴포넌트가 완전히 사라질 때 (예: 브라우저 닫기) 퇴장 처리
+      // 퇴장 처리
       exitLobby();
     };
   }, [])

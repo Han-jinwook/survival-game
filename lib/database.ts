@@ -167,7 +167,7 @@ export class DatabaseService {
 
   // 라운드 관련
   static async createRound(sessionId: number, roundNumber: number, phase: GameRound['phase']): Promise<GameRound | null> {
-    const { data, error } = await DatabaseService.supabase
+    const { data, error } = await db
       .from('game_rounds')
       .insert({ game_session_id: sessionId, round_number: roundNumber, phase: phase })
       .select()
@@ -234,6 +234,75 @@ export class DatabaseService {
       throw error;
     }
     return data;
+  }
+
+  // 게임 세션 조회 (ID로)
+  static async getGameSession(sessionId: string | number): Promise<GameSession | null> {
+    const { data, error } = await db
+      .from('game_sessions')
+      .select('*')
+      .eq('id', sessionId)
+      .single();
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error getting game session:', error);
+      return null;
+    }
+    return data;
+  }
+
+  // 플레이어 선택 조회
+  static async getPlayerChoices(roundId: string): Promise<PlayerChoice[]> {
+    const { data, error } = await db
+      .from('player_choices')
+      .select('*')
+      .eq('round_id', roundId);
+    if (error) {
+      console.error('Error getting player choices:', error);
+      return [];
+    }
+    return data || [];
+  }
+
+  // 모든 게임 세션 조회 (관리자용)
+  static async getAllGameSessions(): Promise<GameSession[]> {
+    const { data, error } = await db
+      .from('game_sessions')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      console.error('Error getting all game sessions:', error);
+      return [];
+    }
+    return data || [];
+  }
+
+  // 세션 리셋 (참가자 초기화)
+  static async resetSession(sessionId: number): Promise<boolean> {
+    try {
+      // 1. 모든 참가자를 waiting 상태로 변경
+      const participants = await this.getParticipants(sessionId);
+      for (const participant of participants) {
+        await this.updateParticipant(participant.id, {
+          status: 'waiting',
+          current_lives: participant.initial_lives,
+          eliminated_at: null
+        });
+      }
+      
+      // 2. 세션을 waiting 상태로 변경
+      await this.updateGameSession(sessionId, {
+        status: 'waiting',
+        current_round: 0,
+        winner_id: null,
+        ended_at: null
+      });
+      
+      console.log(`[세션 리셋] 세션 ${sessionId} 및 참가자 ${participants.length}명 초기화 완료`);
+      return true;
+    } catch (error) {
+      console.error('Error resetting session:', error);
+      return false;
+    }
   }
 }
 
