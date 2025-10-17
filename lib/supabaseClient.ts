@@ -5,24 +5,15 @@ import fetch from 'cross-fetch';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+// [수정] 빌드/런타임 시 환경 변수를 즉시, 그리고 엄격하게 체크합니다.
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Supabase 환경 변수 확인:', {
-    url: supabaseUrl ? '설정됨' : '미설정',
-    key: supabaseAnonKey ? '설정됨' : '미설정'
-  });
-  
-  // 빌드 시에는 환경 변수 체크를 우회 (프로덕션에서는 설정됨)
-  if (process.env.NODE_ENV === 'production' || process.env.NEXT_PHASE === 'phase-production-build') {
-    console.warn('빌드 시 환경 변수 미설정 - 프로덕션에서 설정될 예정');
-  } else {
-    throw new Error('Supabase URL 혹은 Anon Key가 설정되지 않았습니다.');
-  }
+  throw new Error('CRITICAL ERROR: NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be defined in your environment variables.');
 }
 
 // 프로덕션 환경에 최적화된 Supabase 클라이언트
 export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co', 
-  supabaseAnonKey || 'placeholder-key', 
+  supabaseUrl,
+  supabaseAnonKey,
   {
     realtime: {
       params: {
@@ -44,18 +35,16 @@ export const getSupabaseAdmin = () => {
   }
 
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  
+  // [수정] 서버용 키도 엄격하게 체크합니다.
   if (!serviceRoleKey) {
-    if (process.env.NODE_ENV === 'production' || process.env.NEXT_PHASE === 'phase-production-build') {
-      console.warn('빌드 시 SUPABASE_SERVICE_ROLE_KEY 미설정 - 프로덕션에서 설정될 예정');
-    } else {
-      throw new Error('SUPABASE_SERVICE_ROLE_KEY가 설정되지 않았습니다.');
-    }
+    throw new Error('CRITICAL ERROR: SUPABASE_SERVICE_ROLE_KEY must be defined for admin actions.');
   }
 
   // auth 옵션을 통해 서버 측 클라이언트임을 명시
   supabaseAdmin = createClient(
-    supabaseUrl || 'https://placeholder.supabase.co', 
-    serviceRoleKey || 'placeholder-service-key', 
+    supabaseUrl, // 이미 위에서 유효성을 확인했습니다.
+    serviceRoleKey,
     {
       auth: {
         persistSession: false,
