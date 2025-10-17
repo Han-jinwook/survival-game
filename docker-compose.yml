@@ -1,0 +1,12 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    # .env.local 파일이 있으면 자동으로 환경 변수를 로드합니다.
+    env_file:
+      - .env.local
