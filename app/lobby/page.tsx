@@ -312,68 +312,48 @@ export default function GameLobby() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Supabase Realtime 구독 설정 (프로덕션 최적화)
+    // Supabase Realtime 구독 설정 (Realtime 활성화 후)
+    console.log('[Lobby] Supabase Realtime 구독 시작');
+    
     const participantsChannel = supabase
-      .channel(`lobby-participants-${Date.now()}`, {
-        config: {
-          broadcast: { self: false },
-          presence: { key: 'lobby' }
-        }
-      })
+      .channel('lobby-participants-global')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'game_participants' 
       }, (payload) => {
         console.log('[Realtime] 참가자 변경 감지:', payload.eventType, payload.new?.nickname || payload.old?.nickname);
-        // 디바운스를 위해 약간의 지연 후 데이터 새로고침
-        setTimeout(() => fetchGameData(false), 100);
+        fetchGameData(false);
       })
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
           console.log('[Realtime] 참가자 채널 구독 성공!');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('[Realtime] 참가자 채널 구독 에러:', err);
-          // 재연결 시도
-          setTimeout(() => {
-            console.log('[Realtime] 참가자 채널 재연결 시도...');
-            participantsChannel.subscribe();
-          }, 3000);
+        } else {
+          console.error('[Realtime] 참가자 채널 구독 실패:', status, err);
         }
       });
 
     const sessionsChannel = supabase
-      .channel(`lobby-sessions-${Date.now()}`, {
-        config: {
-          broadcast: { self: false },
-          presence: { key: 'lobby' }
-        }
-      })
+      .channel('lobby-sessions-global')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
         table: 'game_sessions' 
       }, (payload) => {
         console.log('[Realtime] 세션 변경 감지:', payload.eventType, payload.new?.status || payload.old?.status);
-        // 세션 상태 변경은 즉시 반영
         fetchGameData(false);
       })
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
           console.log('[Realtime] 세션 채널 구독 성공!');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('[Realtime] 세션 채널 구독 에러:', err);
-          // 재연결 시도
-          setTimeout(() => {
-            console.log('[Realtime] 세션 채널 재연결 시도...');
-            sessionsChannel.subscribe();
-          }, 3000);
+        } else {
+          console.error('[Realtime] 세션 채널 구독 실패:', status, err);
         }
       });
 
     // Cleanup 함수
     return () => {
-      console.log('[Lobby] 페이지 이탈, Realtime 구독 및 이벤트 리스너 해제');
+      console.log('[Lobby] 페이지 이탈, Realtime 구독 해제');
       
       // Realtime 채널 정리
       supabase.removeChannel(participantsChannel);
@@ -464,13 +444,16 @@ export default function GameLobby() {
 
   const handleTestStart = async () => {
     // 로비에 입장한 플레이어 기준으로 인원 체크
-    if (lobbyPlayers < 2) {
-      setStartErrorMessage(`최소 2명 이상이어야 게임을 시작할 수 있습니다. (현재: ${lobbyPlayers}명)`);
+    const currentLobbyPlayers = players.filter((p: Player) => p.isInLobby).length;
+    console.log("[Lobby] 🎮 서버 중심 게임 시작 - 현재 로비 플레이어:", currentLobbyPlayers, "명");
+    
+    if (currentLobbyPlayers < 2) {
+      setStartErrorMessage(`최소 2명 이상이어야 게임을 시작할 수 있습니다. (현재: ${currentLobbyPlayers}명)`);
       setTimeout(() => setStartErrorMessage(""), 3000);
       return;
     }
 
-    // 1. 현재 세션 ID 가져오기 (활성 세션 우선)
+    // 1. 현재 세션 ID 가져오기
     let sessionId: number | null = null;
     try {
       const response = await fetch("/api/game/settings");
@@ -486,35 +469,43 @@ export default function GameLobby() {
     }
 
     if (!sessionId) {
-      setStartErrorMessage("❌ 활성 게임 세션을 찾을 수 없습니다. 관리자 페이지에서 세션을 생성해주세요.");
+      setStartErrorMessage("❌ 활성 게임 세션을 찾을 수 없습니다.");
       setTimeout(() => setStartErrorMessage(""), 5000);
       return;
     }
 
-    // 세션 상태를 'starting'으로 업데이트하여 모든 클라이언트의 카운트다운을 시작
+    // 2. 🎮 서버 중심 게임 시작 요청
     try {
-      const response = await fetch("/api/game/session", {
+      const response = await fetch("/api/game/master", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "start_countdown",
+          action: "start_game",
           sessionId: sessionId,
         }),
       });
 
-      if (!response.ok) {
+      if (response.ok) {
+        const data = await response.json();
+        console.log("[Lobby] 🚀 서버 중심 게임 시작 성공:", data.gameState);
+        
+        // 게임 페이지로 즉시 이동
+        sessionStorage.setItem('currentSessionId', sessionId.toString());
+        sessionStorage.setItem('gameStarting', 'server-controlled');
+        
+        if (currentLobbyPlayers >= 5) {
+          window.location.href = "/game";
+        } else {
+          window.location.href = "/finals";
+        }
+      } else {
         const errorData = await response.json();
-        console.error("[Lobby] 게임 시작 API 실패:", response.status, errorData);
+        console.error("[Lobby] 게임 시작 실패:", errorData);
         setStartErrorMessage(errorData.error || "❌ 게임 시작 실패");
         setTimeout(() => setStartErrorMessage(""), 3000);
-        return;
       }
-
-      console.log("[Lobby] 카운트다운 시작 신호 전송 완료");
-      // 실시간 구독이 세션 변경을 감지하여 모든 클라이언트에서 카운트다운을 시작합니다.
-
     } catch (error) {
-      console.error("[Lobby] 게임 시작 에러:", error);
+      console.error("[Lobby] 게임 시작 오류:", error);
       setStartErrorMessage("❌ 게임 시작 실패");
       setTimeout(() => setStartErrorMessage(""), 3000);
     }

@@ -201,7 +201,8 @@ export default function AdminContent() {
       return () => clearTimeout(timer)
     } else if (countdown === 0 && gameStatus === "starting") {
       setGameStatus("in_progress")
-      window.location.href = "/game"
+      // 관리자는 게임 페이지로 자동 이동하지 않음
+      console.log("[Admin] 게임 시작됨 - 관리자는 현재 페이지 유지")
     }
   }, [countdown, gameStatus])
 
