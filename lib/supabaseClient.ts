@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import fetch from 'cross-fetch';
 
 // 클라이언트 측에서 사용하는 공개 클라이언트
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -28,6 +29,7 @@ export const getSupabaseAdmin = () => {
     auth: {
       persistSession: false,
     },
+    global: { fetch },
   });
 
   return supabaseAdmin;
