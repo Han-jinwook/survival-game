@@ -154,7 +154,7 @@ export class DatabaseService {
 
   // 라운드 관련
   static async createRound(sessionId: number, roundNumber: number, phase: GameRound['phase']): Promise<GameRound | null> {
-    const { data, error } = await db
+    const { data, error } = await DatabaseService.supabase
       .from('game_rounds')
       .insert({ game_session_id: sessionId, round_number: roundNumber, phase: phase })
       .select()
