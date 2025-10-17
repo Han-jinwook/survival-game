@@ -65,60 +65,47 @@ export default function GameLanding() {
     
     loadEventInfo()
     
-    // SSE 실시간 동기화 - 재연결 로직 포함
-    let eventSource: EventSource | null = null
-    let reconnectTimeout: NodeJS.Timeout | null = null
-    let isActive = true
-    
-    const connectSSE = () => {
-      if (!isActive) return
+    // Supabase Realtime 실시간 동기화
+    const setupRealtimeSubscription = async () => {
+      const { supabase } = await import('@/lib/supabaseClient')
       
-      eventSource = new EventSource('/api/game/stream')
-      console.log('[Home] SSE 연결 시도...')
-      
-      eventSource.onopen = () => {
-        console.log('[Home] SSE 연결 성공')
-      }
-      
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          if (data.type === 'game_update') {
-            // 참가자 변경 감지 → 즉시 데이터 리로드
-            if (data.table === 'game_participants') {
-              loadEventInfo()
-            }
-            // 게임 세션 변경 감지 (게임 시작 등)
-            if (data.table === 'game_sessions') {
-              console.log('[Home] 게임 세션 변경 감지:', data)
-              loadEventInfo()
-            }
+      // 게임 세션 변경 감지
+      const sessionChannel = supabase
+        .channel('game_sessions_changes')
+        .on('postgres_changes', 
+          { event: '*', schema: 'public', table: 'game_sessions' },
+          (payload) => {
+            console.log('[Home] 게임 세션 변경 감지:', payload)
+            loadEventInfo()
           }
-        } catch (error) {
-          console.error('[Home] SSE 메시지 파싱 오류:', error)
-        }
-      }
+        )
+        .subscribe()
+
+      // 게임 참가자 변경 감지  
+      const participantsChannel = supabase
+        .channel('game_participants_changes')
+        .on('postgres_changes',
+          { event: '*', schema: 'public', table: 'game_participants' },
+          (payload) => {
+            console.log('[Home] 참가자 변경 감지:', payload)
+            loadEventInfo()
+          }
+        )
+        .subscribe()
       
-      eventSource.onerror = (error) => {
-        console.error('[Home] SSE 연결 오류:', error)
-        eventSource?.close()
-        
-        // 3초 후 재연결 시도
-        if (isActive) {
-          console.log('[Home] 3초 후 SSE 재연결 시도...')
-          reconnectTimeout = setTimeout(() => {
-            connectSSE()
-          }, 3000)
-        }
+      return () => {
+        sessionChannel.unsubscribe()
+        participantsChannel.unsubscribe()
       }
     }
     
-    connectSSE()
+    let cleanup: (() => void) | undefined
+    setupRealtimeSubscription().then(cleanupFn => {
+      cleanup = cleanupFn
+    })
     
     return () => {
-      isActive = false
-      if (reconnectTimeout) clearTimeout(reconnectTimeout)
-      eventSource?.close()
+      cleanup?.()
     }
   }, [])
 
