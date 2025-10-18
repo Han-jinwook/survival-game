@@ -262,6 +262,13 @@ export default function GameLobby() {
     // 로비 떠날 때 즉시 상태 변경
     const exitLobby = async () => {
       try {
+        // 🚫 게임 시작으로 인한 페이지 이동이면 퇴장 처리 안 함
+        const gameStarting = sessionStorage.getItem('gameStarting')
+        if (gameStarting === 'true' || gameStarting === 'completed') {
+          console.log("[Lobby] 게임 시작 중 - 로비 퇴장 건너뜀")
+          return
+        }
+        
         const userData = localStorage.getItem("userInfo")
         if (userData) {
           const user = JSON.parse(userData)
@@ -531,6 +538,10 @@ export default function GameLobby() {
       }
       
       // 3. 게임 시작 요청
+      // 🎯 게임 시작 플래그 설정 (exitLobby 차단용)
+      sessionStorage.setItem('gameStarting', 'true');
+      sessionStorage.setItem('currentSessionId', sessionId);
+      
       const startResponse = await fetch("/api/game/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -186,8 +186,8 @@ export default function GameInterface() {
   }, [])
 
   useEffect(() => {
-    // 로비에서 게임 시작 플래그 제거
-    sessionStorage.removeItem('gameStarting')
+    // 로비에서 게임 시작 플래그를 'completed'로 변경 (exitLobby 차단 유지)
+    sessionStorage.setItem('gameStarting', 'completed')
     
     // 🔒 게임 페이지 퇴장 시 로비 퇴장 처리
     const exitLobby = () => {

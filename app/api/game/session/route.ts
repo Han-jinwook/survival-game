@@ -219,7 +219,15 @@ export async function POST(request: NextRequest) {
       console.log(`[게임 시작] 정시 기준 player 선수: ${playerUsers.length}명`)
       console.log(`[게임 시작] 불참자(waiting): ${users.filter(u => u.status === 'waiting').length}명`)
       
-      // 🔄 모든 player의 eliminated_at 초기화 (이전 게임 데이터 제거)
+      // 🚀 1. 즉시 세션을 in_progress로 변경 (exit_lobby 차단)
+      const session = await DatabaseService.updateGameSession(sessionId, {
+        status: "in_progress",
+        started_at: new Date().toISOString(),
+        current_round: 0,
+      })
+      console.log(`[게임 시작] 세션 ${session.id} → in_progress`)
+      
+      // 🔄 2. 이후 player 데이터 초기화 (이전 게임 데이터 제거)
       for (const player of playerUsers) {
         await DatabaseService.updateUser(player.id, {
           eliminated_at: null,
@@ -228,13 +236,6 @@ export async function POST(request: NextRequest) {
       }
       console.log(`[게임 시작] ${playerUsers.length}명 선수 데이터 초기화 완료`)
       
-      const session = await DatabaseService.updateGameSession(sessionId, {
-        status: "in_progress",
-        started_at: new Date().toISOString(),
-        current_round: 0,
-      })
-      
-      console.log(`[게임 시작] 세션 ${session.id} → in_progress (player ${playerUsers.length}명으로 시작)`)
       return NextResponse.json({ success: true, session, playerCount: playerUsers.length })
     }
 
