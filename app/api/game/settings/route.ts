@@ -46,11 +46,23 @@ export async function POST(request: NextRequest) {
     }
 
     // 참가자 등록
-    if (participants && Array.isArray(participants) && participants.length > 0) {
-      console.log("[Settings API] 참가자 등록 시작:", participants.length, "명")
+    if (participants && Array.isArray(participants)) {
+      console.log("[Settings API] 참가자 동기화 시작:", participants.length, "명")
       
+      // 1. 현재 DB의 모든 사용자 조회
+      const dbUsers = await DatabaseService.getUsersBySession(session.id)
+      const requestedNaverIds = new Set(participants.map(p => p.naverId))
+      
+      // 2. DB에 있지만 요청에 없는 사용자 삭제
+      for (const dbUser of dbUsers) {
+        if (!requestedNaverIds.has(dbUser.naver_id)) {
+          await DatabaseService.deleteUser(dbUser.id)
+          console.log("[Settings API] 사용자 삭제:", dbUser.nickname, "(", dbUser.naver_id, ")")
+        }
+      }
+      
+      // 3. 요청된 사용자 추가/업데이트
       for (const p of participants) {
-        // 이미 세션에 등록되어 있는지 확인
         const existingUser = await DatabaseService.getUserByNaverIdAndSession(p.naverId, session.id)
         
         if (!existingUser) {
@@ -72,7 +84,7 @@ export async function POST(request: NextRequest) {
           console.log("[Settings API] 사용자 목숨값 업데이트:", p.nickname, "→", p.lives, "(초기/현재 둘 다)")
         }
       }
-      console.log("[Settings API] 참가자 등록 완료")
+      console.log("[Settings API] 참가자 동기화 완료")
     }
 
     return NextResponse.json({
