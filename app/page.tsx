@@ -12,7 +12,7 @@ import AudioSystem from "@/components/audio-system"
 export default function GameLanding() {
   const [playerCount, setPlayerCount] = useState(0)
   const [spectatorCount, setSpectatorCount] = useState(0)
-  const [visitorId] = useState(() => `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
+  const [visitorId, setVisitorId] = useState("")
   const [eventInfo, setEventInfo] = useState({
     cafeName: "",
     name: "",
@@ -22,6 +22,11 @@ export default function GameLanding() {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    // 클라이언트에서만 visitorId 생성 (SSR 불일치 방지)
+    if (!visitorId) {
+      setVisitorId(`visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`)
+    }
+    
     const loadEventInfo = async () => {
       try {
         const response = await fetch("/api/game/settings")
@@ -133,6 +138,9 @@ export default function GameLanding() {
   }, [])
 
   useEffect(() => {
+    // visitorId가 생성되기 전에는 실행하지 않음
+    if (!visitorId) return
+    
     const sendHeartbeat = async () => {
       try {
         const response = await fetch("/api/visitors", {
