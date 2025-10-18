@@ -97,38 +97,7 @@ export default function GameLobby() {
             sessionName: data.session.sessionName,
           })
           
-          // 게임 시작 감지: 세션 상태별 처리
-          if (data.session.status === "starting") {
-            // 로비 대기중 = 'player' 상태인 참가자
-            const lobbyPlayerCount = data.users.filter((p: any) => p.status === 'player').length || 0
-            console.log("[Lobby] 카운트다운 시작 감지! 참가자:", lobbyPlayerCount, "명")
-            
-            // 목적지 결정
-            let destination = "/game"
-            if (lobbyPlayerCount >= 5) {
-              destination = "/game"
-              console.log("[Lobby] 예선전 카운트다운")
-            } else if (lobbyPlayerCount >= 2) {
-              destination = "/finals"
-              console.log("[Lobby] 본선 카운트다운")
-            } else if (lobbyPlayerCount === 1) {
-              // 1명만 있는 경우는 서버에서 자동 우승 처리
-              console.log("[Lobby] 참가자 1명 - 서버에서 자동 우승 처리됨")
-              destination = "/result"
-            } else {
-              // 0명인 경우
-              console.error("[Lobby] ❌ 참가자 0명 - 게임 시작 불가")
-              alert("로비에 입장한 참가자가 없습니다.")
-              return
-            }
-            
-            // 카운트다운 시작
-            sessionStorage.setItem('gameStarting', 'true')
-            sessionStorage.setItem('currentSessionId', data.session.id)
-            setGameDestination(destination)
-            setGameStartCountdown(10)
-            return
-          }
+          // 🎯 starting 상태 제거됨 - 카운트다운은 UI에서만 처리
           
           if (data.session.status === "in-progress") {
             // 이미 게임 진행 중 → sessionStorage 설정 후 이동
@@ -297,9 +266,36 @@ export default function GameLobby() {
       }, 1000)
       return () => clearTimeout(timer)
     } else if (gameStartCountdown === 0 && gameDestination) {
-      // 카운트다운 종료 → 게임 시작
-      console.log("[Lobby] 카운트다운 종료 - 게임 페이지로 이동:", gameDestination)
-      window.location.href = gameDestination
+      // 카운트다운 종료 → 정시! 서버에 게임 시작 요청
+      console.log("[Lobby] 정시 도달! 서버에 게임 시작 요청")
+      
+      const startGame = async () => {
+        try {
+          const sessionId = sessionStorage.getItem('currentSessionId')
+          if (!sessionId) return
+          
+          const response = await fetch("/api/game/session", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "start", sessionId }),
+          })
+          
+          if (response.ok) {
+            const result = await response.json()
+            console.log("[Lobby] 게임 시작 완료:", result)
+            
+            // in_progress 상태 전환은 Realtime으로 감지됨 → 자동 이동
+          } else {
+            const error = await response.json()
+            console.error("[Lobby] 게임 시작 실패:", error)
+            alert(error.error || "게임 시작에 실패했습니다.")
+          }
+        } catch (error) {
+          console.error("[Lobby] 게임 시작 오류:", error)
+        }
+      }
+      
+      startGame()
     }
   }, [gameStartCountdown, gameDestination])
 
@@ -383,9 +379,9 @@ export default function GameLobby() {
             naverId: payload.new.naver_id,
             nickname: payload.new.nickname,
             lives: payload.new.current_lives,
-            status: payload.new.status === 'in_lobby' || payload.new.status === 'playing' ? 'ready' : 'waiting',
+            status: payload.new.status === 'player' ? 'ready' : 'waiting',
             joinTime: new Date(payload.new.joined_at),
-            isInLobby: payload.new.status === 'in_lobby' || payload.new.status === 'playing',
+            isInLobby: payload.new.status === 'player',
           };
           setPlayers(prevPlayers => {
             // 중복 추가 방지
@@ -406,8 +402,8 @@ export default function GameLobby() {
                 ? { 
                     ...p, 
                     lives: payload.new.current_lives,
-                    status: payload.new.status === 'eliminated' ? 'disconnected' : (payload.new.status === 'in_lobby' || payload.new.status === 'playing' ? 'ready' : 'waiting'),
-                    isInLobby: payload.new.status === 'in_lobby' || payload.new.status === 'playing',
+                    status: payload.new.status === 'eliminated' ? 'disconnected' : (payload.new.status === 'player' ? 'ready' : 'waiting'),
+                    isInLobby: payload.new.status === 'player',
                   }
                 : p
             )
@@ -438,20 +434,6 @@ export default function GameLobby() {
           console.log('[Realtime] 세션 상태 변경 감지:', newStatus);
           setSessionStatus(newStatus);
 
-          if (newStatus === 'starting') {
-            console.log('[Realtime] 게임 시작! 게임 페이지로 이동 준비');
-            
-            // 세션 ID 저장
-            sessionStorage.setItem('gameStarting', 'completed');
-            sessionStorage.setItem('currentSessionId', payload.new.id);
-            
-            // 3초 후 게임 페이지로 이동
-            setTimeout(() => {
-              console.log('[Lobby] 게임 페이지로 이동');
-              window.location.href = '/game';
-            }, 3000);
-          }
-          
           if (newStatus === 'in_progress') {
             console.log('[Realtime] 게임 진행 중 - 즉시 게임 페이지로 이동');
             sessionStorage.setItem('gameStarting', 'completed');
@@ -564,34 +546,49 @@ export default function GameLobby() {
         return;
       }
 
-      console.log("[Lobby] 세션 ID:", sessionId, "- 게임 시작 요청");
+      console.log("[Lobby] 세션 ID:", sessionId, "- 10초 카운트다운 시작 (UI만)");
 
-      // 2. 서버에 게임 시작 요청 (서버가 모든 검증 수행)
-      const response = await fetch("/api/game/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "start_countdown",
-          sessionId: sessionId,
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        
-        // 🏆 참가자 1명뿐 - 즉시 결과 페이지로 이동
-        if (result.singlePlayer && result.winner) {
-          console.log("[Lobby] 참가자 1명뿐 - 결과 페이지로 이동:", result.winner.nickname);
-          alert(`참가자가 1명뿐이어서 ${result.winner.nickname}님이 자동 우승하셨습니다!`);
-          window.location.href = "/result";
-          return;
-        }
-        
-        console.log("[Lobby] 🚀 게임 시작 성공 - Realtime으로 상태 업데이트 감지");
-      } else {
-        const errorData = await response.json();
-        console.error("[Lobby] 게임 시작 실패:", errorData);
+      // 2. 현재 player 수 체크
+      const playerCount = players.filter(p => p.status === 'ready').length;
+      console.log("[Lobby] 현재 player 수:", playerCount);
+      
+      if (playerCount === 0) {
+        alert("로비에 입장한 선수가 없습니다.");
+        return;
       }
+      
+      // 3. 목적지 결정
+      let destination = "/game";
+      if (playerCount >= 5) {
+        destination = "/game";
+      } else if (playerCount >= 2) {
+        destination = "/finals";
+      } else if (playerCount === 1) {
+        // 1명 - 자동 우승 처리 (서버에서 처리)
+        const startResponse = await fetch("/api/game/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "start", sessionId }),
+        });
+        
+        if (startResponse.ok) {
+          const result = await startResponse.json();
+          if (result.singlePlayer) {
+            alert(`선수가 1명뿐이어서 ${result.winner.nickname}님이 자동 우승하셨습니다!`);
+            window.location.href = "/result";
+            return;
+          }
+        }
+        return;
+      }
+      
+      // 4. 10초 카운트다운 시작 (UI만, 서버 상태 변경 없음)
+      sessionStorage.setItem('gameStarting', 'true');
+      sessionStorage.setItem('currentSessionId', sessionId);
+      setGameDestination(destination);
+      setGameStartCountdown(10);
+      
+      console.log("[Lobby] 10초 카운트다운 시작 →", destination);
     } catch (error) {
       console.error("[Lobby] 게임 시작 오류:", error);
     }
@@ -979,7 +976,7 @@ export default function GameLobby() {
             <h3 className="text-base md:text-lg font-semibold text-purple-300 mb-3 md:mb-4">게임장 입장 안내</h3>
             <div className="text-center">
               <div className="text-xl md:text-2xl font-bold text-purple-400 mb-3 md:mb-4">
-                {sessionStatus === "waiting" ? "게임 시작 대기 중" : sessionStatus === "starting" ? "곧 게임이 시작됩니다!" : "게임 진행 중"}
+                {sessionStatus === "waiting" ? "게임 시작 대기 중" : "게임 진행 중"}
               </div>
               
               {sessionStatus === "waiting" && gameStartTime && (
@@ -998,9 +995,11 @@ export default function GameLobby() {
                 </div>
               )}
               
-              {sessionStatus === "starting" && (
-                <div className="bg-yellow-900/30 border border-yellow-600/50 rounded-lg p-4">
-                  <p className="text-yellow-200 text-center animate-pulse">⏰ 잠시 후 게임장으로 이동합니다...</p>
+              {gameStartCountdown > 0 && (
+                <div className="bg-yellow-900/30 border-2 border-yellow-500/70 rounded-lg p-6 animate-pulse">
+                  <p className="text-yellow-200 text-lg font-bold text-center mb-2">🚀 게임 시작!</p>
+                  <p className="text-yellow-100 text-4xl font-bold text-center">{gameStartCountdown}초</p>
+                  <p className="text-yellow-300 text-sm text-center mt-2">잠시 후 게임장으로 이동합니다...</p>
                 </div>
               )}
             </div>

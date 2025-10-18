@@ -147,7 +147,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "start_countdown") {
-      // 🔍 게임 참가자 수 체크
+      // 🎯 10초 카운트다운은 UI에서만 처리
+      // 서버는 아무것도 안함 (waiting 상태 유지)
+      console.log(`[카운트다운] UI 카운트다운 시작 신호 (서버 상태 변경 없음)`)
+      return NextResponse.json({ success: true, countdown: true })
+    }
+    
+    if (action === "start") {
+      // 정시(게임 시작 시간)에 player 상태인 선수만 게임 참가
       const users = await DatabaseService.getUsersBySession(sessionId)
       const playerUsers = users.filter(u => u.status === 'player')
       
@@ -186,64 +193,9 @@ export async function POST(request: NextRequest) {
         })
       }
       
-      // 카운트다운 시작: status → 'starting'
-      const session = await DatabaseService.updateGameSession(sessionId, {
-        status: "starting",
-        current_round: 0,
-      })
-      
-      console.log(`[카운트다운 시작] 세션: ${session.id}, 10초 후 게임 시작`)
-      
-      setTimeout(async () => {
-        try {
-          const currentSession = await DatabaseService.getGameSession(sessionId)
-          if (!currentSession || currentSession.status !== "starting") {
-            console.log(`[게임 시작] 세션 상태 변경됨 (${currentSession?.status}), 자동 시작 취소`)
-            return
-          }
-
-          const users = await DatabaseService.getUsersBySession(sessionId)
-          
-          // player 상태가 아닌 사람들은 탈락 처리 (상태 전환 제거)
-          for (const user of users) {
-            if (user.status !== 'player') {
-              await DatabaseService.updateUser(user.id, {
-                status: 'eliminated',
-                eliminated_at: new Date().toISOString()
-              })
-              console.log(`[게임 시작] 미참가자 제거: ${user.nickname}`)
-            }
-            // player는 그대로 유지 (더 이상 상태 전환 필요 없음)
-          }
-          
-          await DatabaseService.updateGameSession(sessionId, {
-            status: "in_progress",
-            started_at: new Date().toISOString(),
-          })
-          
-          console.log(`[게임 시작] 세션 ${sessionId} 게임 진행 중`)
-        } catch (error) {
-          console.error('[게임 시작] 자동 시작 오류:', error)
-        }
-      }, 10000) // 10초 후
-      
-      return NextResponse.json({ success: true, session })
-    }
-    
-    if (action === "start") {
-      const users = await DatabaseService.getUsersBySession(sessionId)
-      
-      // player 상태가 아닌 사람들은 탈락 처리
-      for (const user of users) {
-        if (user.status !== 'player') {
-          await DatabaseService.updateUser(user.id, {
-            status: 'eliminated',
-            eliminated_at: new Date().toISOString()
-          })
-          console.log(`[게임 시작] 미참가자 제거: ${user.nickname}`)
-        }
-        // player는 그대로 유지
-      }
+      // player가 아닌 사람들은 그냥 제외 (탈락 처리 안함 - 애초에 게임 불참)
+      console.log(`[게임 시작] 정시 기준 player 선수: ${playerUsers.length}명`)
+      console.log(`[게임 시작] 불참자(waiting): ${users.filter(u => u.status === 'waiting').length}명`)
       
       const session = await DatabaseService.updateGameSession(sessionId, {
         status: "in_progress",
@@ -251,8 +203,8 @@ export async function POST(request: NextRequest) {
         current_round: 0,
       })
       
-      console.log(`[게임 시작] 세션 업데이트 완료: ${session.id}`)
-      return NextResponse.json({ success: true, session })
+      console.log(`[게임 시작] 세션 ${session.id} → in_progress (player ${playerUsers.length}명으로 시작)`)
+      return NextResponse.json({ success: true, session, playerCount: playerUsers.length })
     }
 
     if (action === "update") {
