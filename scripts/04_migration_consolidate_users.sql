@@ -173,7 +173,10 @@ DROP TRIGGER IF EXISTS trigger_game_participants_notify ON game_participants;
 -- 5-2. 테이블 제거
 DROP TABLE IF EXISTS game_participants CASCADE;
 
-RAISE NOTICE '✅ game_participants 테이블 제거 완료';
+DO $$
+BEGIN
+    RAISE NOTICE '✅ game_participants 테이블 제거 완료';
+END $$;
 
 -- ============================================================================
 -- Phase 6: 트리거 재생성
@@ -186,7 +189,10 @@ CREATE TRIGGER trigger_users_notify
     FOR EACH ROW
     EXECUTE FUNCTION notify_game_update();
 
-RAISE NOTICE '✅ users 테이블 트리거 생성 완료';
+DO $$
+BEGIN
+    RAISE NOTICE '✅ users 테이블 트리거 생성 완료';
+END $$;
 
 -- ============================================================================
 -- Phase 7: 검증
@@ -246,21 +252,24 @@ END $$;
 -- 마이그레이션 완료
 -- ============================================================================
 
-RAISE NOTICE '';
-RAISE NOTICE '========================================';
-RAISE NOTICE '🎉 마이그레이션 완료!';
-RAISE NOTICE '========================================';
-RAISE NOTICE '';
-RAISE NOTICE '다음 단계:';
-RAISE NOTICE '1. 백엔드 코드 수정 (lib/database.ts, lib/types.ts)';
-RAISE NOTICE '2. API 라우트 수정 (/api/game/*, /api/participants/*)';
-RAISE NOTICE '3. 프론트엔드 코드 수정 (app/lobby/page.tsx 등)';
-RAISE NOTICE '4. 테스트 및 검증';
-RAISE NOTICE '';
-RAISE NOTICE '백업 테이블:';
-RAISE NOTICE '- users_backup';
-RAISE NOTICE '- game_participants_backup';
-RAISE NOTICE '- player_choices_backup';
-RAISE NOTICE '';
-RAISE NOTICE '⚠️  문제 발생 시 롤백 스크립트를 실행하세요.';
-RAISE NOTICE '';
+DO $$
+BEGIN
+    RAISE NOTICE '';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE '🎉 마이그레이션 완료!';
+    RAISE NOTICE '========================================';
+    RAISE NOTICE '';
+    RAISE NOTICE '다음 단계:';
+    RAISE NOTICE '1. 백엔드 코드 수정 (lib/database.ts, lib/types.ts)';
+    RAISE NOTICE '2. API 라우트 수정 (/api/game/*, /api/participants/*)';
+    RAISE NOTICE '3. 프론트엔드 코드 수정 (app/lobby/page.tsx 등)';
+    RAISE NOTICE '4. 테스트 및 검증';
+    RAISE NOTICE '';
+    RAISE NOTICE '백업 테이블:';
+    RAISE NOTICE '- users_backup';
+    RAISE NOTICE '- game_participants_backup';
+    RAISE NOTICE '- player_choices_backup';
+    RAISE NOTICE '';
+    RAISE NOTICE '⚠️  문제 발생 시 롤백 스크립트를 실행하세요.';
+    RAISE NOTICE '';
+END $$;
