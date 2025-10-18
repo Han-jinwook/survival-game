@@ -454,9 +454,13 @@ export default function GameLobby() {
       const currentTime = new Date()
       
       // 예약 시간 도달 확인 + 세션이 waiting 상태일 때만
-      if (currentTime >= scheduledStartDate && sessionStatus === "waiting") {
+      if (currentTime >= scheduledStartDate && sessionStatus === "waiting" && !autoStartTriggered) {
         console.log("[Lobby] 예약 시간 도달! 자동 게임 시작:", scheduledStartDate)
+        
+        // ⚠️ 중복 방지: 즉시 플래그 설정 & interval 중단
         setAutoStartTriggered(true)
+        clearInterval(interval)
+        
         handleAutoStart() // 자동으로 게임 시작
       }
     }

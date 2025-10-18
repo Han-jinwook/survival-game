@@ -219,6 +219,15 @@ export async function POST(request: NextRequest) {
       console.log(`[게임 시작] 정시 기준 player 선수: ${playerUsers.length}명`)
       console.log(`[게임 시작] 불참자(waiting): ${users.filter(u => u.status === 'waiting').length}명`)
       
+      // 🔄 모든 player의 eliminated_at 초기화 (이전 게임 데이터 제거)
+      for (const player of playerUsers) {
+        await DatabaseService.updateUser(player.id, {
+          eliminated_at: null,
+          current_lives: player.initial_lives
+        })
+      }
+      console.log(`[게임 시작] ${playerUsers.length}명 선수 데이터 초기화 완료`)
+      
       const session = await DatabaseService.updateGameSession(sessionId, {
         status: "in_progress",
         started_at: new Date().toISOString(),
