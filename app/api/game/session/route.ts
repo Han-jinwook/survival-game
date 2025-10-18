@@ -118,6 +118,23 @@ export async function POST(request: NextRequest) {
             gameStarted: true
           }, { status: 403 })
         }
+        
+        // 🎯 예약 시간 1분 전부터는 선수 명단 확정 - player 상태 유지
+        if (session && session.scheduled_start_time) {
+          const scheduledTime = new Date(session.scheduled_start_time)
+          const now = new Date()
+          const timeUntilStart = scheduledTime.getTime() - now.getTime()
+          
+          // 1분(60초) 이내면 선수 명단 확정 - 로비 퇴장해도 player 상태 유지
+          if (timeUntilStart <= 60000 && timeUntilStart > 0) {
+            console.log(`[Lobby] ⏰ 게임 시작 ${Math.floor(timeUntilStart/1000)}초 전 - 선수 명단 확정, 퇴장 무시: ${userId}`)
+            return NextResponse.json({ 
+              success: true, 
+              playerLocked: true,
+              message: "선수 명단이 확정되었습니다. 게임은 명단대로 진행됩니다."
+            })
+          }
+        }
       }
       
       const user = await DatabaseService.updateUser(userId, {
@@ -158,13 +175,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, session, usersReset: users.length })
     }
 
-    if (action === "start_countdown") {
-      // 🎯 10초 카운트다운은 UI에서만 처리
-      // 서버는 아무것도 안함 (waiting 상태 유지)
-      console.log(`[카운트다운] UI 카운트다운 시작 신호 (서버 상태 변경 없음)`)
-      return NextResponse.json({ success: true, countdown: true })
-    }
-    
     if (action === "start") {
       // 정시(게임 시작 시간)에 player 상태인 선수만 게임 참가
       const users = await DatabaseService.getUsersBySession(sessionId)
