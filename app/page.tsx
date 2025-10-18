@@ -47,17 +47,17 @@ export default function GameLanding() {
               }
             }
             
-            if (data.participants) {
+            if (data.users) {
               // 로비 대기중 = 'in_lobby' 또는 'playing' 상태인 참가자
-              const lobbyPlayerCount = data.participants.filter((p: any) => p.status === 'in_lobby' || p.status === 'playing').length;
+              const lobbyPlayerCount = data.users.filter((p: any) => p.status === 'in_lobby' || p.status === 'playing').length;
               console.log("[Home] 로비 대기자 계산:", {
-                total: data.participants.length,
+                total: data.users.length,
                 lobbyCount: lobbyPlayerCount,
-                statuses: data.participants.map((p: any) => p.status)
+                statuses: data.users.map((p: any) => p.status)
               });
               setPlayerCount(lobbyPlayerCount);
             } else {
-              console.log("[Home] participants 데이터 없음");
+              console.log("[Home] users 데이터 없음");
               setPlayerCount(0);
             }
           }
