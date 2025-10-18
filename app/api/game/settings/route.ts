@@ -63,7 +63,12 @@ export async function POST(request: NextRequest) {
           )
           console.log("[Settings API] 사용자 추가:", p.nickname, "(", p.naverId, ")")
         } else {
-          console.log("[Settings API] 이미 등록된 사용자 건너뜀:", p.nickname)
+          // 이미 등록된 사용자의 목숨값 업데이트
+          await DatabaseService.updateUser(existingUser.id, {
+            current_lives: p.lives,
+            nickname: p.nickname,
+          })
+          console.log("[Settings API] 사용자 목숨값 업데이트:", p.nickname, "→", p.lives)
         }
       }
       console.log("[Settings API] 참가자 등록 완료")
@@ -109,15 +114,15 @@ export async function GET() {
         startedAt: session.started_at,
         createdAt: session.created_at,
       },
-      participants: users.map((u: any) => ({
+      users: users.map((u: any) => ({
         id: u.id,
         userId: u.id,
-        naverId: u.naver_id,
+        naver_id: u.naver_id,
         nickname: u.nickname,
         initialLives: u.initial_lives,
-        currentLives: u.current_lives,
+        current_lives: u.current_lives,
         status: u.status,
-        joinedAt: u.joined_at,
+        joined_at: u.joined_at,
       })),
     })
   } catch (error) {
