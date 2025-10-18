@@ -308,34 +308,41 @@ export default function GameLobby() {
         const userData = localStorage.getItem("userInfo")
         if (userData) {
           const user = JSON.parse(userData)
-          await fetch("/api/game/session", {
+          const response = await fetch("/api/game/session", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               action: "exit_lobby",
               userId: user.id,
-            }),
-            keepalive: true,
-          })
-          console.log("[Lobby] 로비 퇴장 처리")
-        }
-      } catch (error) {
-        console.error("[Lobby] 로비 퇴장 처리 실패:", error)
-      }
-    }
-
-    // 쿠키 기반 인증으로 현재 사용자 확인
-    const loadCurrentUser = async () => {
-      try {
-        const response = await fetch('/api/auth/me')
+          }),
+          keepalive: true,
+        })
+        
         if (response.ok) {
-          const data = await response.json()
-          if (data.user) {
-            setCurrentUser(data.user)
-            console.log("[Lobby] 🍪 쿠키 인증 성공:", {
-              naverId: data.user.naverId,
-              nickname: data.user.nickname,
-              lives: data.user.lives
+          console.log("[Lobby] 로비 퇴장 처리 완료")
+        } else {
+          // 게임 진행 중이면 서버에서 403 반환 (정상)
+          const error = await response.json()
+          console.log("[Lobby] 로비 퇴장 차단:", error.error)
+        }
+      }
+    } catch (error) {
+      console.error("[Lobby] 로비 퇴장 처리 실패:", error)
+    }
+  }
+
+  // 쿠키 기반 인증으로 현재 사용자 확인
+  const loadCurrentUser = async () => {
+    try {
+      const response = await fetch('/api/auth/me')
+      if (response.ok) {
+        const data = await response.json()
+        if (data.user) {
+          setCurrentUser(data.user)
+          console.log("[Lobby] 🍪 쿠키 인증 성공:", {
+            naverId: data.user.naverId,
+            nickname: data.user.nickname,
+            lives: data.user.lives
             })
             
             // 🍪 초기 데이터 로드 (자동 입장 활성화 + 쿠키 userId 전달)

@@ -108,6 +108,18 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "사용자 ID가 필요합니다." }, { status: 400 })
       }
       
+      // 🚫 게임 시작 후에는 로비 퇴장 불가
+      if (sessionId) {
+        const session = await DatabaseService.getGameSession(sessionId)
+        if (session && session.status === 'in_progress') {
+          console.log(`[Lobby] ❌ 게임 진행 중 - 로비 퇴장 불가: ${userId}`)
+          return NextResponse.json({ 
+            error: "게임이 이미 시작되었습니다. 로비 퇴장이 불가능합니다.",
+            gameStarted: true
+          }, { status: 403 })
+        }
+      }
+      
       const user = await DatabaseService.updateUser(userId, {
         status: "waiting"
       })
