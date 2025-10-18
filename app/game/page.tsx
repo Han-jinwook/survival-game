@@ -191,11 +191,11 @@ export default function GameInterface() {
     
     // 🔒 게임 페이지 퇴장 시 로비 퇴장 처리
     const exitLobby = () => {
-      const participantInfo = localStorage.getItem("participantInfo")
-      if (!participantInfo) return
+      const userInfo = localStorage.getItem("userInfo")
+      if (!userInfo) return
 
       try {
-        const participant = JSON.parse(participantInfo)
+        const participant = JSON.parse(userInfo)
         console.log("[Game] 로비 퇴장 처리 중:", participant.nickname)
 
         fetch("/api/game/session", {
@@ -203,13 +203,13 @@ export default function GameInterface() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             action: "exit_lobby",
-            participantId: participant.id,
+            userId: participant.id,
           }),
           keepalive: true, // 페이지 닫힐 때도 요청 완료
         })
 
-        localStorage.removeItem("participantInfo")
-        console.log("[Game] 로비 퇴장 완료 및 참가자 정보 삭제")
+        localStorage.removeItem("userInfo")
+        console.log("[Game] 로비 퇴장 완료 및 사용자 정보 삭제")
       } catch (error) {
         console.error("[Game] 로비 퇴장 실패:", error)
       }
@@ -270,10 +270,10 @@ export default function GameInterface() {
       }
 
       // Get current user participant ID from localStorage
-      const participantData = localStorage.getItem("participantInfo")
+      const userData = localStorage.getItem("userInfo")
       let currentParticipantId = ""
-      if (participantData) {
-        const participant = JSON.parse(participantData)
+      if (userData) {
+        const participant = JSON.parse(userData)
         currentParticipantId = participant.id
         console.log("[v0] Current participant ID:", currentParticipantId)
       }
@@ -579,15 +579,15 @@ export default function GameInterface() {
 
     if (newChoices.length === 2) {
       try {
-        const participantInfo = localStorage.getItem("participantInfo")
+        const userInfo = localStorage.getItem("userInfo")
         const sessionIdStr = sessionStorage.getItem("currentSessionId")
         
-        if (!participantInfo || !sessionIdStr) {
-          console.error("[Choice] 참가자 정보 또는 세션 ID 없음")
+        if (!userInfo || !sessionIdStr) {
+          console.error("[Choice] 사용자 정보 또는 세션 ID 없음")
           return
         }
 
-        const participant = JSON.parse(participantInfo)
+        const participant = JSON.parse(userInfo)
         const sessionId = parseInt(sessionIdStr, 10)
         
         if (isNaN(sessionId)) {
@@ -601,7 +601,7 @@ export default function GameInterface() {
           body: JSON.stringify({
             action: "select_two",
             roundId,
-            participantId: participant.id,
+            userId: participant.id,
             sessionId,
             selectedChoices: newChoices,
           }),
@@ -629,15 +629,15 @@ export default function GameInterface() {
 
     // 서버에 하나빼기 저장
     try {
-      const participantInfo = localStorage.getItem("participantInfo")
+      const userInfo = localStorage.getItem("userInfo")
       const sessionIdStr = sessionStorage.getItem("currentSessionId")
       
-      if (!participantInfo || !sessionIdStr) {
-        console.error("[Choice] 참가자 정보 또는 세션 ID 없음")
+      if (!userInfo || !sessionIdStr) {
+        console.error("[Choice] 사용자 정보 또는 세션 ID 없음")
         return
       }
 
-      const participant = JSON.parse(participantInfo)
+      const participant = JSON.parse(userInfo)
       const sessionId = parseInt(sessionIdStr, 10)
       
       if (isNaN(sessionId)) {
@@ -651,7 +651,7 @@ export default function GameInterface() {
         body: JSON.stringify({
           action: "exclude_one",
           roundId,
-          participantId: participant.id,
+          userId: participant.id,
           sessionId,
           excludedChoice: choice, // 제외할 선택
         }),

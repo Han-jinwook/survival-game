@@ -1,7 +1,7 @@
 import { getSupabaseAdmin } from './supabaseClient';
 
 const db = getSupabaseAdmin();
-import type { User, GameSession, GameParticipant, GameRound, PlayerChoice } from './types';
+import type { User, GameSession, GameRound, PlayerChoice } from './types';
 
 // Supabase 기반의 새로운 데이터베이스 서비스
 export class DatabaseService {
@@ -16,36 +16,42 @@ export class DatabaseService {
     return data;
   }
 
-  static async getUserByNaverId(naverId: string): Promise<User | null> {
-    const { data, error } = await db.from('users').select('*').eq('naver_id', naverId).limit(1).single();
-    if (error && error.code !== 'PGRST116') { // PGRST116: No rows found
-      console.error('Error getting user by Naver ID:', error);
+  // (naver_id, session_id)로 사용자 조회
+  static async getUserByNaverIdAndSession(naverId: string, sessionId: number): Promise<User | null> {
+    const { data, error } = await db
+      .from('users')
+      .select('*')
+      .eq('naver_id', naverId)
+      .eq('session_id', sessionId)
+      .single();
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error getting user by naver_id and session_id:', error);
       return null;
     }
     return data;
   }
 
-  static async createUser(naverId: string, nickname: string): Promise<User | null> {
+  // 세션에 사용자 추가 (기존 addParticipant 대체)
+  static async addUserToSession(
+    sessionId: number,
+    naverId: string,
+    nickname: string,
+    initialLives: number
+  ): Promise<User | null> {
     const { data, error } = await db
       .from('users')
-      .insert({ naver_id: naverId, nickname: nickname })
+      .insert({
+        naver_id: naverId,
+        session_id: sessionId,
+        nickname: nickname,
+        initial_lives: initialLives,
+        current_lives: initialLives,
+        status: 'waiting'
+      })
       .select()
       .single();
     if (error) {
-      console.error('Error creating user:', error);
-      return null;
-    }
-    return data;
-  }
-
-  static async upsertUser(naverId: string, nickname: string): Promise<User | null> {
-    const { data, error } = await db
-      .from('users')
-      .upsert({ naver_id: naverId, nickname: nickname }, { onConflict: 'naver_id' })
-      .select()
-      .single();
-    if (error) {
-      console.error('Error upserting user:', error);
+      console.error('Error adding user to session:', error);
       return null;
     }
     return data;
@@ -94,72 +100,44 @@ export class DatabaseService {
     return data;
   }
 
-  // 참가자 관련
-  static async addParticipant(sessionId: number, userId: string, nickname: string, initialLives: number): Promise<GameParticipant | null> {
+  // 세션별 사용자 조회 (기존 getParticipants 대체)
+  static async getUsersBySession(sessionId: number): Promise<User[]> {
     const { data, error } = await db
-      .from('game_participants')
-      .insert({ game_session_id: sessionId, user_id: userId, nickname: nickname, initial_lives: initialLives, current_lives: initialLives, status: 'waiting' })
-      .select()
-      .single();
-    if (error) {
-      console.error('Error adding participant:', error);
-      return null;
-    }
-    return data;
-  }
-
-  static async getParticipantByUserId(userId: string): Promise<GameParticipant | null> {
-    const { data, error } = await db
-      .from('game_participants')
+      .from('users')
       .select('*')
-      .eq('user_id', userId)
-      .order('joined_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error getting participant by user ID:', error);
-      return null;
-    }
-    return data;
-  }
-
-  static async getParticipants(sessionId: number): Promise<(GameParticipant & { naver_id: string })[]> {
-    const { data, error } = await db
-      .from('game_participants')
-      .select('*, users(naver_id)')
-      .eq('game_session_id', sessionId)
+      .eq('session_id', sessionId)
       .order('joined_at');
     if (error) {
-      console.error('Error getting participants:', error);
+      console.error('Error getting users by session:', error);
       return [];
     }
-    // Supabase returns nested user object, flatten it to match original structure
-    return data.map((p: any) => ({ ...p, naver_id: p.users.naver_id, users: undefined }));
+    return data || [];
   }
 
-  static async updateParticipant(participantId: string, updates: Partial<Omit<GameParticipant, 'id'>>): Promise<GameParticipant | null> {
+  // 사용자 정보 업데이트 (기존 updateParticipant 대체)
+  static async updateUser(userId: string, updates: Partial<Omit<User, 'id'>>): Promise<User | null> {
     const { data, error } = await db
-      .from('game_participants')
+      .from('users')
       .update(updates)
-      .eq('id', participantId)
+      .eq('id', userId)
       .select()
       .single();
     if (error) {
-      console.error('Error updating participant:', error);
+      console.error('Error updating user:', error);
       return null;
     }
     return data;
   }
 
-  static async deleteParticipant(participantId: string): Promise<boolean> {
+  // 사용자 삭제 (기존 deleteParticipant 대체)
+  static async deleteUser(userId: string): Promise<boolean> {
     const { error } = await db
-      .from('game_participants')
+      .from('users')
       .delete()
-      .eq('id', participantId);
+      .eq('id', userId);
 
     if (error) {
-      console.error('Error deleting participant:', error);
+      console.error('Error deleting user:', error);
       return false;
     }
     return true;
@@ -276,15 +254,15 @@ export class DatabaseService {
     return data || [];
   }
 
-  // 세션 리셋 (참가자 초기화)
+  // 세션 리셋 (사용자 초기화)
   static async resetSession(sessionId: number): Promise<boolean> {
     try {
-      // 1. 모든 참가자를 waiting 상태로 변경
-      const participants = await this.getParticipants(sessionId);
-      for (const participant of participants) {
-        await this.updateParticipant(participant.id, {
+      // 1. 모든 사용자를 waiting 상태로 변경
+      const users = await this.getUsersBySession(sessionId);
+      for (const user of users) {
+        await this.updateUser(user.id, {
           status: 'waiting',
-          current_lives: participant.initial_lives,
+          current_lives: user.initial_lives,
           eliminated_at: null
         });
       }
@@ -297,7 +275,7 @@ export class DatabaseService {
         ended_at: null
       });
       
-      console.log(`[세션 리셋] 세션 ${sessionId} 및 참가자 ${participants.length}명 초기화 완료`);
+      console.log(`[세션 리셋] 세션 ${sessionId} 및 사용자 ${users.length}명 초기화 완료`);
       return true;
     } catch (error) {
       console.error('Error resetting session:', error);

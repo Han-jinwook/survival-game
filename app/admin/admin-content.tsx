@@ -87,23 +87,23 @@ export default function AdminContent() {
     
     // 🔒 관리자 페이지 접속 시 자동으로 로비에서 퇴장
     const exitLobbyIfNeeded = async () => {
-      const participantInfo = localStorage.getItem("participantInfo")
-      if (participantInfo) {
+      const userInfo = localStorage.getItem("userInfo")
+      if (userInfo) {
         try {
-          const participant = JSON.parse(participantInfo)
-          console.log("[Admin] 로비 퇴장 처리 중:", participant.nickname)
+          const user = JSON.parse(userInfo)
+          console.log("[Admin] 로비 퇴장 처리 중:", user.nickname)
           
           await fetch("/api/game/session", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               action: "exit_lobby",
-              participantId: participant.id,
+              userId: user.id,
             }),
           })
           
-          localStorage.removeItem("participantInfo")
-          console.log("[Admin] 로비 퇴장 완료 및 참가자 정보 삭제")
+          localStorage.removeItem("userInfo")
+          console.log("[Admin] 로비 퇴장 완료 및 사용자 정보 삭제")
         } catch (error) {
           console.error("[Admin] 로비 퇴장 실패:", error)
         }
@@ -147,13 +147,13 @@ export default function AdminContent() {
             setGameScheduled(data.session.status === "waiting")
           }
           
-          if (data.participants && data.participants.length > 0) {
-            const loadedParticipants = data.participants.map((p: any) => ({
-              id: p.id,
-              naverId: p.naverId || "",
-              nickname: p.nickname,
-              lives: p.currentLives,
-              status: p.status,
+          if (data.users && data.users.length > 0) {
+            const loadedParticipants = data.users.map((u: any) => ({
+              id: u.id,
+              naverId: u.naverId || "",
+              nickname: u.nickname,
+              lives: u.currentLives,
+              status: u.status,
             }))
             setParticipants(loadedParticipants)
             console.log("[Admin] 참가자 로드 완료:", loadedParticipants.length, "명")

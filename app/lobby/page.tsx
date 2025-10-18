@@ -46,27 +46,27 @@ export default function GameLobby() {
   const lobbyPlayers = players.filter((p: Player) => p.isInLobby).length
 
   // 로비 입장 처리
-  const enterLobby = async (participantId: string) => {
+  const enterLobby = async (userId: string) => {
     try {
       const response = await fetch("/api/game/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "enter_lobby",
-          participantId: participantId,
+          userId: userId,
         }),
       })
       
       if (response.ok) {
         const data = await response.json();
-        console.log("[Lobby] 로비 입장 완료:", data.participant);
+        console.log("[Lobby] 로비 입장 완료:", data.user);
 
         // 로컬 상태 즉시 업데이트 (UI 즉각 반응)
         setPlayers(prevPlayers => prevPlayers.map(p => 
-          p.id === participantId ? { ...p, status: 'ready', isInLobby: true } : p
+          p.id === userId ? { ...p, status: 'ready', isInLobby: true } : p
         ));
 
-        localStorage.setItem("participantInfo", JSON.stringify(data.participant));
+        localStorage.setItem("userInfo", JSON.stringify(data.user));
         return true;
       } else {
         console.error("[Lobby] 로비 입장 실패:", response.status)
@@ -100,7 +100,7 @@ export default function GameLobby() {
           // 게임 시작 감지: 세션 상태별 처리
           if (data.session.status === "starting") {
             // countdown 시작 신호
-            const playingCount = data.participants?.filter((p: any) => p.status === "playing").length || 0
+            const playingCount = data.users?.filter((u: any) => u.status === "playing").length || 0
             console.log("[Lobby] 카운트다운 시작 감지! 참가자:", playingCount, "명")
             
             // 목적지 결정
@@ -123,7 +123,7 @@ export default function GameLobby() {
           
           if (data.session.status === "in-progress") {
             // 이미 게임 진행 중 → sessionStorage 설정 후 이동
-            const playingCount = data.participants?.filter((p: any) => p.status === "playing").length || 0
+            const playingCount = data.users?.filter((u: any) => u.status === "playing").length || 0
             console.log("[Lobby] 게임 진행 중 감지! 즉시 이동")
             
             // sessionStorage 설정 (게임 페이지 초기화에 필요)
@@ -188,41 +188,41 @@ export default function GameLobby() {
         }
         
         // 참가자 데이터 설정
-        if (data.participants && Array.isArray(data.participants)) {
+        if (data.users && Array.isArray(data.users)) {
           // 🍪 쿠키 인증 - 현재 사용자가 waiting 상태면 자동 입장
           if (autoEnter && cookieUserId) {
-            const myParticipant = data.participants.find(
-              (p: any) => p.userId === cookieUserId
+            const myUser = data.users.find(
+              (u: any) => u.id === cookieUserId
             )
             
-            if (myParticipant && myParticipant.status === "waiting") {
-              console.log("[Lobby] 🍪 쿠키 인증 - 자동 로비 입장 시도:", myParticipant)
-              const success = await enterLobby(myParticipant.id)
+            if (myUser && myUser.status === "waiting") {
+              console.log("[Lobby] 🍪 쿠키 인증 - 자동 로비 입장 시도:", myUser)
+              const success = await enterLobby(myUser.id)
               if (success) {
                 // 입장 후 데이터 재로드 (자동 입장은 한 번만)
                 setTimeout(() => fetchGameData(false), 500)
                 return
               }
-            } else if (myParticipant && myParticipant.status === "playing") {
-              // 이미 입장했으면 참가자 정보 저장 (exit_lobby용)
-              console.log("[Lobby] 🍪 이미 로비에 입장한 상태, 참가자 정보 저장")
-              localStorage.setItem("participantInfo", JSON.stringify(myParticipant))
+            } else if (myUser && myUser.status === "playing") {
+              // 이미 입장했으면 사용자 정보 저장 (exit_lobby용)
+              console.log("[Lobby] 🍪 이미 로비에 입장한 상태, 사용자 정보 저장")
+              localStorage.setItem("userInfo", JSON.stringify(myUser))
             }
           }
           
-          const dbPlayers: Player[] = data.participants.map((p: any) => ({
-            id: p.id,
-            naverId: p.naverId || p.userId,
-            nickname: p.nickname,
-            lives: p.currentLives,
-            status: p.status === "eliminated" ? "disconnected" : (p.status === "in_lobby" || p.status === "playing" ? "ready" : "waiting"),
-            joinTime: new Date(p.joinedAt),
+          const dbPlayers: Player[] = data.users.map((u: any) => ({
+            id: u.id,
+            naverId: u.naver_id,
+            nickname: u.nickname,
+            lives: u.current_lives,
+            status: u.status === "eliminated" ? "disconnected" : (u.status === "in_lobby" || u.status === "playing" ? "ready" : "waiting"),
+            joinTime: new Date(u.joined_at),
             // 'in_lobby' 또는 'playing' 상태를 로비 입장으로 간주
-            isInLobby: p.status === "in_lobby" || p.status === "playing",
+            isInLobby: u.status === "in_lobby" || u.status === "playing",
           }))
           
           console.log("[Lobby] 💛 참가자 매핑 완료:", {
-            원본참가자수: data.participants.length,
+            원본참가자수: data.users.length,
             매핑된참가자: dbPlayers.map(p => ({
               naverId: p.naverId,
               nickname: p.nickname,
@@ -252,19 +252,19 @@ export default function GameLobby() {
     // 로비 떠날 때 즉시 상태 변경
     const exitLobby = async () => {
       try {
-        const participantData = localStorage.getItem("participantInfo")
-        if (participantData) {
-          const participant = JSON.parse(participantData)
+        const userData = localStorage.getItem("userInfo")
+        if (userData) {
+          const user = JSON.parse(userData)
           await fetch("/api/game/session", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               action: "exit_lobby",
-              participantId: participant.id,
+              userId: user.id,
             }),
             keepalive: true,
           })
-          console.log("[Lobby] 🚪 로비 퇴장 처리")
+          console.log("[Lobby] 로비 퇴장 처리")
         }
       } catch (error) {
         console.error("[Lobby] 로비 퇴장 처리 실패:", error)
@@ -316,18 +316,18 @@ export default function GameLobby() {
     console.log('[Lobby] Supabase Realtime 구독 시작');
 
     const participantsChannel = supabase
-      .channel('lobby-participants-global')
+      .channel('lobby-users-global')
       .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'game_participants' }, 
+        { event: 'INSERT', schema: 'public', table: 'users' }, 
         (payload) => {
-          console.log('[Realtime] 새 참가자:', payload.new.nickname);
+          console.log('[Realtime] 새 사용자:', payload.new.nickname);
           const newPlayer: Player = {
             id: payload.new.id,
-            naverId: payload.new.naverId || payload.new.userId,
+            naverId: payload.new.naver_id,
             nickname: payload.new.nickname,
-            lives: payload.new.currentLives,
+            lives: payload.new.current_lives,
             status: payload.new.status === 'in_lobby' || payload.new.status === 'playing' ? 'ready' : 'waiting',
-            joinTime: new Date(payload.new.joinedAt),
+            joinTime: new Date(payload.new.joined_at),
             isInLobby: payload.new.status === 'in_lobby' || payload.new.status === 'playing',
           };
           setPlayers(prevPlayers => {
@@ -340,15 +340,15 @@ export default function GameLobby() {
         }
       )
       .on('postgres_changes', 
-        { event: 'UPDATE', schema: 'public', table: 'game_participants' }, 
+        { event: 'UPDATE', schema: 'public', table: 'users' }, 
         (payload) => {
-          console.log('[Realtime] 참가자 업데이트:', payload.new.nickname, '상태:', payload.new.status);
+          console.log('[Realtime] 사용자 업데이트:', payload.new.nickname, '상태:', payload.new.status);
           setPlayers(prevPlayers => 
             prevPlayers.map(p => 
               p.id === payload.new.id 
                 ? { 
                     ...p, 
-                    lives: payload.new.currentLives,
+                    lives: payload.new.current_lives,
                     status: payload.new.status === 'eliminated' ? 'disconnected' : (payload.new.status === 'in_lobby' || payload.new.status === 'playing' ? 'ready' : 'waiting'),
                     isInLobby: payload.new.status === 'in_lobby' || payload.new.status === 'playing',
                   }
@@ -358,17 +358,17 @@ export default function GameLobby() {
         }
       )
       .on('postgres_changes', 
-        { event: 'DELETE', schema: 'public', table: 'game_participants' }, 
+        { event: 'DELETE', schema: 'public', table: 'users' }, 
         (payload) => {
-          console.log('[Realtime] 참가자 삭제:', payload.old.id);
+          console.log('[Realtime] 사용자 삭제:', payload.old.id);
           setPlayers(prevPlayers => prevPlayers.filter(p => p.id !== payload.old.id));
         }
       )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log('[Realtime] 참가자 채널 구독 성공!');
+          console.log('[Realtime] 사용자 채널 구독 성공!');
         } else {
-          console.error('[Realtime] 참가자 채널 구독 실패:', status, err);
+          console.error('[Realtime] 사용자 채널 구독 실패:', status, err);
         }
       });
 

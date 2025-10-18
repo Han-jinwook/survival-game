@@ -9,7 +9,7 @@ export async function GET() {
       return NextResponse.json({ session: null })
     }
 
-    const participants = await DatabaseService.getParticipants(activeSession.id)
+    const users = await DatabaseService.getUsersBySession(activeSession.id)
 
     return NextResponse.json({
       session: {
@@ -21,13 +21,13 @@ export async function GET() {
         startedAt: activeSession.started_at,
         createdAt: activeSession.created_at,
       },
-      participants: participants.map(p => ({
-        id: p.id,
-        userId: p.user_id,
-        nickname: p.nickname,
-        currentLives: p.current_lives,
-        status: p.status,
-        joinedAt: p.joined_at,
+      users: users.map(u => ({
+        id: u.id,
+        userId: u.id,
+        nickname: u.nickname,
+        currentLives: u.current_lives,
+        status: u.status,
+        joinedAt: u.joined_at,
       })),
     })
   } catch (error) {
@@ -39,9 +39,9 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { action, sessionId, userId, participantId, nickname, initialLives, updates } = body
+    const { action, sessionId, naverId, userId, nickname, initialLives, updates } = body
 
-    // 🔒 닫힌 세션에 대한 mutating 작업 차단
+    // 닫힌 세션에 대한 mutating 작업 차단
     const protectedActions = ["reset_session", "start_countdown", "start", "update", "complete"]
     if (protectedActions.includes(action) && sessionId) {
       const session = await DatabaseService.getGameSession(sessionId)
@@ -53,65 +53,65 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "join") {
-      const participant = await DatabaseService.addParticipant(
+      const user = await DatabaseService.addUserToSession(
         sessionId, 
-        userId, 
+        naverId, 
         nickname,
         initialLives || 5
       )
-      return NextResponse.json({ success: true, participant })
+      return NextResponse.json({ success: true, user })
     }
 
     if (action === "enter_lobby") {
-      // 로비 입장: 참가자 상태를 "in_lobby"로 변경
-      if (!participantId) {
-        return NextResponse.json({ error: "참가자 ID가 필요합니다." }, { status: 400 })
+      // 로비 입장: 사용자 상태를 "in_lobby"로 변경
+      if (!userId) {
+        return NextResponse.json({ error: "사용자 ID가 필요합니다." }, { status: 400 })
       }
       
-      const participant = await DatabaseService.updateParticipant(participantId, {
-        status: "in_lobby" // 'playing'이 아니라 'in_lobby'가 올바른 상태입니다.
+      const user = await DatabaseService.updateUser(userId, {
+        status: "in_lobby"
       })
 
-      if (!participant) {
-        return NextResponse.json({ error: "참가자 상태를 업데이트할 수 없습니다." }, { status: 500 });
+      if (!user) {
+        return NextResponse.json({ error: "사용자 상태를 업데이트할 수 없습니다." }, { status: 500 });
       }
       
-      console.log(`[Lobby] 참가자 로비 입장: ${participant.nickname} (${participantId})`)
+      console.log(`[Lobby] 사용자 로비 입장: ${user.nickname} (${userId})`)
       
-      return NextResponse.json({ success: true, participant })
+      return NextResponse.json({ success: true, user })
     }
 
     if (action === "exit_lobby") {
-      // 로비 퇴장: 참가자 상태를 "waiting"으로 변경
-      if (!participantId) {
-        return NextResponse.json({ error: "참가자 ID가 필요합니다." }, { status: 400 })
+      // 로비 퇴장: 사용자 상태를 "waiting"으로 변경
+      if (!userId) {
+        return NextResponse.json({ error: "사용자 ID가 필요합니다." }, { status: 400 })
       }
       
-      const participant = await DatabaseService.updateParticipant(participantId, {
+      const user = await DatabaseService.updateUser(userId, {
         status: "waiting"
       })
 
-      if (!participant) {
-        console.error(`[Lobby] 참가자(${participantId}) 퇴장 처리 실패: 참가자를 찾을 수 없거나 업데이트에 실패했습니다.`);
-        return NextResponse.json({ success: true, message: "Participant not found or update failed, but proceeding." });
+      if (!user) {
+        console.error(`[Lobby] 사용자(${userId}) 퇴장 처리 실패: 사용자를 찾을 수 없거나 업데이트에 실패했습니다.`);
+        return NextResponse.json({ success: true, message: "User not found or update failed, but proceeding." });
       }
       
-      console.log(`[Lobby] 참가자 로비 퇴장: ${participant.nickname} (${participantId})`)
+      console.log(`[Lobby] 사용자 로비 퇴장: ${user.nickname} (${userId})`)
       
-      return NextResponse.json({ success: true, participant })
+      return NextResponse.json({ success: true, user })
     }
 
     // ... (이하 다른 action들은 그대로 유지) ...
 
     if (action === "reset_session") {
-      // 세션 리셋: status → 'waiting', current_round → 0, 모든 참가자 → 'waiting'
+      // 세션 리셋: status → 'waiting', current_round → 0, 모든 사용자 → 'waiting'
       if (!sessionId) {
         return NextResponse.json({ error: "세션 ID가 필요합니다." }, { status: 400 })
       }
       
-      const participants = await DatabaseService.getParticipants(sessionId)
-      for (const participant of participants) {
-        await DatabaseService.updateParticipant(participant.id, {
+      const users = await DatabaseService.getUsersBySession(sessionId)
+      for (const user of users) {
+        await DatabaseService.updateUser(user.id, {
           status: "waiting"
         })
       }
@@ -121,8 +121,8 @@ export async function POST(request: NextRequest) {
         current_round: 0,
       })
       
-      console.log(`[세션 리셋] 세션 ${sessionId} 및 참가자 ${participants.length}명을 대기 상태로 변경`)
-      return NextResponse.json({ success: true, session, participantsReset: participants.length })
+      console.log(`[세션 리셋] 세션 ${sessionId} 및 사용자 ${users.length}명을 대기 상태로 변경`)
+      return NextResponse.json({ success: true, session, usersReset: users.length })
     }
 
     if (action === "start_countdown") {
@@ -142,17 +142,17 @@ export async function POST(request: NextRequest) {
             return
           }
 
-          const participants = await DatabaseService.getParticipants(sessionId)
+          const users = await DatabaseService.getUsersBySession(sessionId)
           
-          for (const participant of participants) {
-            if (participant.status !== 'in_lobby') {
-              await DatabaseService.updateParticipant(participant.id, {
+          for (const user of users) {
+            if (user.status !== 'in_lobby') {
+              await DatabaseService.updateUser(user.id, {
                 status: 'eliminated',
                 eliminated_at: new Date().toISOString()
               })
-              console.log(`[게임 시작] 로비 미입장자 제거: ${participant.nickname}`)
+              console.log(`[게임 시작] 로비 미입장자 제거: ${user.nickname}`)
             } else {
-              await DatabaseService.updateParticipant(participant.id, {
+              await DatabaseService.updateUser(user.id, {
                 status: 'playing'
               })
             }
@@ -173,17 +173,17 @@ export async function POST(request: NextRequest) {
     }
     
     if (action === "start") {
-      const participants = await DatabaseService.getParticipants(sessionId)
+      const users = await DatabaseService.getUsersBySession(sessionId)
       
-      for (const participant of participants) {
-        if (participant.status !== 'in_lobby') {
-          await DatabaseService.updateParticipant(participant.id, {
+      for (const user of users) {
+        if (user.status !== 'in_lobby') {
+          await DatabaseService.updateUser(user.id, {
             status: 'eliminated',
             eliminated_at: new Date().toISOString()
           })
-          console.log(`[게임 시작] 로비 미입장자 제거: ${participant.nickname}`)
+          console.log(`[게임 시작] 로비 미입장자 제거: ${user.nickname}`)
         } else {
-          await DatabaseService.updateParticipant(participant.id, {
+          await DatabaseService.updateUser(user.id, {
             status: 'playing'
           })
         }

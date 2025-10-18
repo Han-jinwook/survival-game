@@ -50,34 +50,20 @@ export async function POST(request: NextRequest) {
       console.log("[Settings API] 참가자 등록 시작:", participants.length, "명")
       
       for (const p of participants) {
-        // 사용자 확인 또는 생성
-        let user = await DatabaseService.getUserByNaverId(p.naverId)
+        // 이미 세션에 등록되어 있는지 확인
+        const existingUser = await DatabaseService.getUserByNaverIdAndSession(p.naverId, session.id)
         
-        if (!user) {
-          user = await DatabaseService.createUser(p.naverId, p.nickname)
-          console.log("[Settings API] 새 사용자 생성:", p.naverId, p.nickname)
-        }
-        
-        if (!user) {
-          console.error("[Settings API] 사용자 생성 실패:", p.naverId)
-          continue
-        }
-
-        // 이미 참가자로 등록되어 있는지 확인
-        const existingParticipants = await DatabaseService.getParticipants(session.id)
-        const alreadyJoined = existingParticipants.find(ep => ep.user_id === user.id)
-        
-        if (!alreadyJoined) {
-          // 게임 참가자로 등록
-          await DatabaseService.addParticipant(
+        if (!existingUser) {
+          // 세션에 사용자 추가
+          await DatabaseService.addUserToSession(
             session.id,
-            user.id,
+            p.naverId,
             p.nickname,
             p.lives || initialLives
           )
-          console.log("[Settings API] 참가자 추가:", p.nickname)
+          console.log("[Settings API] 사용자 추가:", p.nickname, "(", p.naverId, ")")
         } else {
-          console.log("[Settings API] 이미 등록된 참가자 건너뜀:", p.nickname)
+          console.log("[Settings API] 이미 등록된 사용자 건너뜀:", p.nickname)
         }
       }
       console.log("[Settings API] 참가자 등록 완료")
@@ -109,7 +95,7 @@ export async function GET() {
       return NextResponse.json({ session: null })
     }
 
-    const participants = await DatabaseService.getParticipants(session.id)
+    const users = await DatabaseService.getUsersBySession(session.id)
 
     return NextResponse.json({
       session: {
@@ -123,15 +109,15 @@ export async function GET() {
         startedAt: session.started_at,
         createdAt: session.created_at,
       },
-      participants: participants.map((p: any) => ({
-        id: p.id,
-        userId: p.user_id,
-        naverId: p.naver_id,
-        nickname: p.nickname,
-        initialLives: p.initial_lives,
-        currentLives: p.current_lives,
-        status: p.status,
-        joinedAt: p.joined_at,
+      participants: users.map((u: any) => ({
+        id: u.id,
+        userId: u.id,
+        naverId: u.naver_id,
+        nickname: u.nickname,
+        initialLives: u.initial_lives,
+        currentLives: u.current_lives,
+        status: u.status,
+        joinedAt: u.joined_at,
       })),
     })
   } catch (error) {
