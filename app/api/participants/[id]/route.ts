@@ -13,7 +13,11 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       return NextResponse.json({ error: '목숨(lives)은 숫자여야 합니다.' }, { status: 400 });
     }
 
-    const updatedUser = await DatabaseService.updateUser(id, { current_lives: lives });
+    // 초기값과 현재값 둘 다 업데이트 (게임 시작 전 관리자가 수정하는 경우)
+    const updatedUser = await DatabaseService.updateUser(id, { 
+      initial_lives: lives,
+      current_lives: lives 
+    });
 
     if (!updatedUser) {
       return NextResponse.json({ error: '사용자를 찾을 수 없거나 업데이트에 실패했습니다.' }, { status: 404 });
