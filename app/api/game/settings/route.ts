@@ -63,12 +63,13 @@ export async function POST(request: NextRequest) {
           )
           console.log("[Settings API] 사용자 추가:", p.nickname, "(", p.naverId, ")")
         } else {
-          // 이미 등록된 사용자의 목숨값 업데이트
+          // 이미 등록된 사용자의 목숨값 업데이트 (초기값 + 현재값 둘 다)
           await DatabaseService.updateUser(existingUser.id, {
+            initial_lives: p.lives,
             current_lives: p.lives,
             nickname: p.nickname,
           })
-          console.log("[Settings API] 사용자 목숨값 업데이트:", p.nickname, "→", p.lives)
+          console.log("[Settings API] 사용자 목숨값 업데이트:", p.nickname, "→", p.lives, "(초기/현재 둘 다)")
         }
       }
       console.log("[Settings API] 참가자 등록 완료")
