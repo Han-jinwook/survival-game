@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const participants = await DatabaseService.getParticipants(sessionId)
-    const currentRound = await DatabaseService.getCurrentRound(sessionId)
+    const participants = await DatabaseService.getUsersBySession(parseInt(sessionId))
+    const currentRound = await DatabaseService.getCurrentRound(parseInt(sessionId))
 
     let roundData = null
     let choices: PlayerChoice[] = []
@@ -64,8 +64,8 @@ export async function GET(request: NextRequest) {
       },
       participants: participants.map(p => ({
         id: p.id,
-        userId: p.user_id,
-        naverId: (p as any).naver_id,
+        userId: p.id, // User 타입이므로 user_id 필드가 없음, id를 사용
+        naverId: p.naver_id,
         nickname: p.nickname,
         initialLives: p.initial_lives,
         currentLives: p.current_lives,

@@ -52,6 +52,7 @@ CREATE INDEX idx_users_status ON users(status);
 TRUNCATE TABLE users CASCADE;
 
 -- 3-2. game_participants 데이터를 users로 이관
+-- 주의: 존재하는 세션만 마이그레이션 (고아 데이터 제외)
 INSERT INTO users (
     naver_id, 
     session_id, 
@@ -79,6 +80,9 @@ SELECT
     ub.created_at
 FROM game_participants_backup gp
 JOIN users_backup ub ON gp.user_id = ub.id
+WHERE EXISTS (
+    SELECT 1 FROM game_sessions WHERE id = gp.game_session_id
+)
 ON CONFLICT (naver_id, session_id) DO UPDATE SET
     nickname = EXCLUDED.nickname,
     current_lives = EXCLUDED.current_lives,
@@ -91,18 +95,30 @@ DO $$
 DECLARE
     old_count INTEGER;
     new_count INTEGER;
+    orphan_count INTEGER;
 BEGIN
     SELECT COUNT(*) INTO old_count FROM game_participants_backup;
     SELECT COUNT(*) INTO new_count FROM users;
+    
+    -- 고아 데이터 확인 (존재하지 않는 세션을 참조하는 데이터)
+    SELECT COUNT(*) INTO orphan_count 
+    FROM game_participants_backup gp
+    WHERE NOT EXISTS (
+        SELECT 1 FROM game_sessions WHERE id = gp.game_session_id
+    );
     
     RAISE NOTICE '=== 마이그레이션 결과 ===';
     RAISE NOTICE 'game_participants 원본 데이터: % 건', old_count;
     RAISE NOTICE 'users 새 데이터: % 건', new_count;
     
-    IF old_count != new_count THEN
-        RAISE WARNING '⚠️  데이터 수가 일치하지 않습니다. 검토가 필요합니다.';
+    IF orphan_count > 0 THEN
+        RAISE WARNING '⚠️  존재하지 않는 세션을 참조하는 고아 데이터 % 건은 제외되었습니다.', orphan_count;
+    END IF;
+    
+    IF old_count - orphan_count = new_count THEN
+        RAISE NOTICE '✅ 데이터 마이그레이션 성공 (유효한 데이터 % 건)', new_count;
     ELSE
-        RAISE NOTICE '✅ 데이터 마이그레이션 성공';
+        RAISE WARNING '⚠️  데이터 수가 일치하지 않습니다. 검토가 필요합니다.';
     END IF;
 END $$;
 
@@ -182,7 +198,21 @@ END $$;
 -- Phase 6: 트리거 재생성
 -- ============================================================================
 
--- 6-1. users 테이블에 트리거 추가
+-- 6-1. notify_game_update 함수 생성 (없으면 생성)
+CREATE OR REPLACE FUNCTION notify_game_update()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Realtime 알림 발생
+    PERFORM pg_notify('game_update', json_build_object(
+        'table', TG_TABLE_NAME,
+        'action', TG_OP,
+        'data', row_to_json(NEW)
+    )::text);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 6-2. users 테이블에 트리거 추가
 DROP TRIGGER IF EXISTS trigger_users_notify ON users;
 CREATE TRIGGER trigger_users_notify
     AFTER INSERT OR UPDATE OR DELETE ON users

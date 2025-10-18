@@ -147,6 +147,45 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "start_countdown") {
+      // 🔍 로비 입장자 수 체크
+      const users = await DatabaseService.getUsersBySession(sessionId)
+      const lobbyUsers = users.filter(u => u.status === 'in_lobby')
+      
+      // ❌ 참가자가 0명일 때: 게임 시작 불가
+      if (lobbyUsers.length === 0) {
+        console.log(`[게임 시작] 참가자 0명 - 게임 시작 불가`)
+        return NextResponse.json({ 
+          error: "로비에 입장한 참가자가 없습니다. 게임을 시작할 수 없습니다.",
+          noPlayers: true
+        }, { status: 400 })
+      }
+      
+      // 🏆 참가자가 1명뿐일 때: 즉시 게임 종료 및 우승자 지정
+      if (lobbyUsers.length === 1) {
+        const winner = lobbyUsers[0]
+        console.log(`[게임 시작] 참가자 1명뿐 - 자동 우승: ${winner.nickname}`)
+        
+        await DatabaseService.updateUser(winner.id, {
+          status: 'winner'
+        })
+        
+        const session = await DatabaseService.updateGameSession(sessionId, {
+          status: "completed",
+          winner_id: winner.id,
+          ended_at: new Date().toISOString(),
+        })
+        
+        return NextResponse.json({ 
+          success: true, 
+          session,
+          singlePlayer: true,
+          winner: {
+            id: winner.id,
+            nickname: winner.nickname
+          }
+        })
+      }
+      
       // 카운트다운 시작: status → 'starting'
       const session = await DatabaseService.updateGameSession(sessionId, {
         status: "starting",

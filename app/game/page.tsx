@@ -312,6 +312,15 @@ export default function GameInterface() {
         })
 
         console.log("[v0] All game players:", gamePlayers)
+        
+        // ❌ 참가자가 0명일 때: 로비로 돌아가기
+        if (gamePlayers.length === 0) {
+          console.error("[Game] 참가자 0명 - 로비로 이동")
+          alert("게임 참가자가 없습니다. 로비로 돌아갑니다.")
+          window.location.href = "/lobby"
+          return
+        }
+        
         setPlayers(gamePlayers)
 
         setGameMode(gamePlayers.length > 4 ? "preliminary" : "final")

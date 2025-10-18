@@ -517,6 +517,16 @@ export default function GameLobby() {
       });
 
       if (response.ok) {
+        const result = await response.json();
+        
+        // 🏆 참가자 1명뿐 - 즉시 결과 페이지로 이동
+        if (result.singlePlayer && result.winner) {
+          console.log("[Lobby] 참가자 1명뿐 - 결과 페이지로 이동:", result.winner.nickname);
+          alert(`참가자가 1명뿐이어서 ${result.winner.nickname}님이 자동 우승하셨습니다!`);
+          window.location.href = "/result";
+          return;
+        }
+        
         console.log("[Lobby] 🚀 게임 시작 성공 - Realtime으로 상태 업데이트 감지");
       } else {
         const errorData = await response.json();
