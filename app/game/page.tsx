@@ -296,9 +296,9 @@ export default function GameInterface() {
           console.log("[v0] 라운드 ID 설정:", data.round.id)
         }
 
-        // playing 상태인 참가자만 게임에 참여
-        const lobbyPlayers = data.participants?.filter((p: any) => p.status === "playing") || []
-        console.log("[v0] Playing participants:", lobbyPlayers)
+        // player 상태인 참가자만 게임에 참여
+        const lobbyPlayers = data.participants?.filter((p: any) => p.status === "player") || []
+        console.log("[v0] Player participants:", lobbyPlayers)
 
         const gamePlayers: Player[] = lobbyPlayers.map((p: any) => {
           const player = {

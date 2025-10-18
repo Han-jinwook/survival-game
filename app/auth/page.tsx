@@ -107,7 +107,7 @@ export default function AuthPage() {
             <h1 className="text-lg md:text-2xl font-bold">가위바위보 하나빼기</h1>
           </Link>
           <Badge variant="destructive" className="bg-red-600/20 text-red-300 border-red-600/50 text-xs md:text-sm">
-            회원 인증
+            선수 인증
           </Badge>
         </div>
       </header>
@@ -119,7 +119,7 @@ export default function AuthPage() {
               <span className="text-red-400 text-xl md:text-2xl">🔐</span>
             </div>
             <h2 className="text-2xl md:text-3xl font-bold mb-2 text-balance">썬드림 즐빛카페</h2>
-            <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-red-400">회원 인증</h3>
+            <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-red-400">선수 인증</h3>
             <p className="text-sm md:text-base text-gray-300 text-pretty">등록된 네이버 ID를 입력하여 게임에 참가하세요</p>
           </div>
 
@@ -165,7 +165,7 @@ export default function AuthPage() {
           <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-red-800/30">
             <h3 className="text-xs md:text-sm font-semibold text-red-300 mb-2 md:mb-3">참가 안내</h3>
             <ul className="text-xs text-gray-400 space-y-1">
-              <li>• 썬드림 즐빛카페에 등록된 회원만 참가 가능</li>
+              <li>• 썬드림 즐빛카페에 등록된 선수만 참가 가능</li>
               <li>• 네이버 ID는 카페 가입 시 사용한 것과 동일해야 함</li>
               <li>• 카페 활동지수에 따라 행운권(목숨) 개수가 다름</li>
               <li>• 등록되지 않은 경우 카페 운영자에게 문의</li>

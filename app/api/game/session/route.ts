@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "enter_lobby") {
-      // 로비 입장: 사용자 상태를 "in_lobby"로 변경
+      // 로비 입장: 사용자 상태를 "player"로 변경 (게임 참가 확정)
       if (!userId) {
         return NextResponse.json({ error: "사용자 ID가 필요합니다." }, { status: 400 })
       }
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
       }
       
       const user = await DatabaseService.updateUser(userId, {
-        status: "in_lobby"
+        status: "player"
       })
 
       if (!user) {
@@ -147,12 +147,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "start_countdown") {
-      // 🔍 로비 입장자 수 체크
+      // 🔍 게임 참가자 수 체크
       const users = await DatabaseService.getUsersBySession(sessionId)
-      const lobbyUsers = users.filter(u => u.status === 'in_lobby')
+      const playerUsers = users.filter(u => u.status === 'player')
       
       // ❌ 참가자가 0명일 때: 게임 시작 불가
-      if (lobbyUsers.length === 0) {
+      if (playerUsers.length === 0) {
         console.log(`[게임 시작] 참가자 0명 - 게임 시작 불가`)
         return NextResponse.json({ 
           error: "로비에 입장한 참가자가 없습니다. 게임을 시작할 수 없습니다.",
@@ -161,8 +161,8 @@ export async function POST(request: NextRequest) {
       }
       
       // 🏆 참가자가 1명뿐일 때: 즉시 게임 종료 및 우승자 지정
-      if (lobbyUsers.length === 1) {
-        const winner = lobbyUsers[0]
+      if (playerUsers.length === 1) {
+        const winner = playerUsers[0]
         console.log(`[게임 시작] 참가자 1명뿐 - 자동 우승: ${winner.nickname}`)
         
         await DatabaseService.updateUser(winner.id, {
@@ -204,18 +204,16 @@ export async function POST(request: NextRequest) {
 
           const users = await DatabaseService.getUsersBySession(sessionId)
           
+          // player 상태가 아닌 사람들은 탈락 처리 (상태 전환 제거)
           for (const user of users) {
-            if (user.status !== 'in_lobby') {
+            if (user.status !== 'player') {
               await DatabaseService.updateUser(user.id, {
                 status: 'eliminated',
                 eliminated_at: new Date().toISOString()
               })
-              console.log(`[게임 시작] 로비 미입장자 제거: ${user.nickname}`)
-            } else {
-              await DatabaseService.updateUser(user.id, {
-                status: 'playing'
-              })
+              console.log(`[게임 시작] 미참가자 제거: ${user.nickname}`)
             }
+            // player는 그대로 유지 (더 이상 상태 전환 필요 없음)
           }
           
           await DatabaseService.updateGameSession(sessionId, {
@@ -235,18 +233,16 @@ export async function POST(request: NextRequest) {
     if (action === "start") {
       const users = await DatabaseService.getUsersBySession(sessionId)
       
+      // player 상태가 아닌 사람들은 탈락 처리
       for (const user of users) {
-        if (user.status !== 'in_lobby') {
+        if (user.status !== 'player') {
           await DatabaseService.updateUser(user.id, {
             status: 'eliminated',
             eliminated_at: new Date().toISOString()
           })
-          console.log(`[게임 시작] 로비 미입장자 제거: ${user.nickname}`)
-        } else {
-          await DatabaseService.updateUser(user.id, {
-            status: 'playing'
-          })
+          console.log(`[게임 시작] 미참가자 제거: ${user.nickname}`)
         }
+        // player는 그대로 유지
       }
       
       const session = await DatabaseService.updateGameSession(sessionId, {

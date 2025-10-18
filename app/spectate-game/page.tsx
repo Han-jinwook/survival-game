@@ -22,7 +22,7 @@ interface Player {
   finalChoice?: GameChoice
   eliminated?: boolean
   timedOut?: boolean
-  status?: 'waiting' | 'playing' | 'eliminated' | 'disconnected';
+  status?: 'waiting' | 'player' | 'eliminated' | 'disconnected';
 }
 
 interface GameRound {

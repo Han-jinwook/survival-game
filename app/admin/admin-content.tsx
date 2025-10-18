@@ -15,7 +15,7 @@ interface Participant {
   naverId: string
   nickname: string
   lives: number
-  status: "waiting" | "ready" | "playing"
+  status: "waiting" | "ready" | "player"
 }
 
 export default function AdminContent() {
@@ -917,7 +917,7 @@ export default function AdminContent() {
                       >
                         {participant.status === "waiting" && "대기"}
                         {participant.status === "ready" && "준비"}
-                        {participant.status === "playing" && "플레이"}
+                        {participant.status === "player" && "선수"}
                       </Badge>
                       <Button
                         onClick={() => removeParticipant(participant.id)} // naverId 대신 id 사용

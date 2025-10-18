@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
           // 게임 세션 정보 가져오기 (게임 모드 확인)
           const session = await DatabaseService.getGameSession(round.game_session_id)
           const alivePlayers = await DatabaseService.getUsersBySession(round.game_session_id)
-          const aliveCount = alivePlayers.filter(u => u.current_lives > 0 && u.status === 'playing').length
+          const aliveCount = alivePlayers.filter(u => u.current_lives > 0 && u.status === 'player').length
           
           // 게임 모드 결정 (2-4명 = final, 5+ = preliminary)
           const gameMode = aliveCount <= 4 ? 'final' : 'preliminary'

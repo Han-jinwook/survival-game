@@ -251,7 +251,7 @@ export default function FinalsPage() {
           if (!userData.user) { router.push("/auth"); return; }
           
           initialPlayers = data.participants
-            .filter((p: any) => p.status === 'playing')
+            .filter((p: any) => p.status === 'player')
             .map((p: any) => ({
               id: p.id, nickname: p.nickname, lives: p.currentLives, isCurrentUser: p.userId === userData.user.id, maxLives: p.initialLives,
             }));
@@ -280,7 +280,7 @@ export default function FinalsPage() {
         const res = await fetch(`/api/game/state`);
         const gameState = await res.json();
         
-        const activePlayers = gameState.participants?.filter((p: any) => p.status === "playing") || [];
+        const activePlayers = gameState.participants?.filter((p: any) => p.status === "player") || [];
         const participantInfo = localStorage.getItem("participantInfo");
         const currentParticipantId = participantInfo ? JSON.parse(participantInfo).id : null;
         

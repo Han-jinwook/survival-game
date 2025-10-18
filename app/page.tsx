@@ -53,8 +53,8 @@ export default function GameLanding() {
             }
             
             if (data.users) {
-              // 로비 대기중 = 'in_lobby' 또는 'playing' 상태인 참가자
-              const lobbyPlayerCount = data.users.filter((p: any) => p.status === 'in_lobby' || p.status === 'playing').length;
+              // 로비 대기중 = 'player' 상태인 참가자
+              const lobbyPlayerCount = data.users.filter((p: any) => p.status === 'player').length;
               console.log("[Home] 로비 대기자 계산:", {
                 total: data.users.length,
                 lobbyCount: lobbyPlayerCount,
@@ -230,7 +230,7 @@ export default function GameLanding() {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
               <Badge variant="destructive" className="bg-red-600/20 text-red-300 border-red-600/50">
-                로비 대기중 {playerCount}명
+                입장 선수 {playerCount}명
               </Badge>
               <Badge variant="outline" className="bg-blue-600/20 text-blue-300 border-blue-600/50">
                 관람자 {spectatorCount}명

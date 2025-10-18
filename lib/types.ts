@@ -7,13 +7,19 @@ export interface User {
   nickname: string;
   initial_lives: number;
   current_lives: number;
-  status: 'waiting' | 'in_lobby' | 'playing' | 'eliminated' | 'winner';
+  status: 'waiting' | 'player' | 'eliminated' | 'winner';
   joined_at: string;
   eliminated_at?: string;
   last_active_at?: string;
   created_at: string;
   is_active: boolean;
 }
+
+// 상태 설명:
+// - waiting: 참가예정자 (아직 로비 미입장)
+// - player: 게임 참가자 (로비 입장 = 게임 참여 확정)
+// - eliminated: 게임 중 탈락
+// - winner: 우승자
 
 export interface GameSession {
   id: number; // Serial

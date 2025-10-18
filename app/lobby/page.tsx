@@ -99,19 +99,19 @@ export default function GameLobby() {
           
           // 게임 시작 감지: 세션 상태별 처리
           if (data.session.status === "starting") {
-            // countdown 시작 신호 - in_lobby 상태인 참가자 카운트 (아직 playing으로 전환 전)
-            const lobbyCount = data.users?.filter((u: any) => u.status === "in_lobby").length || 0
-            console.log("[Lobby] 카운트다운 시작 감지! 참가자:", lobbyCount, "명")
+            // 로비 대기중 = 'player' 상태인 참가자
+            const lobbyPlayerCount = data.users.filter((p: any) => p.status === 'player').length || 0
+            console.log("[Lobby] 카운트다운 시작 감지! 참가자:", lobbyPlayerCount, "명")
             
             // 목적지 결정
             let destination = "/game"
-            if (lobbyCount >= 5) {
+            if (lobbyPlayerCount >= 5) {
               destination = "/game"
               console.log("[Lobby] 예선전 카운트다운")
-            } else if (lobbyCount >= 2) {
+            } else if (lobbyPlayerCount >= 2) {
               destination = "/finals"
               console.log("[Lobby] 본선 카운트다운")
-            } else if (lobbyCount === 1) {
+            } else if (lobbyPlayerCount === 1) {
               // 1명만 있는 경우는 서버에서 자동 우승 처리
               console.log("[Lobby] 참가자 1명 - 서버에서 자동 우승 처리됨")
               destination = "/result"
@@ -132,7 +132,7 @@ export default function GameLobby() {
           
           if (data.session.status === "in-progress") {
             // 이미 게임 진행 중 → sessionStorage 설정 후 이동
-            const playingCount = data.users?.filter((u: any) => u.status === "playing").length || 0
+            const playingCount = data.users?.filter((u: any) => u.status === "player").length || 0
             console.log("[Lobby] 게임 진행 중 감지! 즉시 이동")
             
             // sessionStorage 설정 (게임 페이지 초기화에 필요)
@@ -212,7 +212,7 @@ export default function GameLobby() {
                 setTimeout(() => fetchGameData(false), 500)
                 return
               }
-            } else if (myUser && myUser.status === "playing") {
+            } else if (myUser && myUser.status === "player") {
               // 이미 입장했으면 사용자 정보 저장 (exit_lobby용)
               console.log("[Lobby] 🍪 이미 로비에 입장한 상태, 사용자 정보 저장")
               localStorage.setItem("userInfo", JSON.stringify(myUser))
@@ -224,10 +224,10 @@ export default function GameLobby() {
             naverId: u.naver_id,
             nickname: u.nickname,
             lives: u.current_lives,
-            status: u.status === "eliminated" ? "disconnected" : (u.status === "in_lobby" || u.status === "playing" ? "ready" : "waiting"),
+            status: u.status === "eliminated" ? "disconnected" : (u.status === "player" ? "ready" : "waiting"),
             joinTime: new Date(u.joined_at),
-            // 'in_lobby' 또는 'playing' 상태를 로비 입장으로 간주
-            isInLobby: u.status === "in_lobby" || u.status === "playing",
+            // 'player' 상태를 로비 입장으로 간주
+            isInLobby: u.status === "player",
           }))
           
           console.log("[Lobby] 💛 참가자 매핑 완료:", {
@@ -959,11 +959,11 @@ export default function GameLobby() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-8">
           <Card className="bg-black/60 border-red-800/50 p-4 md:p-6">
-            <h3 className="text-base md:text-lg font-semibold text-red-300 mb-3 md:mb-4">참가자 현황</h3>
+            <h3 className="text-base md:text-lg font-semibold text-red-300 mb-3 md:mb-4">선수 현황</h3>
             <div className="space-y-2 md:space-y-3 text-gray-300">
               <div className="flex items-center gap-2 text-xs md:text-base">
                 <span className="text-white font-semibold">참가예정자 총 {totalPlayers}명 중</span>
-                <span className="text-green-400 font-semibold">로비 대기자 {lobbyPlayers}명</span>
+                <span className="text-green-400 font-semibold">선수 {lobbyPlayers}명</span>
               </div>
               <div className="flex items-center gap-2 text-xs md:text-base">
                 <span className="text-white font-semibold">총 목숨:</span>
@@ -1027,7 +1027,7 @@ export default function GameLobby() {
 
         <Card className="bg-black/60 border-red-800/50 p-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-red-300">참가자 목록</h3>
+            <h3 className="text-xl font-semibold text-red-300">참가 예정자</h3>
             <div className="flex gap-2">
               <Button
                 variant="outline"
