@@ -68,6 +68,27 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "사용자 ID가 필요합니다." }, { status: 400 })
       }
       
+      // 🚫 입장 시간 제한 체크 (게임 시작 1분 전까지만 입장 가능)
+      if (sessionId) {
+        const session = await DatabaseService.getGameSession(sessionId)
+        if (session && session.status === "waiting" && session.started_at) {
+          const gameStartTime = new Date(session.started_at)
+          const lobbyClosingTime = new Date(gameStartTime.getTime() - 1 * 60 * 1000) // 1분 전
+          const now = new Date()
+          
+          if (now > lobbyClosingTime) {
+            console.log(`[Lobby] ❌ 입장 시간 마감 - 사용자: ${userId}, 마감: ${lobbyClosingTime.toISOString()}, 현재: ${now.toISOString()}`)
+            return NextResponse.json({ 
+              error: "로비 입장 시간이 마감되었습니다. (게임 시작 1분 전까지만 입장 가능)",
+              closingTime: lobbyClosingTime.toISOString(),
+              redirect: "/viewer"
+            }, { status: 403 })
+          }
+          
+          console.log(`[Lobby] ✅ 입장 가능 - 마감까지: ${Math.floor((lobbyClosingTime.getTime() - now.getTime()) / 1000)}초`)
+        }
+      }
+      
       const user = await DatabaseService.updateUser(userId, {
         status: "in_lobby"
       })

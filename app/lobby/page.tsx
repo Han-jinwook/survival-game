@@ -26,8 +26,6 @@ export default function GameLobby() {
   const [currentUser, setCurrentUser] = useState<{ naverId: string; nickname: string; lives: number } | null>(null)
   const [showWelcomeMessage, setShowWelcomeMessage] = useState(true)
   const [players, setPlayers] = useState<Player[]>([])
-  const [gameStartCountdown, setGameStartCountdown] = useState<number | null>(null)
-  const [gameDestination, setGameDestination] = useState<string>("/game")
   const [sortBy, setSortBy] = useState<"name" | "lives">("lives")
   const [gameStartTime, setGameStartTime] = useState<string>("")
   const [scheduledStartDate, setScheduledStartDate] = useState<Date | null>(null)
@@ -36,7 +34,6 @@ export default function GameLobby() {
   const [currentRuleCard, setCurrentRuleCard] = useState(0)
   const [cafeName, setCafeName] = useState("썬드림 즐빛카페")
   const [eventName, setEventName] = useState("가위바위보 하나빼기 이벤트")
-  const [startErrorMessage, setStartErrorMessage] = useState<string>("")
   const [autoStartTriggered, setAutoStartTriggered] = useState(false)
   const [sessionStatus, setSessionStatus] = useState<string>("waiting")
 
@@ -382,24 +379,24 @@ export default function GameLobby() {
           setSessionStatus(newStatus);
 
           if (newStatus === 'starting') {
-            console.log('[Realtime] 카운트다운 신호 수신!');
-            // 중요: 로컬 상태를 기준으로 참가자 수 계산
-            setPlayers(prevPlayers => {
-              const playingCount = prevPlayers.filter(p => p.isInLobby).length;
-              let destination = '/game';
-              if (playingCount >= 5) {
-                destination = '/game';
-              } else if (playingCount >= 2) {
-                destination = '/finals';
-              }
-              
-              sessionStorage.setItem('gameStarting', 'true');
-              sessionStorage.setItem('currentSessionId', payload.new.id);
-              setGameDestination(destination);
-              setGameStartCountdown(10); // 카운트다운 즉시 시작
-              
-              return prevPlayers; // 상태 업데이트 후 반환
-            });
+            console.log('[Realtime] 게임 시작! 게임 페이지로 이동 준비');
+            
+            // 세션 ID 저장
+            sessionStorage.setItem('gameStarting', 'completed');
+            sessionStorage.setItem('currentSessionId', payload.new.id);
+            
+            // 3초 후 게임 페이지로 이동
+            setTimeout(() => {
+              console.log('[Lobby] 게임 페이지로 이동');
+              window.location.href = '/game';
+            }, 3000);
+          }
+          
+          if (newStatus === 'in_progress') {
+            console.log('[Realtime] 게임 진행 중 - 즉시 게임 페이지로 이동');
+            sessionStorage.setItem('gameStarting', 'completed');
+            sessionStorage.setItem('currentSessionId', payload.new.id);
+            window.location.href = '/game';
           }
         }
       )
@@ -436,23 +433,9 @@ export default function GameLobby() {
     }
   }, [showWelcomeMessage])
 
-  useEffect(() => {
-    if (gameStartCountdown !== null && gameStartCountdown > 0) {
-      const timer = setTimeout(() => {
-        setGameStartCountdown((prev: number | null) => (prev !== null ? prev - 1 : null))
-      }, 1000)
-      return () => clearTimeout(timer)
-    } else if (gameStartCountdown === 0) {
-      console.log("[Lobby] Countdown finished, redirecting to:", gameDestination)
-      // 정상 완료 표시 (beforeunload에서 exitLobby 실행 방지)
-      sessionStorage.setItem('gameStarting', 'completed')
-      window.location.href = gameDestination
-    }
-  }, [gameStartCountdown, gameDestination])
-
   // 예약 시간 자동 게임 시작 체크
   useEffect(() => {
-    if (!scheduledStartDate || autoStartTriggered || gameStartCountdown !== null || sessionStatus !== "waiting") {
+    if (!scheduledStartDate || autoStartTriggered || sessionStatus !== "waiting") {
       return
     }
 
@@ -463,7 +446,7 @@ export default function GameLobby() {
       if (currentTime >= scheduledStartDate && sessionStatus === "waiting") {
         console.log("[Lobby] 예약 시간 도달! 자동 게임 시작:", scheduledStartDate)
         setAutoStartTriggered(true)
-        handleTestStart() // 자동으로 게임 시작
+        handleAutoStart() // 자동으로 게임 시작
       }
     }
 
@@ -471,7 +454,7 @@ export default function GameLobby() {
     const interval = setInterval(checkScheduledStart, 1000)
     
     return () => clearInterval(interval)
-  }, [scheduledStartDate, autoStartTriggered, gameStartCountdown, sessionStatus])
+  }, [scheduledStartDate, autoStartTriggered, sessionStatus])
   
   // 디버깅: currentUser와 players 변경 시 목숨 계산 추적
   useEffect(() => {
@@ -502,40 +485,28 @@ export default function GameLobby() {
     }
   })
 
-  const handleTestStart = async () => {
-    // 로비에 입장한 플레이어 기준으로 인원 체크
-    const currentLobbyPlayers = players.filter((p: Player) => p.isInLobby).length;
-    console.log("[Lobby] 🎮 서버 중심 게임 시작 - 현재 로비 플레이어:", currentLobbyPlayers, "명");
-    
-    if (currentLobbyPlayers < 2) {
-      setStartErrorMessage(`최소 2명 이상이어야 게임을 시작할 수 있습니다. (현재: ${currentLobbyPlayers}명)`);
-      setTimeout(() => setStartErrorMessage(""), 3000);
-      return;
-    }
+  const handleAutoStart = async () => {
+    console.log("[Lobby] ⏰ 예약 시간 도달 - 자동 게임 시작");
 
-    // 1. 현재 세션 ID 가져오기
-    let sessionId: number | null = null;
     try {
-      const response = await fetch("/api/game/settings");
-      if (response.ok) {
-        const data = await response.json();
-        if (data.session) {
-          sessionId = data.session.id;
-          console.log("[Lobby] 활성 세션 ID 확인:", sessionId);
-        }
+      // 1. 현재 세션 ID 가져오기
+      const settingsResponse = await fetch("/api/game/settings");
+      if (!settingsResponse.ok) {
+        console.error("[Lobby] 세션 조회 실패");
+        return;
       }
-    } catch (error) {
-      console.error("[Lobby] 세션 ID 가져오기 실패:", error);
-    }
 
-    if (!sessionId) {
-      setStartErrorMessage("❌ 활성 게임 세션을 찾을 수 없습니다.");
-      setTimeout(() => setStartErrorMessage(""), 5000);
-      return;
-    }
+      const data = await settingsResponse.json();
+      const sessionId = data.session?.id;
+      
+      if (!sessionId) {
+        console.error("[Lobby] ❌ 활성 게임 세션을 찾을 수 없습니다.");
+        return;
+      }
 
-    // 2. 🎮 기존 게임 시작 방식으로 임시 복구
-    try {
+      console.log("[Lobby] 세션 ID:", sessionId, "- 게임 시작 요청");
+
+      // 2. 서버에 게임 시작 요청 (서버가 모든 검증 수행)
       const response = await fetch("/api/game/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -546,18 +517,13 @@ export default function GameLobby() {
       });
 
       if (response.ok) {
-        console.log("[Lobby] 🚀 게임 시작 성공 - 카운트다운 시작");
-        // 실시간 구독이 세션 변경을 감지하여 카운트다운 시작
+        console.log("[Lobby] 🚀 게임 시작 성공 - Realtime으로 상태 업데이트 감지");
       } else {
         const errorData = await response.json();
         console.error("[Lobby] 게임 시작 실패:", errorData);
-        setStartErrorMessage(errorData.error || "❌ 게임 시작 실패");
-        setTimeout(() => setStartErrorMessage(""), 3000);
       }
     } catch (error) {
       console.error("[Lobby] 게임 시작 오류:", error);
-      setStartErrorMessage("❌ 게임 시작 실패");
-      setTimeout(() => setStartErrorMessage(""), 3000);
     }
   };
 
@@ -942,48 +908,26 @@ export default function GameLobby() {
           <Card className="bg-black/60 border-purple-800/50 p-4 md:p-6">
             <h3 className="text-base md:text-lg font-semibold text-purple-300 mb-3 md:mb-4">게임장 입장 안내</h3>
             <div className="text-center">
-              {gameStartTime && (
-                <div className="text-sm text-purple-300 mb-3">
-                  게임 시작 시간: <span className="font-bold text-purple-400">{gameStartTime}</span>
+              <div className="text-xl md:text-2xl font-bold text-purple-400 mb-3 md:mb-4">
+                {sessionStatus === "waiting" ? "게임 시작 대기 중" : sessionStatus === "starting" ? "곧 게임이 시작됩니다!" : "게임 진행 중"}
+              </div>
+              
+              {sessionStatus === "waiting" && gameStartTime && (
+                <div className="bg-purple-900/30 border border-purple-600/50 rounded-lg p-4 mb-3">
+                  <p className="text-purple-200 text-sm mb-2">📅 예정된 게임 시작</p>
+                  <p className="text-purple-100 text-lg font-bold">{gameStartTime}</p>
                 </div>
               )}
-              {gameStartCountdown === null ? (
-                <div>
-                  <div className="text-xl md:text-2xl font-bold text-purple-400 mb-3 md:mb-4">대기중</div>
-                  {/* 개발 테스트용 버튼 (프로덕션에서 제거 예정) */}
-                  <Button
-                    onClick={() => {
-                      console.log("[Lobby] 테스트 버튼 클릭 - sessionStatus:", sessionStatus)
-                      handleTestStart()
-                    }}
-                    disabled={sessionStatus !== "waiting"}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 md:px-8 py-2.5 md:py-3 text-sm md:text-base disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    테스트 시작 {sessionStatus !== "waiting" && `(${sessionStatus})`}
-                  </Button>
-                  {startErrorMessage && (
-                    <div className={`mt-2 md:mt-3 p-2 md:p-3 rounded-lg text-xs md:text-sm text-center ${
-                      startErrorMessage.includes("✅") 
-                        ? "bg-green-900/50 border border-green-600/50 text-green-300" 
-                        : "bg-red-900/50 border border-red-600/50 text-red-300"
-                    }`}>
-                      {startErrorMessage}
-                    </div>
-                  )}
-                  {lobbyOpenTime && (
-                    <div className="text-xs text-gray-500 mt-3 md:mt-4">
-                      게임 시작 3분 전인 {lobbyOpenTime}에 게임장 오픈되오니, 시간 착오 없으시기 바랍니다.
-                    </div>
-                  )}
+              
+              {sessionStatus === "waiting" && lobbyOpenTime && (
+                <div className="text-xs text-gray-400 mt-3">
+                  💡 게임 시작 <span className="text-yellow-400 font-bold">1분 전</span>까지 로비 입장을 완료해주세요.
                 </div>
-              ) : (
-                <div>
-                  <div className="text-3xl md:text-4xl font-bold text-purple-400 mb-2">{gameStartCountdown}</div>
-                  <div className="text-xs md:text-sm text-gray-300 mb-3">초 후 게임장 입장</div>
-                  <Progress value={((10 - gameStartCountdown) / 10) * 100} className="h-2" />
-                  {lobbyOpenTime && (
-                    <div className="text-xs text-gray-500 mt-3">(실제 운영 시: {lobbyOpenTime}에 게임장 오픈)</div>
-                  )}
+              )}
+              
+              {sessionStatus === "starting" && (
+                <div className="bg-yellow-900/30 border border-yellow-600/50 rounded-lg p-4">
+                  <p className="text-yellow-200 text-center animate-pulse">⏰ 잠시 후 게임장으로 이동합니다...</p>
                 </div>
               )}
             </div>
