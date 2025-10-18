@@ -399,7 +399,7 @@ export default function GameInterface() {
           // loadGameData(); // 간단하게 전체 데이터 리로드
         }
       )
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'game_participants' }, 
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, 
         (payload: RealtimePostgresChangesPayload<any>) => {
           console.log('[Realtime] 참가자 변경 감지 (목숨 등):', payload);
           loadGameData(); // 목숨 변경 등 중요 업데이트이므로 전체 데이터 리로드

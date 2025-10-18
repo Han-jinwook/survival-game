@@ -91,9 +91,9 @@ export default function GameLanding() {
 
       // 게임 참가자 변경 감지  
       const participantsChannel = supabase
-        .channel('home-participants-global')
+        .channel('home-users-global')
         .on('postgres_changes',
-          { event: '*', schema: 'public', table: 'game_participants' },
+          { event: '*', schema: 'public', table: 'users' },
           (payload) => {
             console.log('[Home] 참가자 변경 감지:', payload.eventType)
             setTimeout(() => loadEventInfo(), 100)

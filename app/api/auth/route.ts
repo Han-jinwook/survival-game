@@ -12,24 +12,16 @@ export async function POST(request: NextRequest) {
 
     const trimmedNaverId = naverId.trim()
 
-    // 등록된 사용자 확인
+    // 등록된 사용자 확인 (활성 세션에서)
     let user = await DatabaseService.getUserByNaverId(trimmedNaverId)
 
     if (!user) {
-      // 사용자가 없으면 새로 생성 (관리자가 등록한 참가자)
-      if (!nickname) {
-        return NextResponse.json(
-          { error: "등록되지 않은 회원입니다. 네이버 카페 운영자에게 문의해주세요." },
-          { status: 404 },
-        )
-      }
-      
-      user = await DatabaseService.createUser(trimmedNaverId, nickname)
+      // 활성 세션에 등록되지 않은 사용자
+      return NextResponse.json(
+        { error: "등록되지 않은 회원입니다. 네이버 카페 운영자에게 문의해주세요." },
+        { status: 404 },
+      )
     }
-
-    // DatabaseService를 사용하여 참가자 정보 조회
-    const participant = await DatabaseService.getParticipantByUserId(user.id);
-    const userLives = participant ? participant.current_lives : 5; // 참가자 정보가 없으면 기본값 5
 
     // 인증 성공 - 쿠키 발급
     const response = NextResponse.json({
@@ -38,7 +30,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
         naverId: user.naver_id,
         nickname: user.nickname,
-        lives: userLives,
+        lives: user.current_lives || 5,
       },
     })
 

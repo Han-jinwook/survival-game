@@ -16,6 +16,28 @@ export class DatabaseService {
     return data;
   }
 
+  // naver_id로 활성 세션의 사용자 조회
+  static async getUserByNaverId(naverId: string): Promise<User | null> {
+    // 활성 세션 조회
+    const activeSession = await this.getActiveGameSession();
+    if (!activeSession) {
+      return null;
+    }
+    
+    // 활성 세션의 사용자 조회
+    const { data, error } = await db
+      .from('users')
+      .select('*')
+      .eq('naver_id', naverId)
+      .eq('session_id', activeSession.id)
+      .single();
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error getting user by naver_id:', error);
+      return null;
+    }
+    return data;
+  }
+
   // (naver_id, session_id)로 사용자 조회
   static async getUserByNaverIdAndSession(naverId: string, sessionId: number): Promise<User | null> {
     const { data, error } = await db

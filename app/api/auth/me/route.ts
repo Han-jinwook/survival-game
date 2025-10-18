@@ -18,28 +18,13 @@ export async function GET() {
       return NextResponse.json({ error: '사용자를 찾을 수 없습니다.' }, { status: 404 })
     }
 
-    // 현재 활성 세션에서 참가자 정보 조회 (lives 정보 포함)
-    let lives = 0
-    try {
-      const activeSession = await DatabaseService.getActiveGameSession()
-      if (activeSession) {
-        const participants = await DatabaseService.getParticipants(activeSession.id)
-        const participant = participants.find(p => p.user_id === uid.value)
-        if (participant) {
-          lives = participant.current_lives
-        }
-      }
-    } catch (err) {
-      console.error('[Auth] 참가자 lives 조회 실패:', err)
-    }
-
     return NextResponse.json({
       success: true,
       user: {
         id: user.id,
         naverId: user.naver_id,
         nickname: user.nickname,
-        lives: lives,
+        lives: user.current_lives || 5,
       }
     })
   } catch (error) {
