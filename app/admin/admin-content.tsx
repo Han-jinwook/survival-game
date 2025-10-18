@@ -150,9 +150,9 @@ export default function AdminContent() {
           if (data.users && data.users.length > 0) {
             const loadedParticipants = data.users.map((u: any) => ({
               id: u.id,
-              naverId: u.naverId || "",
+              naverId: u.naver_id || "",
               nickname: u.nickname,
-              lives: u.currentLives,
+              lives: u.current_lives,
               status: u.status,
             }))
             setParticipants(loadedParticipants)
