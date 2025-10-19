@@ -26,35 +26,8 @@ export async function POST(request: NextRequest) {
       final_choice: finalChoice
     })
 
-    // 🎮 자동 페이즈 전환: 모든 플레이어가 선택했는지 확인
-    const round = await DatabaseService.getCurrentRound(sessionId)
-    if (round && round.id === roundId) {
-      const currentPhase = round.phase
-      const allReady = await DatabaseService.checkAllPlayersReady(roundId, currentPhase)
-      
-      if (allReady) {
-        console.log(`[Choice API] All players ready for phase: ${currentPhase}`)
-        
-        // selection/final_selection → excludeOne 자동 전환 (2개 선택 완료)
-        if (currentPhase === 'selection' || currentPhase === 'final_selection') {
-          await DatabaseService.updateRound(roundId, { phase: 'excludeOne' as any })
-          console.log(`[Choice API] Phase changed: ${currentPhase} → excludeOne`)
-        }
-        // excludeOne → 결과 계산 및 목숨 차감 (하나 빼기 완료)
-        else if (currentPhase === 'excludeOne') {
-          // 게임 세션 정보 가져오기 (게임 모드 확인)
-          const session = await DatabaseService.getGameSession(round.game_session_id)
-          const alivePlayers = await DatabaseService.getUsersBySession(round.game_session_id)
-          const aliveCount = alivePlayers.filter(u => u.current_lives > 0 && u.status === 'player').length
-          
-          // 게임 모드 결정 (2-4명 = final, 5+ = preliminary)
-          const gameMode = aliveCount <= 4 ? 'final' : 'preliminary'
-          
-          // 🔒 트랜잭션: 결과 계산 + 목숨 차감 원자적 실행
-          await DatabaseService.processRoundResults(roundId, gameMode)
-        }
-      }
-    }
+    // ✅ Choice API는 선택 저장만 담당
+    // Phase 전환, 결과 계산은 게임 진행 로직에서 처리
 
     return NextResponse.json({
       success: true,
