@@ -174,11 +174,21 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "start") {
+      // 중복 실행 방지: 이미 게임이 시작되었는지 다시 한번 확인
+      const currentSession = await DatabaseService.getGameSession(sessionId);
+      if (currentSession?.status !== 'waiting') {
+        console.log(`[게임 시작] 중복 호출 감지 - 이미 시작된 게임입니다 (상태: ${currentSession?.status}).`);
+        return NextResponse.json({ 
+          error: "게임이 이미 시작되었습니다.",
+          alreadyStarted: true
+        }, { status: 409 }); // 409 Conflict
+      }
+
       // 정시(게임 시작 시간)에 player 상태인 선수만 게임 참가
       const users = await DatabaseService.getUsersBySession(sessionId)
       const playerUsers = users.filter(u => u.status === 'player')
       
-      // ❌ 참가자가 0명일 때: 게임 시작 불가
+      // 참가자가 0명일 때: 게임 시작 불가
       if (playerUsers.length === 0) {
         console.log(`[게임 시작] 참가자 0명 - 게임 시작 불가`)
         return NextResponse.json({ 
