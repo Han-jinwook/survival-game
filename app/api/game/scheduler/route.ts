@@ -114,36 +114,45 @@ export async function POST(request: NextRequest) {
             )
           )
           
-          // 2-5. 첫 라운드 생성
+          // 2-5. 첫 라운드 생성 (서버 중심 - Scheduler가 모든 게임 로직 담당)
           const roundPhase = playerUsers.length >= 5 ? 'selection' : 'final_selection'
-          const round = await DatabaseService.createRound(session.id, 1, roundPhase)
           
-          if (round) {
-            // 🎯 서버 타이머 시작: 준비 단계 (5초 후 실제 게임 시작)
-            const initialPhase = 'waiting'
-            const initialMessage = `이제 총 ${playerUsers.length}명으로 게임을 시작합니다!`
-            
-            await DatabaseService.updateRound(round.id, {
-              phase: initialPhase,
-              time_left: 5, // 준비 시간 5초
-              phase_message: initialMessage,
-              phase_started_at: now.toISOString()
-            })
-            
-            results.push({
-              sessionId: session.id,
-              sessionName: session.session_name,
-              status: "started",
-              playerCount: playerUsers.length,
-              roundId: round.id,
-              phase: initialPhase,
-              timerStarted: true
-            })
-            
-            console.log(`[Scheduler] 세션 ${session.id} - 게임 시작 완료 (${playerUsers.length}명, 서버 타이머 시작)`)
+          // 기존 라운드 확인 후 생성 (중복 방지)
+          const existingRound = await DatabaseService.getCurrentRound(session.id)
+          let round = existingRound
+          
+          if (!existingRound) {
+            round = await DatabaseService.createRound(session.id, 1, roundPhase)
+            if (!round) {
+              throw new Error("라운드 생성 실패")
+            }
+            console.log(`[Scheduler] 라운드 1 생성 완료 (phase: ${roundPhase})`)
           } else {
-            throw new Error("라운드 생성 실패")
+            console.log(`[Scheduler] 기존 라운드 사용: ${existingRound.id}`)
           }
+          
+          // 🎯 서버 타이머 시작: 준비 단계 (5초 후 실제 게임 시작)
+          const initialPhase = 'waiting'
+          const initialMessage = `이제 총 ${playerUsers.length}명으로 게임을 시작합니다!`
+          
+          await DatabaseService.updateRound(round.id, {
+            phase: initialPhase,
+            time_left: 5, // 준비 시간 5초
+            phase_message: initialMessage,
+            phase_started_at: now.toISOString()
+          })
+          
+          results.push({
+            sessionId: session.id,
+            sessionName: session.session_name,
+            status: "started",
+            playerCount: playerUsers.length,
+            roundId: round.id,
+            phase: initialPhase,
+            timerStarted: true
+          })
+          
+          console.log(`[Scheduler] 세션 ${session.id} - 게임 시작 완료 (${playerUsers.length}명, 서버 타이머 시작)`)
         }
         
       } catch (error) {

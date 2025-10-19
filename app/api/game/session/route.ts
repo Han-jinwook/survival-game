@@ -236,42 +236,14 @@ export async function POST(request: NextRequest) {
       )
       console.log(`[게임 시작] ${playerUsers.length}명 선수 데이터 초기화 완료`)
       
-      // 첫 라운드 생성
-      const roundPhase = playerUsers.length >= 5 ? 'selection' : 'final_selection'
-      const round = await DatabaseService.createRound(sessionId, 1, roundPhase)
-      
-      if (!round) {
-        console.error(`[게임 시작] 라운드 생성 실패`)
-        return NextResponse.json({ 
-          error: "라운드 생성에 실패했습니다." 
-        }, { status: 500 })
-      }
-      
-      console.log(`[게임 시작] 라운드 1 생성 완료 (phase: ${roundPhase})`)
-      
-      // 🎯 서버 타이머 시작: 준비 단계 (5초 후 실제 게임 시작)
-      const initialPhase = 'waiting'
-      const initialMessage = `이제 총 ${playerUsers.length}명으로 게임을 시작합니다!`
-      
-      await DatabaseService.updateRound(round.id, {
-        phase: initialPhase,
-        time_left: 5, // 준비 시간 5초
-        phase_message: initialMessage,
-        phase_started_at: new Date().toISOString()
-      })
-      
-      console.log(`[게임 시작] 서버 타이머 시작: ${initialPhase} (5초)`)
+      // ✅ 라운드 생성은 Scheduler가 담당 - 여기서는 세션 상태만 변경
+      console.log(`[게임 시작] 라운드 생성은 Scheduler가 담당합니다`)
       
       return NextResponse.json({ 
         success: true, 
-        session, 
-        round: {
-          ...round,
-          phase: initialPhase,
-          time_left: 5,
-          phase_message: initialMessage
-        },
-        playerCount: playerUsers.length 
+        session,
+        playerCount: playerUsers.length,
+        message: "게임 시작 준비 완료. Scheduler가 라운드를 생성합니다."
       })
     }
 

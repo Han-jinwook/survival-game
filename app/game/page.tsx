@@ -535,13 +535,13 @@ export default function GameInterface() {
       // 첫 번째 참가자만 음성 재생 (TTS 중복 방지)
       const participantInfo = localStorage.getItem("participantInfo")
       const currentParticipantId = participantInfo ? JSON.parse(participantInfo).id : null
-      const isFirstPlayer = testPlayers[0]?.id === currentParticipantId
+      const isFirstPlayer = players[0]?.id === currentParticipantId
       
       if (isFirstPlayer) {
         setTimeout(() => speak("가위 바위 보, 2개를 선택하세요"), 500)
       }
     }
-  }, [gameRound.phase, gameRound.timeLeft, testPlayers])
+  }, [gameRound.phase, gameRound.timeLeft, players])
 
   useEffect(() => {
     if (gameRound.phase === "excludeOne" && gameRound.timeLeft === 10) {
@@ -549,13 +549,13 @@ export default function GameInterface() {
       // 첫 번째 참가자만 음성 재생 (TTS 중복 방지)
       const participantInfo = localStorage.getItem("participantInfo")
       const currentParticipantId = participantInfo ? JSON.parse(participantInfo).id : null
-      const isFirstPlayer = testPlayers[0]?.id === currentParticipantId
+      const isFirstPlayer = players[0]?.id === currentParticipantId
       
       if (isFirstPlayer) {
         setTimeout(() => speak("하나 빼기, 1개를 제외하세요"), 500)
       }
     }
-  }, [gameRound.timeLeft, gameRound.phase, testPlayers])
+  }, [gameRound.timeLeft, gameRound.phase, players])
 
   const handleProceedToFinals = () => {
     setShowFinalsConfirmation(false)
