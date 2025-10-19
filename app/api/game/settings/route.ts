@@ -107,7 +107,18 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const session = await DatabaseService.getActiveGameSession()
+    // 1. 먼저 활성 세션 찾기
+    let session = await DatabaseService.getActiveGameSession()
+    
+    // 2. 활성 세션이 없으면 가장 최근 세션 가져오기
+    if (!session) {
+      console.log('[Settings API] 활성 세션 없음, 최근 세션 조회 중...')
+      const allSessions = await DatabaseService.getAllGameSessions()
+      session = allSessions[0] || null
+      if (session) {
+        console.log('[Settings API] 최근 세션 로드:', session.id, 'status:', session.status)
+      }
+    }
     
     if (!session) {
       return NextResponse.json({ session: null })
