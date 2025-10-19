@@ -413,14 +413,27 @@ export default function GameInterface() {
     }
 
     loadGameData()
-    
-    // Supabase Realtime 구독 설정
-    const channel = supabase.channel(`game-${gameRoundId}`)
+
+    // cleanup
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+      exitLobby()
+    }
+  }, [])
+
+  // Realtime 구독: roundId가 설정된 후에만 실행
+  useEffect(() => {
+    if (!roundId) {
+      console.log('[Realtime] roundId 없음, 구독 대기 중...')
+      return
+    }
+
+    console.log(`[Realtime] game-${roundId} 채널 구독 시작...`)
+
+    const channel = supabase.channel(`game-${roundId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'game_rounds' }, 
         (payload: RealtimePostgresChangesPayload<any>) => {
-          console.log('[Realtime] 라운드 변경 감지:', payload);
-          // 필요한 데이터만 선택적으로 업데이트하거나, 전체 데이터를 다시 불러올 수 있습니다.
-          // 예: loadGameData() 또는 특정 상태만 업데이트
+          console.log('[Realtime] 라운드 변경 감지:', payload.new);
           if (payload.new && 'phase' in payload.new) {
             setGameRound((prev: GameRound) => ({ ...prev, phase: payload.new.phase as GamePhase }));
           }
@@ -428,33 +441,27 @@ export default function GameInterface() {
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'player_choices' }, 
         (payload: RealtimePostgresChangesPayload<any>) => {
-          console.log('[Realtime] 선택 변경 감지:', payload);
-          // 다른 플레이어의 선택을 실시간으로 반영할 수 있습니다.
-          // loadGameData(); // 간단하게 전체 데이터 리로드
+          console.log('[Realtime] 선택 변경 감지:', payload.new);
         }
       )
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, 
         (payload: RealtimePostgresChangesPayload<any>) => {
-          console.log('[Realtime] 참가자 변경 감지 (목숨 등):', payload);
-          loadGameData(); // 목숨 변경 등 중요 업데이트이므로 전체 데이터 리로드
+          console.log('[Realtime] 참가자 변경 감지 (목숨 등):', payload.new);
         }
       )
-      .subscribe((status: 'SUBSCRIBED' | 'CLOSED' | 'CHANNEL_ERROR' | 'TIMED_OUT', err?: Error) => {
+      .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log('[Realtime] 게임 구독 성공!')
+          console.log(`[Realtime] game-${roundId} 채널 구독 성공!`)
         } else {
-          console.error('[Realtime] 게임 구독 실패:', err)
+          console.error(`[Realtime] game-${roundId} 채널 구독 실패:`, err)
         }
       });
 
-    // cleanup
     return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload)
-      exitLobby()
+      console.log(`[Realtime] game-${roundId} 채널 구독 해제`)
       supabase.removeChannel(channel)
-      console.log("[Realtime] 연결 종료")
     }
-  }, [])
+  }, [roundId])
 
   useEffect(() => {
     if (showFinalsConfirmation && finalsCountdown > 0) {

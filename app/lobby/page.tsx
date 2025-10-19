@@ -339,7 +339,14 @@ export default function GameLobby() {
       }
     };
 
+    // beforeunload: 브라우저 닫거나 새로고침 시
+    const handleBeforeUnload = () => {
+      console.log('[Lobby] beforeunload - 퇴장 처리');
+      exitLobby();
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
 
     // [수정됨] Supabase Realtime 구독 최적화
     console.log('[Lobby] Supabase Realtime 구독 시작');
@@ -428,7 +435,7 @@ export default function GameLobby() {
 
     // Cleanup 함수
     return () => {
-      console.log('[Lobby] 페이지 이탈, Realtime 구독 해제');
+      console.log('[Lobby] 페이지 이탈, Realtime 구독 및 이벤트 리스너 해제');
       
       // Realtime 채널 정리
       supabase.removeChannel(participantsChannel);
@@ -436,9 +443,9 @@ export default function GameLobby() {
       
       // 이벤트 리스너 정리
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
       
-      // 퇴장 처리
-      exitLobby();
+      // 퇴장 처리는 beforeunload에서만 수행 (cleanup에서는 제거)
     };
   }, [])
 
