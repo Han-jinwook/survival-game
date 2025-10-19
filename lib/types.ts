@@ -41,7 +41,7 @@ export interface GameRound {
   id: string; // UUID
   game_session_id: number;
   round_number: number;
-  phase: 'waiting' | 'selectTwo' | 'excludeOne' | 'revealing';
+  phase: 'waiting' | 'selection' | 'final_selection' | 'selectTwo' | 'excludeOne' | 'revealing';
   survivors_count?: number;
   rock_count: number;
   paper_count: number;
@@ -50,6 +50,14 @@ export interface GameRound {
   started_at: string;
   ended_at?: string;
 }
+
+// phase 설명:
+// - waiting: 라운드 시작 대기
+// - selection: 예선 라운드 (5명 이상)
+// - final_selection: 결승 라운드 (2-4명)
+// - selectTwo: 2개 선택 단계
+// - excludeOne: 하나 빼기 단계
+// - revealing: 결과 공개
 
 export interface PlayerChoice {
   id: string; // UUID

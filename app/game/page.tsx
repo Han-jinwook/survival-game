@@ -250,18 +250,18 @@ export default function GameInterface() {
 
         setPlayers(testPlayers)
         setGameMode("final")
-        setGameRound({ round: 1, phase: "waiting", timeLeft: 0, survivors: 2 })
+        // 라운드 정보는 DB에서 가져옴 (하드코딩 제거)
         setGameMessage("결승전 1라운드를 시작합니다")
 
         setTimeout(() => {
           speak("결승전 1라운드를 시작합니다", {
             onComplete: () => {
-              setGameRound({
-                round: 1,
+              setGameRound(prev => ({
+                ...prev,
                 phase: "selectTwo",
                 timeLeft: 10,
                 survivors: testPlayers.length,
-              })
+              }))
             },
           })
         }, 2000)
@@ -290,15 +290,32 @@ export default function GameInterface() {
         const data = await response.json()
         console.log("[v0] DB game data:", data)
 
-        // 라운드 정보 설정
-        if (data.round) {
-          setRoundId(data.round.id)
-          console.log("[v0] 라운드 ID 설정:", data.round.id)
-        }
-
         // player 상태인 참가자만 게임에 참여
         const lobbyPlayers = data.participants?.filter((p: any) => p.status === "player") || []
         console.log("[v0] Player participants:", lobbyPlayers)
+
+        // 라운드 정보 설정
+        if (data.round) {
+          setRoundId(data.round.id)
+          setGameRound(prev => ({
+            ...prev,
+            round: data.round.roundNumber,
+            survivors: lobbyPlayers.length
+          }))
+          
+          // phase에 따라 gameMode 설정
+          if (data.round.phase === 'final_selection') {
+            setGameMode('final')
+          } else if (data.round.phase === 'selection') {
+            setGameMode('normal')
+          }
+          
+          console.log("[v0] 라운드 정보 설정:", {
+            id: data.round.id,
+            roundNumber: data.round.roundNumber,
+            phase: data.round.phase
+          })
+        }
 
         const gamePlayers: Player[] = lobbyPlayers.map((p: any) => {
           const player = {
@@ -323,7 +340,7 @@ export default function GameInterface() {
         
         setPlayers(gamePlayers)
 
-        setGameMode(gamePlayers.length > 4 ? "preliminary" : "final")
+        // gameMode는 이미 round.phase로 설정됨 (중복 설정 제거)
         setGameRound((prev) => ({ ...prev, survivors: gamePlayers.length }))
 
         setGameLog((prev) => ({
@@ -333,9 +350,12 @@ export default function GameInterface() {
 
         const totalPlayers = gamePlayers.length
         const totalLives = gamePlayers.reduce((sum, p) => sum + p.lives, 0)
-        const modeText = gamePlayers.length > 4 ? "예선" : "결승"
+        
+        // round.phase로 예선/결승 판단
+        const modeText = data.round?.phase === 'final_selection' ? '결승' : '예선'
+        const roundNum = data.round?.roundNumber || 1
 
-        const startMessage = `이제 총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} 1라운드를 시작합니다`
+        const startMessage = `이제 총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} ${roundNum}라운드를 시작합니다`
         setGameMessage(startMessage)
         
         // 🔒 서버 모드: 라운드가 없으면 자동으로 라운드 생성
@@ -373,12 +393,12 @@ export default function GameInterface() {
         setTimeout(() => {
           speak(startMessage, {
             onComplete: () => {
-              setGameRound({
-                round: 1,
+              setGameRound(prev => ({
+                ...prev,
                 phase: "selectTwo",
                 timeLeft: 10,
                 survivors: gamePlayers.length,
-              })
+              }))
             },
           })
         }, 500)

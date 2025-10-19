@@ -236,7 +236,30 @@ export async function POST(request: NextRequest) {
       }
       console.log(`[게임 시작] ${playerUsers.length}명 선수 데이터 초기화 완료`)
       
-      return NextResponse.json({ success: true, session, playerCount: playerUsers.length })
+      // 🎮 3. 첫 라운드 생성
+      const roundPhase = playerUsers.length >= 5 ? 'selection' : 'final_selection'
+      const round = await DatabaseService.createRound(sessionId, 1, roundPhase)
+      
+      if (!round) {
+        console.error(`[게임 시작] 라운드 생성 실패`)
+        return NextResponse.json({ 
+          error: "라운드 생성에 실패했습니다." 
+        }, { status: 500 })
+      }
+      
+      // 세션의 current_round 업데이트
+      await DatabaseService.updateGameSession(sessionId, {
+        current_round: 1
+      })
+      
+      console.log(`[게임 시작] 라운드 1 생성 완료 (phase: ${roundPhase})`)
+      
+      return NextResponse.json({ 
+        success: true, 
+        session, 
+        round,
+        playerCount: playerUsers.length 
+      })
     }
 
     if (action === "update") {

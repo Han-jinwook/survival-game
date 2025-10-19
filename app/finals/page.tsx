@@ -266,6 +266,17 @@ export default function FinalsPage() {
       const totalLives = initialPlayers.reduce((sum: number, p: Player) => sum + p.lives, 0);
       setGameMessage(`이제 총 ${initialPlayers.length}명, 목숨 ${totalLives}개로, 결승 1라운드를 시작합니다`);
       setInitialized(true);
+      
+      // 🎯 초기 라운드 ID 가져오기
+      const currentSessionId = sessionStorage.getItem("currentSessionId");
+      if (currentSessionId) {
+        const res = await fetch(`/api/game/state?sessionId=${currentSessionId}`);
+        const data = await res.json();
+        if (data.round) {
+          setRoundId(data.round.id);
+          console.log("[Finals] 초기 라운드 ID 설정:", data.round.id);
+        }
+      }
 
       setTimeout(() => {
         speak(gameMessage, {
@@ -290,7 +301,8 @@ export default function FinalsPage() {
         setPlayers(updatedPlayers);
 
         if (gameState.round) {
-            setGameRound(prev => ({ ...prev, round: gameState.round.round_number, phase: gameState.round.phase }));
+            setRoundId(gameState.round.id); // 🎯 라운드 ID 설정
+            setGameRound(prev => ({ ...prev, round: gameState.round.roundNumber, phase: gameState.round.phase }));
         }
     };
 
