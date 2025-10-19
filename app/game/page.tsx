@@ -546,8 +546,22 @@ export default function GameInterface() {
         speak("하나 빼기, 1개를 제외하세요")
       }, 500)
     }
-  }, [gameRound.phase, gameRound.timeLeft])
+  }, [gameRound.timeLeft, gameRound.phase])
 
+  // 타이머 0초 도달 시 UI 상태 전환
+  useEffect(() => {
+    if (gameRound.timeLeft > 0) return; // 타이머가 아직 진행 중이면 아무것도 안 함
+
+    // selection/final_selection -> excludeOne 으로 전환
+    if (gameRound.phase === 'selection' || gameRound.phase === 'final_selection') {
+      setGameRound(prev => ({ ...prev, phase: 'excludeOne', timeLeft: 10 }));
+    } 
+    // excludeOne -> revealing 으로 전환
+    else if (gameRound.phase === 'excludeOne') {
+      // 서버에 최종 결과 계산을 요청할 수 있음 (현재는 클라이언트에서만 처리)
+      setGameRound(prev => ({ ...prev, phase: 'revealing', timeLeft: 5 }));
+    }
+  }, [gameRound.timeLeft, gameRound.phase]);
 
   const handleProceedToFinals = () => {
     setShowFinalsConfirmation(false)

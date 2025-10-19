@@ -197,14 +197,15 @@ export default function FinalsPage() {
   const [selectedChoices, setSelectedChoices] = useState<GameChoice[]>([])
   const [losingChoices, setLosingChoices] = useState<GameChoice[]>([])
   const [voiceEnabled, setVoiceEnabled] = useState(true)
-  const [initialized, setInitialized] = useState(false)
+  const hasInitialized = useRef(false);
   const [roundId, setRoundId] = useState<number | null>(null)
 
   const opponents = players.filter((p: Player) => !p.isCurrentUser)
   const currentUser = players.find((p: Player) => p.isCurrentUser)
 
   useEffect(() => {
-    if (initialized) return;
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
 
     const exitLobby = () => {
       const participantInfo = localStorage.getItem("participantInfo");
@@ -265,8 +266,7 @@ export default function FinalsPage() {
       setGameRound({ round: 1, phase: "waiting", timeLeft: 0, survivors: initialPlayers.length });
       const totalLives = initialPlayers.reduce((sum: number, p: Player) => sum + p.lives, 0);
       setGameMessage(`이제 총 ${initialPlayers.length}명, 목숨 ${totalLives}개로, 결승 1라운드를 시작합니다`);
-      setInitialized(true);
-      
+            
       // 🎯 초기 라운드 ID 가져오기
       const currentSessionId = sessionStorage.getItem("currentSessionId");
       if (currentSessionId) {
@@ -324,7 +324,7 @@ export default function FinalsPage() {
       exitLobby();
       supabase.removeChannel(channel);
     };
-  }, [router, initialized, gameMessage]);
+  }, [router, gameMessage]);
 
   useEffect(() => {
     if (gameRound.phase === "selectTwo" && gameRound.timeLeft === 10) {
@@ -348,6 +348,17 @@ export default function FinalsPage() {
       return () => clearTimeout(timer);
     }
   }, [gameRound.phase, gameRound.timeLeft]);
+
+  // 타이머 0초 도달 시 UI 상태 전환
+  useEffect(() => {
+    if (gameRound.timeLeft > 0) return;
+
+    if (gameRound.phase === 'selectTwo') {
+      setGameRound(prev => ({ ...prev, phase: 'excludeOne', timeLeft: 10 }));
+    } else if (gameRound.phase === 'excludeOne') {
+      setGameRound(prev => ({ ...prev, phase: 'revealing', timeLeft: 5 }));
+    }
+  }, [gameRound.timeLeft, gameRound.phase]);
 
   const toggleVoice = () => {
     setVoiceEnabled(prev => !prev);
