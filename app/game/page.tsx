@@ -13,7 +13,7 @@ import { RealtimePostgresChangesPayload } from "@supabase/supabase-js"
 import { Volume2, VolumeX } from "lucide-react"
 
 type GameChoice = "rock" | "paper" | "scissors"
-type GamePhase = "waiting" | "selectTwo" | "excludeOne" | "revealing" | "results" | "gameOver"
+type GamePhase = "waiting" | "selection" | "final_selection" | "selectTwo" | "excludeOne" | "revealing" | "results" | "gameOver"
 type GameMode = "preliminary" | "normal" | "final" | "waiting"
 
 interface Player {
@@ -364,47 +364,20 @@ export default function GameInterface() {
         const startMessage = `이제 총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} ${roundNum}라운드를 시작합니다`
         setGameMessage(startMessage)
         
-        // 🔒 서버 모드: 라운드가 없으면 자동으로 라운드 생성
+        // 🔒 서버 중심: 라운드는 서버(게임 시작 API)에서만 생성
+        // 클라이언트는 생성하지 않음 (Race Condition 방지)
         if (!data.round) {
-          const sessionIdStr = sessionStorage.getItem("currentSessionId")
-          if (sessionIdStr) {
-            const sessionId = parseInt(sessionIdStr, 10)
-            if (!isNaN(sessionId)) {
-              console.log("[Game] 라운드 생성 API 호출...")
-              try {
-                const roundResponse = await fetch("/api/game/round", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    action: "start_round",
-                    sessionId,
-                    roundNumber: 1,
-                  }),
-                })
-                
-                if (roundResponse.ok) {
-                  const roundData = await roundResponse.json()
-                  setRoundId(roundData.round.id)
-                  console.log("[Game] 라운드 생성 성공:", roundData.round.id)
-                } else {
-                  console.error("[Game] 라운드 생성 실패:", roundResponse.status)
-                }
-              } catch (error) {
-                console.error("[Game] 라운드 생성 에러:", error)
-              }
-            }
-          }
+          console.warn("[Game] ⚠️ 라운드 정보 없음 - 서버가 아직 라운드를 생성하지 않았습니다.")
+          console.warn("[Game] 잠시 후 Realtime으로 라운드가 업데이트될 것입니다.")
         }
         
+        // 음성 안내 (phase는 DB에서 받은 값 유지, 덮어쓰지 않음)
         setTimeout(() => {
           speak(startMessage, {
             onComplete: () => {
-              setGameRound(prev => ({
-                ...prev,
-                phase: "selectTwo",
-                timeLeft: 10,
-                survivors: gamePlayers.length,
-              }))
+              console.log("[Game] 음성 안내 완료, 게임 시작 준비")
+              // phase는 이미 308줄에서 설정됨 (data.round.phase)
+              // 서버 중심이므로 클라이언트가 임의로 phase 변경하지 않음
             },
           })
         }, 500)
@@ -520,7 +493,7 @@ export default function GameInterface() {
   }, [])
 
   useEffect(() => {
-    if (gameRound.timeLeft > 0 && (gameRound.phase === "selectTwo" || gameRound.phase === "excludeOne")) {
+    if (gameRound.timeLeft > 0 && (gameRound.phase === "selection" || gameRound.phase === "final_selection" || gameRound.phase === "excludeOne")) {
       const timer = setTimeout(() => {
         setGameRound((prev: GameRound) => ({ ...prev, timeLeft: prev.timeLeft - 1 }))
       }, 1000)
@@ -530,8 +503,8 @@ export default function GameInterface() {
   }, [gameRound.timeLeft, gameRound.phase])
 
   useEffect(() => {
-    if (gameRound.phase === "selectTwo" && gameRound.timeLeft === 10) {
-      // Only trigger on initial entry to selectTwo phase (when timeLeft is 10)
+    if ((gameRound.phase === "selection" || gameRound.phase === "final_selection") && gameRound.timeLeft === 10) {
+      // Only trigger on initial entry to selection phase (when timeLeft is 10)
       setGameMessage("가위/바위/보 중 2개를 선택하세요!")
       setTimeout(() => {
         speak("가위 바위 보, 2개를 선택하세요")
@@ -600,7 +573,8 @@ export default function GameInterface() {
   }
 
   const handleSelectChoice = async (choice: GameChoice) => {
-    if (gameRound.phase !== "selectTwo" || !roundId || !currentUser) return
+    // selection 또는 final_selection 단계에서 2개 선택
+    if ((gameRound.phase !== "selection" && gameRound.phase !== "final_selection") || !roundId || !currentUser) return
 
     // UI 업데이트 (즉시 피드백)
     setSelectedChoices((prev) => {
@@ -993,7 +967,7 @@ export default function GameInterface() {
 
   if (
     isFinals &&
-    (gameRound.phase === "selectTwo" || gameRound.phase === "excludeOne" || gameRound.phase === "revealing")
+    (gameRound.phase === "selection" || gameRound.phase === "final_selection" || gameRound.phase === "excludeOne" || gameRound.phase === "revealing")
   ) {
     const opponents = getPositionedOpponents()
     const numOpponents = opponents.length
@@ -1040,7 +1014,7 @@ export default function GameInterface() {
               <div className="flex-1">
                 <h2 className="text-lg font-bold text-purple-300">{gameMessage}</h2>
               </div>
-              {(gameRound.phase === "selectTwo" || gameRound.phase === "excludeOne") && (
+              {(gameRound.phase === "selection" || gameRound.phase === "final_selection" || gameRound.phase === "excludeOne") && (
                 <div className="flex items-center gap-3">
                   <div
                     className={`text-5xl font-bold ${gameRound.timeLeft <= 2 ? "text-red-400 animate-pulse" : "text-yellow-400"}`}
@@ -1135,7 +1109,8 @@ export default function GameInterface() {
             <div className="flex-1">
               <h2 className="text-lg font-bold text-red-300">{gameMessage}</h2>
             </div>
-            {(gameRound.phase === "selectTwo" ||
+            {(gameRound.phase === "selection" ||
+              gameRound.phase === "final_selection" ||
               gameRound.phase === "excludeOne" ||
               gameRound.phase === "revealing") && (
               <div className="flex items-center gap-3">
@@ -1184,7 +1159,7 @@ export default function GameInterface() {
           </Card>
         )}
 
-        {alivePlayers.length > 4 && (gameRound.phase === "excludeOne" || gameRound.phase === "waiting") && (
+        {alivePlayers.length > 4 && (gameRound.phase === "excludeOne" || gameRound.phase === "waiting" || gameRound.phase === "selection") && (
           <Card className="bg-black/60 border-purple-800/50 p-4 mb-3">
             <div className="relative">
               <div className="absolute left-0 top-1/2 -translate-y-1/2 pl-3 border-l-4 border-purple-500">
@@ -1207,7 +1182,7 @@ export default function GameInterface() {
           </Card>
         )}
 
-        {gameRound.phase === "selectTwo" && (
+        {(gameRound.phase === "selection" || gameRound.phase === "final_selection") && (
           <>
             {currentUser && currentUser.lives > 0 ? (
               <Card className="bg-black/60 border-yellow-800/50 p-4 mb-3">
@@ -1488,7 +1463,7 @@ function OpponentCard({
 
         {/* Weapons section on the right */}
         <div className="flex-1">
-          {phase === "selectTwo" && (
+          {(phase === "selection" || phase === "final_selection") && (
             <div className="space-y-2">
               <p className="text-xs text-gray-400 text-center">2개 선택 중...</p>
               <div className="flex justify-center gap-2">
@@ -1630,7 +1605,7 @@ function CurrentUserCard({
 
         {/* Weapons section on the right */}
         <div className="flex-1">
-          {phase === "selectTwo" && (
+          {(phase === "selection" || phase === "final_selection") && (
             <div className="space-y-2">
               <p className="text-center text-xs text-gray-300">2개 선택 ({selectedChoices.length}/2)</p>
               <div className="flex justify-center gap-3">
