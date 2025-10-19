@@ -128,13 +128,19 @@ export default function AdminContent() {
             
             // UTC 시간을 브라우저 로컬 시간(한국 시간)으로 변환
             if (data.session.startedAt) {
-              const date = new Date(data.session.startedAt) // 브라우저가 자동으로 로컬 시간으로 변환
-              const year = date.getFullYear()
-              const month = (date.getMonth() + 1).toString().padStart(2, '0')
-              const day = date.getDate().toString().padStart(2, '0')
-              const hours = date.getHours().toString().padStart(2, '0')
-              const minutes = date.getMinutes().toString().padStart(2, '0')
-              const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}`
+              // DB에서 받은 UTC 시간을 KST(UTC+9)로 변환하여 표시합니다.
+              const utcDate = new Date(data.session.startedAt);
+
+              // 1. UTC 시간에 9시간을 더합니다.
+              utcDate.setHours(utcDate.getHours() + 9);
+
+              // 2. YYYY-MM-DDTHH:mm 형식의 문자열로 만듭니다.
+              const year = utcDate.getFullYear();
+              const month = (utcDate.getMonth() + 1).toString().padStart(2, '0');
+              const day = utcDate.getDate().toString().padStart(2, '0');
+              const hours = utcDate.getHours().toString().padStart(2, '0');
+              const minutes = utcDate.getMinutes().toString().padStart(2, '0');
+              const localTimeString = `${year}-${month}-${day}T${hours}:${minutes}`;
               setGameStartTime(localTimeString)
               console.log("[Admin] 시간 로드:", {
                 utc: data.session.startedAt,
