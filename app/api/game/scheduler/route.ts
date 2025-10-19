@@ -98,6 +98,20 @@ export async function POST(request: NextRequest) {
         } else {
           // 참가자 2명 이상 - 정상 게임 시작
           
+          // 🔒 중복 시작 방지: 세션 상태 재확인
+          const currentSession = await DatabaseService.getGameSession(session.id)
+          if (currentSession?.status !== 'waiting') {
+            console.log(`[Scheduler] 세션 ${session.id} - 이미 시작됨 (현재 상태: ${currentSession?.status})`)
+            results.push({
+              sessionId: session.id,
+              sessionName: session.session_name,
+              status: "already_started",
+              currentStatus: currentSession?.status,
+              playerCount: playerUsers.length
+            })
+            continue
+          }
+          
           // 2-3. 세션을 in_progress로 변경
           await DatabaseService.updateGameSession(session.id, {
             status: "in_progress",
@@ -122,11 +136,24 @@ export async function POST(request: NextRequest) {
           let round = existingRound
           
           if (!existingRound) {
-            round = await DatabaseService.createRound(session.id, 1, roundPhase)
-            if (!round) {
-              throw new Error("라운드 생성 실패")
+            try {
+              round = await DatabaseService.createRound(session.id, 1, roundPhase)
+              if (!round) {
+                throw new Error("라운드 생성 실패")
+              }
+              console.log(`[Scheduler] 라운드 1 생성 완료 (phase: ${roundPhase})`)
+            } catch (error: any) {
+              // unique constraint 오류 시 기존 라운드 재조회
+              if (error.code === '23505') {
+                console.log(`[Scheduler] 라운드 중복 생성 감지, 기존 라운드 재조회`)
+                round = await DatabaseService.getCurrentRound(session.id)
+                if (!round) {
+                  throw new Error("라운드 생성 실패 및 기존 라운드 조회 실패")
+                }
+              } else {
+                throw error
+              }
             }
-            console.log(`[Scheduler] 라운드 1 생성 완료 (phase: ${roundPhase})`)
           } else {
             console.log(`[Scheduler] 기존 라운드 사용: ${existingRound.id}`)
           }

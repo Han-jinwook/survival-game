@@ -174,6 +174,17 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "start") {
+      // 🔒 중복 시작 방지: 세션 상태 확인
+      const currentSession = await DatabaseService.getGameSession(sessionId)
+      if (currentSession?.status !== 'waiting') {
+        console.log(`[게임 시작] 세션 ${sessionId} - 이미 시작됨 (현재 상태: ${currentSession?.status})`)
+        return NextResponse.json({ 
+          error: "게임이 이미 시작되었거나 진행 중입니다.",
+          currentStatus: currentSession?.status,
+          alreadyStarted: true
+        }, { status: 409 })
+      }
+      
       // 정시(게임 시작 시간)에 player 상태인 선수만 게임 참가
       const users = await DatabaseService.getUsersBySession(sessionId)
       const playerUsers = users.filter(u => u.status === 'player')
