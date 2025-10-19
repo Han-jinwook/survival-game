@@ -280,13 +280,13 @@ export default function FinalsPage() {
 
       setTimeout(() => {
         if (currentUser) {
-        speak(gameMessage, {
+          speak(gameMessage, {
             onComplete: () => setGameRound(prev => ({ ...prev, phase: "selectTwo", timeLeft: 10 })),
-        });
-      } else {
-        // 관전자는 음성 없이 바로 상태 전환
-        setGameRound(prev => ({ ...prev, phase: "selectTwo", timeLeft: 10 }));
-      }
+          });
+        } else {
+          // 관전자는 음성 없이 바로 상태 전환
+          setGameRound(prev => ({ ...prev, phase: "selectTwo", timeLeft: 10 }));
+        }
       }, 500);
     };
 
