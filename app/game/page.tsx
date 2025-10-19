@@ -14,7 +14,7 @@ import { Volume2, VolumeX } from "lucide-react"
 
 type GameChoice = "rock" | "paper" | "scissors"
 type GamePhase = "waiting" | "selectTwo" | "excludeOne" | "revealing" | "results" | "gameOver"
-type GameMode = "preliminary" | "final"
+type GameMode = "preliminary" | "normal" | "final" | "waiting"
 
 interface Player {
   id: string
@@ -71,7 +71,7 @@ export default function GameInterface() {
   const hasLoadedDataRef = useRef(false)
   const hasEliminationSpokenRef = useRef(false)
   const [players, setPlayers] = useState<Player[]>([])
-  const [gameMode, setGameMode] = useState<GameMode>("preliminary")
+  const [gameMode, setGameMode] = useState<GameMode>("waiting")
   const [showModeTransition, setShowModeTransition] = useState(false)
   const [showFinalsConfirmation, setShowFinalsConfirmation] = useState(false)
   const [finalsCountdown, setFinalsCountdown] = useState(60)
@@ -126,6 +126,11 @@ export default function GameInterface() {
   }
 
   const opponentLifeBreakdown = useMemo(() => {
+    // 로딩 중이거나 데이터 없으면 빈 배열 반환
+    if (players.length === 0) {
+      return []
+    }
+    
     const opponents = getPositionedOpponents()
     const lifeMap = new Map<number, number>()
 
@@ -144,7 +149,7 @@ export default function GameInterface() {
     )
 
     return breakdown
-  }, [players, currentUser]) // Added currentUser dependency
+  }, [players, currentUser])
 
   const getOpponentLifeBreakdown = () => {
     return opponentLifeBreakdown
@@ -739,6 +744,21 @@ export default function GameInterface() {
     const newState = !voiceEnabled
     setVoiceEnabledState(newState)
     setVoiceEnabled(newState)
+  }
+
+  // 🔄 로딩 중: DB 데이터 로드될 때까지 대기
+  if (gameMode === "waiting" || players.length === 0) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-950 to-black text-white flex items-center justify-center">
+        <Card className="bg-black/80 border-purple-600/50 p-12 max-w-md w-full mx-4 text-center">
+          <div className="w-24 h-24 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
+            <span className="text-white font-bold text-4xl">⏳</span>
+          </div>
+          <h2 className="text-2xl font-bold text-purple-400 mb-4">게임 로딩 중...</h2>
+          <p className="text-gray-400">잠시만 기다려주세요</p>
+        </Card>
+      </div>
+    )
   }
 
   if (gameRound.phase === "gameOver") {
