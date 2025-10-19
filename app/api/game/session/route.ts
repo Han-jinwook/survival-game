@@ -249,10 +249,28 @@ export async function POST(request: NextRequest) {
       
       console.log(`[게임 시작] 라운드 1 생성 완료 (phase: ${roundPhase})`)
       
+      // 🎯 서버 타이머 시작: 준비 단계 (5초 후 실제 게임 시작)
+      const initialPhase = 'waiting'
+      const initialMessage = `이제 총 ${playerUsers.length}명으로 게임을 시작합니다!`
+      
+      await DatabaseService.updateRound(round.id, {
+        phase: initialPhase,
+        time_left: 5, // 준비 시간 5초
+        phase_message: initialMessage,
+        phase_started_at: new Date().toISOString()
+      })
+      
+      console.log(`[게임 시작] 서버 타이머 시작: ${initialPhase} (5초)`)
+      
       return NextResponse.json({ 
         success: true, 
         session, 
-        round,
+        round: {
+          ...round,
+          phase: initialPhase,
+          time_left: 5,
+          phase_message: initialMessage
+        },
         playerCount: playerUsers.length 
       })
     }

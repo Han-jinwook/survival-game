@@ -119,16 +119,28 @@ export async function POST(request: NextRequest) {
           const round = await DatabaseService.createRound(session.id, 1, roundPhase)
           
           if (round) {
+            // 🎯 서버 타이머 시작: 준비 단계 (5초 후 실제 게임 시작)
+            const initialPhase = 'waiting'
+            const initialMessage = `이제 총 ${playerUsers.length}명으로 게임을 시작합니다!`
+            
+            await DatabaseService.updateRound(round.id, {
+              phase: initialPhase,
+              time_left: 5, // 준비 시간 5초
+              phase_message: initialMessage,
+              phase_started_at: now.toISOString()
+            })
+            
             results.push({
               sessionId: session.id,
               sessionName: session.session_name,
               status: "started",
               playerCount: playerUsers.length,
               roundId: round.id,
-              phase: roundPhase
+              phase: initialPhase,
+              timerStarted: true
             })
             
-            console.log(`[Scheduler] 세션 ${session.id} - 게임 시작 완료 (${playerUsers.length}명, ${roundPhase})`)
+            console.log(`[Scheduler] 세션 ${session.id} - 게임 시작 완료 (${playerUsers.length}명, 서버 타이머 시작)`)
           } else {
             throw new Error("라운드 생성 실패")
           }

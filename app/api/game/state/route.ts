@@ -56,6 +56,10 @@ export async function GET(request: NextRequest) {
         losingChoice: currentRound.losing_choice,
         startedAt: currentRound.started_at,
         endedAt: currentRound.ended_at,
+        // 🎯 서버 타이머 정보 추가
+        time_left: currentRound.time_left || 0,
+        phase_message: currentRound.phase_message || '',
+        phase_started_at: currentRound.phase_started_at,
       }
     }
 

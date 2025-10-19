@@ -278,16 +278,16 @@ export default function FinalsPage() {
         }
       }
 
+      // 🎯 서버 중심 게임 진행: 클라이언트는 서버 상태만 구독
+      // 준비 멘트는 서버에서 관리하는 'waiting' 단계에서 자동 재생
       setTimeout(() => {
-        if (currentUser) {
-          speak(gameMessage, {
-            onComplete: () => setGameRound(prev => ({ ...prev, phase: "selectTwo", timeLeft: 10 })),
-          });
-        } else {
-          // 관전자는 음성 없이 바로 상태 전환
-          setGameRound(prev => ({ ...prev, phase: "selectTwo", timeLeft: 10 }));
+        // 첫 번째 참가자만 준비 멘트 재생
+        if (currentUser && activePlayers[0]?.id === currentUser.id) {
+          speak(gameMessage);
         }
       }, 500);
+      
+      // ❌ 클라이언트에서 독립적인 상태 전환 제거 - 서버가 타이머 관리
     };
 
     initializeGame();
@@ -307,7 +307,19 @@ export default function FinalsPage() {
 
         if (gameState.round) {
             setRoundId(gameState.round.id); // 🎯 라운드 ID 설정
-            setGameRound(prev => ({ ...prev, round: gameState.round.roundNumber, phase: gameState.round.phase }));
+            // 🎯 서버에서 받은 타이머 정보로 UI 업데이트
+            setGameRound(prev => ({ 
+                ...prev, 
+                round: gameState.round.roundNumber, 
+                phase: gameState.round.phase,
+                timeLeft: gameState.round.time_left || 0,
+                survivors: activePlayers.length
+            }));
+            
+            // 서버에서 받은 메시지로 UI 업데이트
+            if (gameState.round.phase_message) {
+                setGameMessage(gameState.round.phase_message);
+            }
         }
     };
 
@@ -331,39 +343,29 @@ export default function FinalsPage() {
     };
   }, [router, gameMessage]);
 
+  // 🎯 서버 상태 기반 TTS 재생 (단계 변경 시에만)
   useEffect(() => {
     if (gameRound.phase === "selectTwo" && gameRound.timeLeft === 10) {
       setGameMessage("가위/바위/보 중 2개를 선택하세요!");
-      setTimeout(() => speak("가위 바위 보, 2개를 선택하세요"), 500);
+      // 첫 번째 참가자만 음성 재생
+      if (currentUser && activePlayers[0]?.id === currentUser.id) {
+        setTimeout(() => speak("가위 바위 보, 2개를 선택하세요"), 500);
+      }
     }
-  }, [gameRound.phase, gameRound.timeLeft]);
+  }, [gameRound.phase, gameRound.timeLeft, currentUser, activePlayers]);
 
   useEffect(() => {
     if (gameRound.phase === "excludeOne" && gameRound.timeLeft === 10) {
       setGameMessage("하나 빼기! 선택한 2개 중 빼세요!");
-      setTimeout(() => speak("하나 빼기, 1개를 제외하세요"), 500);
+      // 첫 번째 참가자만 음성 재생
+      if (currentUser && activePlayers[0]?.id === currentUser.id) {
+        setTimeout(() => speak("하나 빼기, 1개를 제외하세요"), 500);
+      }
     }
-  }, [gameRound.phase, gameRound.timeLeft]);
+  }, [gameRound.phase, gameRound.timeLeft, currentUser, activePlayers]);
 
-  useEffect(() => {
-    if ((gameRound.phase === "selectTwo" || gameRound.phase === "excludeOne") && gameRound.timeLeft > 0) {
-      const timer = setTimeout(() => {
-        setGameRound((prev: GameRound) => ({ ...prev, timeLeft: prev.timeLeft - 1 }));
-      }, 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [gameRound.phase, gameRound.timeLeft]);
-
-  // 타이머 0초 도달 시 UI 상태 전환
-  useEffect(() => {
-    if (gameRound.timeLeft > 0) return;
-
-    if (gameRound.phase === 'selectTwo') {
-      setGameRound(prev => ({ ...prev, phase: 'excludeOne', timeLeft: 10 }));
-    } else if (gameRound.phase === 'excludeOne') {
-      setGameRound(prev => ({ ...prev, phase: 'revealing', timeLeft: 5 }));
-    }
-  }, [gameRound.timeLeft, gameRound.phase]);
+  // ❌ 클라이언트 독립 타이머 제거 - 서버에서 관리
+  // ❌ 클라이언트 독립 상태 전환 제거 - 서버에서 관리
 
   const toggleVoice = () => {
     setVoiceEnabled(prev => !prev);

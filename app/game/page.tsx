@@ -303,12 +303,19 @@ export default function GameInterface() {
         // 라운드 정보 설정
         if (data.round) {
           setRoundId(data.round.id)
+          // 🎯 서버에서 받은 타이머 정보로 UI 업데이트
           setGameRound(prev => ({
             ...prev,
             round: data.round.roundNumber,
-            phase: data.round.phase,  // ← phase 설정 추가!
+            phase: data.round.phase,
+            timeLeft: data.round.time_left || 0,
             survivors: lobbyPlayers.length
           }))
+          
+          // 서버에서 받은 메시지로 UI 업데이트
+          if (data.round.phase_message) {
+            setGameMessage(data.round.phase_message);
+          }
           
           // phase에 따라 gameMode 설정
           if (data.round.phase === 'final_selection' || data.round.phase === 'selection') {
@@ -518,50 +525,37 @@ export default function GameInterface() {
     }))
   }, [])
 
-  useEffect(() => {
-    if (gameRound.timeLeft > 0 && (gameRound.phase === "selection" || gameRound.phase === "final_selection" || gameRound.phase === "excludeOne")) {
-      const timer = setTimeout(() => {
-        setGameRound((prev: GameRound) => ({ ...prev, timeLeft: prev.timeLeft - 1 }))
-      }, 1000)
-      return () => clearTimeout(timer)
-    }
-    // 타이머는 UI용으로만 유지 - 실제 게임 진행은 서버가 처리
-  }, [gameRound.timeLeft, gameRound.phase])
+  // ❌ 클라이언트 독립 타이머 제거 - 서버에서 관리
+  // ❌ 클라이언트 독립 상태 전환 제거 - 서버에서 관리
 
+  // 🎯 서버 상태 기반 TTS 재생 (단계 변경 시에만)
   useEffect(() => {
     if ((gameRound.phase === "selection" || gameRound.phase === "final_selection") && gameRound.timeLeft === 10) {
-      // Only trigger on initial entry to selection phase (when timeLeft is 10)
       setGameMessage("가위/바위/보 중 2개를 선택하세요!")
-      setTimeout(() => {
-        speak("가위 바위 보, 2개를 선택하세요")
-      }, 500)
+      // 첫 번째 참가자만 음성 재생 (TTS 중복 방지)
+      const participantInfo = localStorage.getItem("participantInfo")
+      const currentParticipantId = participantInfo ? JSON.parse(participantInfo).id : null
+      const isFirstPlayer = testPlayers[0]?.id === currentParticipantId
+      
+      if (isFirstPlayer) {
+        setTimeout(() => speak("가위 바위 보, 2개를 선택하세요"), 500)
+      }
     }
-  }, [gameRound.phase, gameRound.timeLeft])
+  }, [gameRound.phase, gameRound.timeLeft, testPlayers])
 
   useEffect(() => {
     if (gameRound.phase === "excludeOne" && gameRound.timeLeft === 10) {
-      // Only trigger on initial entry to excludeOne phase (when timeLeft is 10)
       setGameMessage("하나 빼기! 선택한 2개 중 하나를 빼세요!")
-      setTimeout(() => {
-        speak("하나 빼기, 1개를 제외하세요")
-      }, 500)
+      // 첫 번째 참가자만 음성 재생 (TTS 중복 방지)
+      const participantInfo = localStorage.getItem("participantInfo")
+      const currentParticipantId = participantInfo ? JSON.parse(participantInfo).id : null
+      const isFirstPlayer = testPlayers[0]?.id === currentParticipantId
+      
+      if (isFirstPlayer) {
+        setTimeout(() => speak("하나 빼기, 1개를 제외하세요"), 500)
+      }
     }
-  }, [gameRound.timeLeft, gameRound.phase])
-
-  // 타이머 0초 도달 시 UI 상태 전환
-  useEffect(() => {
-    if (gameRound.timeLeft > 0) return; // 타이머가 아직 진행 중이면 아무것도 안 함
-
-    // selection/final_selection -> excludeOne 으로 전환
-    if (gameRound.phase === 'selection' || gameRound.phase === 'final_selection') {
-      setGameRound(prev => ({ ...prev, phase: 'excludeOne', timeLeft: 10 }));
-    } 
-    // excludeOne -> revealing 으로 전환
-    else if (gameRound.phase === 'excludeOne') {
-      // 서버에 최종 결과 계산을 요청할 수 있음 (현재는 클라이언트에서만 처리)
-      setGameRound(prev => ({ ...prev, phase: 'revealing', timeLeft: 5 }));
-    }
-  }, [gameRound.timeLeft, gameRound.phase]);
+  }, [gameRound.timeLeft, gameRound.phase, testPlayers])
 
   const handleProceedToFinals = () => {
     setShowFinalsConfirmation(false)

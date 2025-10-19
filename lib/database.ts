@@ -208,6 +208,19 @@ export class DatabaseService {
     return data;
   }
 
+  static async getRound(roundId: string): Promise<GameRound | null> {
+    const { data, error } = await db
+      .from('game_rounds')
+      .select('*')
+      .eq('id', roundId)
+      .single();
+    if (error && error.code !== 'PGRST116') {
+      console.error('Error getting round by ID:', error);
+      return null;
+    }
+    return data;
+  }
+
   static async updateRound(roundId: string, updates: Partial<Omit<GameRound, 'id'>>): Promise<GameRound | null> {
     const { data, error } = await db
       .from('game_rounds')
