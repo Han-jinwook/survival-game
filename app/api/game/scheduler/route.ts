@@ -104,13 +104,15 @@ export async function POST(request: NextRequest) {
             started_at: now.toISOString(),
           })
           
-          // 2-4. 플레이어 데이터 초기화
-          for (const player of playerUsers) {
-            await DatabaseService.updateUser(player.id, {
-              eliminated_at: undefined,
-              current_lives: player.initial_lives
-            })
-          }
+          // 2-4. 플레이어 데이터 초기화 (Promise.all로 동시 처리)
+          await Promise.all(
+            playerUsers.map(player =>
+              DatabaseService.updateUser(player.id, {
+                eliminated_at: null,
+                current_lives: player.initial_lives
+              })
+            )
+          )
           
           // 2-5. 첫 라운드 생성
           const roundPhase = playerUsers.length >= 5 ? 'selection' : 'final_selection'

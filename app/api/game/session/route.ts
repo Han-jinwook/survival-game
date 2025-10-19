@@ -224,16 +224,19 @@ export async function POST(request: NextRequest) {
       })
       console.log(`[게임 시작] 세션 ${session.id} → in_progress`)
       
-      // 🔄 2. 이후 player 데이터 초기화 (이전 게임 데이터 제거)
-      for (const player of playerUsers) {
-        await DatabaseService.updateUser(player.id, {
-          eliminated_at: null,
-          current_lives: player.initial_lives
-        })
-      }
+      // player 데이터 초기화 (이전 게임 데이터 제거)
+      // Promise.all로 동시 처리하여 Race Condition 방지
+      await Promise.all(
+        playerUsers.map(player => 
+          DatabaseService.updateUser(player.id, {
+            eliminated_at: null,
+            current_lives: player.initial_lives
+          })
+        )
+      )
       console.log(`[게임 시작] ${playerUsers.length}명 선수 데이터 초기화 완료`)
       
-      // 🎮 3. 첫 라운드 생성
+      // 첫 라운드 생성
       const roundPhase = playerUsers.length >= 5 ? 'selection' : 'final_selection'
       const round = await DatabaseService.createRound(sessionId, 1, roundPhase)
       
