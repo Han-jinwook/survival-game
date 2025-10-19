@@ -57,7 +57,6 @@ export async function GET(request: NextRequest) {
         prize: session.prize,
         status: session.status,
         initialLives: session.initial_lives,
-        currentRound: session.current_round,
         winnerId: session.winner_id,
         startedAt: session.started_at,
         endedAt: session.ended_at,
@@ -76,7 +75,7 @@ export async function GET(request: NextRequest) {
       round: roundData,
       choices: choices.map(c => ({
         id: c.id,
-        participantId: c.participant_id,
+        userId: c.user_id,
         selectedChoices: c.selected_choices,
         finalChoice: c.final_choice,
         chosenAt: c.chosen_at,

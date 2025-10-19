@@ -212,7 +212,7 @@ export class DatabaseService {
   static async savePlayerChoice(choice: Partial<PlayerChoice>): Promise<PlayerChoice | null> {
     const { data, error } = await db
       .from('player_choices')
-      .upsert(choice, { onConflict: 'round_id,participant_id' })
+      .upsert(choice, { onConflict: 'round_id,user_id' })
       .select()
       .single();
     if (error) {
@@ -276,6 +276,86 @@ export class DatabaseService {
     return data || [];
   }
 
+  // 모든 플레이어가 선택을 완료했는지 확인
+  static async checkAllPlayersReady(roundId: string, phase: string): Promise<boolean> {
+    try {
+      // 1. 라운드 정보 가져오기
+      const { data: round, error: roundError } = await db
+        .from('game_rounds')
+        .select('game_session_id')
+        .eq('id', roundId)
+        .single();
+      
+      if (roundError || !round) {
+        console.error('[checkAllPlayersReady] 라운드 정보 조회 실패:', roundError);
+        return false;
+      }
+
+      // 2. 살아있는 플레이어 수 조회
+      const { data: players, error: playersError } = await db
+        .from('users')
+        .select('id')
+        .eq('session_id', round.game_session_id)
+        .eq('status', 'player')
+        .gt('current_lives', 0);
+      
+      if (playersError || !players) {
+        console.error('[checkAllPlayersReady] 플레이어 조회 실패:', playersError);
+        return false;
+      }
+
+      const aliveCount = players.length;
+
+      // 3. 선택 완료된 플레이어 수 조회
+      let readyCount = 0;
+      
+      if (phase === 'selectTwo' || phase === 'selection') {
+        // 2개 선택 단계: selected_choices가 있는지 확인
+        const { data: choices, error: choicesError } = await db
+          .from('player_choices')
+          .select('id')
+          .eq('round_id', roundId)
+          .not('selected_choices', 'is', null);
+        
+        if (choicesError) {
+          console.error('[checkAllPlayersReady] 선택 조회 실패:', choicesError);
+          return false;
+        }
+        
+        readyCount = choices?.length || 0;
+      } else if (phase === 'excludeOne' || phase === 'final_selection') {
+        // 하나 빼기 단계: final_choice가 있는지 확인
+        const { data: choices, error: choicesError } = await db
+          .from('player_choices')
+          .select('id')
+          .eq('round_id', roundId)
+          .not('final_choice', 'is', null);
+        
+        if (choicesError) {
+          console.error('[checkAllPlayersReady] 최종 선택 조회 실패:', choicesError);
+          return false;
+        }
+        
+        readyCount = choices?.length || 0;
+      }
+
+      const allReady = readyCount >= aliveCount && aliveCount > 0;
+      console.log(`[checkAllPlayersReady] ${phase}: ${readyCount}/${aliveCount} ready = ${allReady}`);
+      
+      return allReady;
+    } catch (error) {
+      console.error('[checkAllPlayersReady] 예외 발생:', error);
+      return false;
+    }
+  }
+
+  // 게임 업데이트 알림 (Realtime)
+  static async notifyGameUpdate(data: any): Promise<void> {
+    // Supabase Realtime은 자동으로 트리거를 통해 알림을 보냅니다.
+    // 이 메서드는 필요시 추가 커스텀 알림 로직을 위해 예약됨
+    console.log('[notifyGameUpdate] 게임 업데이트:', data);
+  }
+
   // 세션 리셋 (사용자 초기화)
   static async resetSession(sessionId: number): Promise<boolean> {
     try {
@@ -292,7 +372,6 @@ export class DatabaseService {
       // 2. 세션을 waiting 상태로 변경
       await this.updateGameSession(sessionId, {
         status: 'waiting',
-        current_round: 0,
         winner_id: null,
         ended_at: null
       });

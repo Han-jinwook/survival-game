@@ -123,7 +123,6 @@ export async function GET() {
         prize: session.prize,
         initialLives: session.initial_lives,
         status: session.status,
-        currentRound: session.current_round,
         startedAt: session.started_at,
         createdAt: session.created_at,
       },

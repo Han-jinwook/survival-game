@@ -28,7 +28,6 @@ export interface GameSession {
   prize?: string;
   status: 'waiting' | 'starting' | 'in_progress' | 'completed' | 'closed';
   initial_lives: number;
-  current_round: number;
   winner_id?: string; // UUID
   started_at?: string;
   ended_at?: string;

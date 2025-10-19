@@ -76,7 +76,7 @@ export default function GameInterface() {
   const [showFinalsConfirmation, setShowFinalsConfirmation] = useState(false)
   const [finalsCountdown, setFinalsCountdown] = useState(60)
   const [gameRound, setGameRound] = useState<GameRound>({
-    round: 1,
+    round: 0,
     phase: "waiting",
     timeLeft: 0,
     survivors: 0,
@@ -96,7 +96,7 @@ export default function GameInterface() {
     finalists: [],
   })
   const [currentRoundLog, setCurrentRoundLog] = useState<RoundLog>({
-    round: 1,
+    round: 0,
     events: [],
     choiceCounts: { rock: 0, paper: 0, scissors: 0 },
     losingChoice: null,

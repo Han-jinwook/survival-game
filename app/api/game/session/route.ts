@@ -17,7 +17,6 @@ export async function GET() {
         sessionName: activeSession.session_name,
         status: activeSession.status,
         initialLives: activeSession.initial_lives,
-        currentRound: activeSession.current_round,
         startedAt: activeSession.started_at,
         createdAt: activeSession.created_at,
       },
@@ -154,7 +153,7 @@ export async function POST(request: NextRequest) {
     // ... (이하 다른 action들은 그대로 유지) ...
 
     if (action === "reset_session") {
-      // 세션 리셋: status → 'waiting', current_round → 0, 모든 사용자 → 'waiting'
+      // 세션 리셋: status → 'waiting', 모든 사용자 → 'waiting'
       if (!sessionId) {
         return NextResponse.json({ error: "세션 ID가 필요합니다." }, { status: 400 })
       }
@@ -168,7 +167,6 @@ export async function POST(request: NextRequest) {
       
       const session = await DatabaseService.updateGameSession(sessionId, {
         status: "waiting",
-        current_round: 0,
       })
       
       console.log(`[세션 리셋] 세션 ${sessionId} 및 사용자 ${users.length}명을 대기 상태로 변경`)
@@ -223,7 +221,6 @@ export async function POST(request: NextRequest) {
       const session = await DatabaseService.updateGameSession(sessionId, {
         status: "in_progress",
         started_at: new Date().toISOString(),
-        current_round: 0,
       })
       console.log(`[게임 시작] 세션 ${session.id} → in_progress`)
       
@@ -246,11 +243,6 @@ export async function POST(request: NextRequest) {
           error: "라운드 생성에 실패했습니다." 
         }, { status: 500 })
       }
-      
-      // 세션의 current_round 업데이트
-      await DatabaseService.updateGameSession(sessionId, {
-        current_round: 1
-      })
       
       console.log(`[게임 시작] 라운드 1 생성 완료 (phase: ${roundPhase})`)
       

@@ -26,9 +26,6 @@ export async function POST(request: NextRequest) {
       final_choice: finalChoice
     })
 
-    // 🔥 실시간 동기화: 플레이어 선택 알림
-    // notifyGameUpdate 메서드가 없다면 이 부분은 제거하거나 주석 처리
-
     // 🎮 자동 페이즈 전환: 모든 플레이어가 선택했는지 확인
     const round = await DatabaseService.getCurrentRound(sessionId)
     if (round && round.id === roundId) {
@@ -40,12 +37,8 @@ export async function POST(request: NextRequest) {
         
         // selectTwo → excludeOne 자동 전환
         if (currentPhase === 'selectTwo') {
-          const updatedRound = await DatabaseService.updateRound(roundId, { phase: 'excludeOne' as any })
-          await DatabaseService.notifyGameUpdate({
-            type: 'phase_changed',
-            roundId: updatedRound.id,
-            phase: 'excludeOne'
-          })
+          await DatabaseService.updateRound(roundId, { phase: 'excludeOne' as any })
+          console.log(`[Choice API] Phase changed: selectTwo → excludeOne`)
         }
         // excludeOne → 결과 계산 및 목숨 차감
         else if (currentPhase === 'excludeOne') {

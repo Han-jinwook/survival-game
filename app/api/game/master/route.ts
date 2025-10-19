@@ -20,7 +20,6 @@ export async function POST(request: NextRequest) {
       // 3. 게임 상태를 in_progress로 변경
       await DatabaseService.updateGameSession(sessionId, {
         status: 'in_progress',
-        current_round: 1,
         started_at: new Date().toISOString()
       })
 
@@ -35,7 +34,7 @@ export async function POST(request: NextRequest) {
         success: true, 
         gameState: {
           status: 'in_progress',
-          currentRound: 1,
+          roundNumber: 1,
           phase: 'selection',
           timeLeft: 30,
           roundId: round.id
@@ -47,7 +46,7 @@ export async function POST(request: NextRequest) {
       // 현재 게임 상태 조회
       const session = await DatabaseService.getGameSession(sessionId)
       const currentRound = await DatabaseService.getCurrentRound(sessionId)
-      const participants = await DatabaseService.getParticipants(sessionId)
+      const participants = await DatabaseService.getUsersBySession(sessionId)
       
       let choices = []
       if (currentRound) {
@@ -57,7 +56,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         gameState: {
           status: session?.status || 'waiting',
-          currentRound: session?.current_round || 0,
+          roundNumber: currentRound?.round_number || 0,
           phase: currentRound?.phase || 'waiting',
           roundId: currentRound?.id || null,
           participants: participants.map(p => ({
@@ -67,7 +66,7 @@ export async function POST(request: NextRequest) {
             status: p.status
           })),
           choices: choices.map(c => ({
-            participantId: c.participant_id,
+            userId: c.user_id,
             selectedChoices: c.selected_choices,
             finalChoice: c.final_choice
           }))
@@ -110,7 +109,7 @@ async function processRoundPhase(sessionId: number, roundId: string, nextPhase: 
 // 🏁 게임 종료 조건 확인
 async function checkGameEnd(sessionId: number) {
   try {
-    const participants = await DatabaseService.getParticipants(sessionId)
+    const participants = await DatabaseService.getUsersBySession(sessionId)
     const alivePlayers = participants.filter(p => p.current_lives > 0 && p.status !== 'eliminated')
     
     if (alivePlayers.length <= 1) {
@@ -118,7 +117,7 @@ async function checkGameEnd(sessionId: number) {
       const winner = alivePlayers[0] || null
       await DatabaseService.updateGameSession(sessionId, {
         status: 'completed',
-        winner_id: winner?.user_id || null,
+        winner_id: winner?.id || null,
         ended_at: new Date().toISOString()
       })
       
@@ -138,16 +137,11 @@ async function checkGameEnd(sessionId: number) {
 // 🆕 다음 라운드 시작
 async function startNextRound(sessionId: number) {
   try {
-    const session = await DatabaseService.getGameSession(sessionId)
-    const nextRoundNumber = (session?.current_round || 0) + 1
+    const currentRound = await DatabaseService.getCurrentRound(sessionId)
+    const nextRoundNumber = (currentRound?.round_number || 0) + 1
     
     // 새 라운드 생성
     const round = await DatabaseService.createRound(sessionId, nextRoundNumber, 'selection')
-    
-    // 세션 업데이트
-    await DatabaseService.updateGameSession(sessionId, {
-      current_round: nextRoundNumber
-    })
     
     console.log(`[게임 마스터] 다음 라운드 시작: ${nextRoundNumber}`)
     
@@ -163,15 +157,14 @@ async function startNextRound(sessionId: number) {
 // 🏆 결승전 시작
 async function startFinalRound(sessionId: number, playerCount: number) {
   try {
-    const session = await DatabaseService.getGameSession(sessionId)
-    const nextRoundNumber = (session?.current_round || 0) + 1
+    const currentRound = await DatabaseService.getCurrentRound(sessionId)
+    const nextRoundNumber = (currentRound?.round_number || 0) + 1
     
     // 결승 라운드 생성
     const round = await DatabaseService.createRound(sessionId, nextRoundNumber, 'final_selection')
     
     // 세션을 결승 상태로 업데이트
     await DatabaseService.updateGameSession(sessionId, {
-      current_round: nextRoundNumber,
       status: 'finals'
     })
     
