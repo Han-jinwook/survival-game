@@ -1,22 +1,22 @@
 # 가위바위보 하나빼기 서바이벌 게임 - 개발 계획
 
-## 📋 프로젝트 개요
+## 프로젝트 개요
 네이버 카페 멤버를 위한 1회성 이벤트 게임  
 멀티플레이어 실시간 가위바위보 하나빼기 서바이벌 게임
 
-**게임 규칙**: `GAME_RULES.md` 파일 참조
+**게임 규칙**: `GAME_RULES.md`
 
-## 🛠️ 기술 스택
-- **프레임워크**: Next.js 15 (App Router)
-- **언어**: TypeScript
-- **스타일링**: Tailwind CSS v4
-- **데이터베이스**: Supabase (PostgreSQL)
-- **실시간 통신**: Supabase Realtime
-- **UI 컴포넌트**: shadcn/ui
-- **배포**: Netlify
-- **상태 관리**: React Hooks
+## 기술 스택
+- 프레임워크: Next.js 15 (App Router)
+- 언어: TypeScript
+- 스타일링: Tailwind CSS v4
+- 데이터베이스: Supabase (PostgreSQL)
+- 실시간 통신: Supabase Realtime
+- UI 컴포넌트: shadcn/ui
+- 배포: Netlify
+- 상태 관리: React Hooks
 
-## 🗄️ 데이터베이스 구조
+## 데이터베이스 구조
 
 ### 핵심 테이블
 1. **users** - 사용자 정보 (게임 참가 정보 통합)
@@ -171,6 +171,13 @@
 - ✅ Supabase 프로덕션 환경 설정
 - ✅ 환경 변수 설정
 - ✅ 실제 게임 운영 준비 완료
+
+### Phase 7: 외부 Cron 스케줄러 🔄
+- ✅ 스케줄러 API 개발 (`/api/game/scheduler`)
+- ✅ 외부 Cron 설정 가이드 작성 (`EXTERNAL_CRON_SETUP.md`)
+- ✅ 동적 게임 시작 시스템 구현
+- ⏳ EasyCron.com 설정 및 토큰 등록
+- ⏳ 프로덕션 테스트 및 안정화
 
 ---
 
