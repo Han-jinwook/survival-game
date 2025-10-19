@@ -294,6 +294,7 @@ export default function GameInterface() {
 
         const data = await response.json()
         console.log("[v0] DB game data:", data)
+        console.log("[v0] 🔍 data.round?.phase:", data.round?.phase)
 
         // player 상태인 참가자만 게임에 참여
         const lobbyPlayers = data.participants?.filter((p: any) => p.status === "player") || []
