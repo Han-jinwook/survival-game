@@ -311,13 +311,16 @@ export default function GameInterface() {
           
           // phase에 따라 gameMode 설정
           if (data.round.phase === 'final_selection' || data.round.phase === 'selection') {
-            setGameMode(data.round.phase === 'final_selection' ? 'final' : 'normal')
+            const newGameMode = data.round.phase === 'final_selection' ? 'final' : 'normal'
+            setGameMode(newGameMode)
+            console.log(`[v0] gameMode 설정: ${data.round.phase} → ${newGameMode}`)
           }
           
           console.log("[v0] 라운드 정보 설정:", {
             id: data.round.id,
             roundNumber: data.round.roundNumber,
-            phase: data.round.phase
+            phase: data.round.phase,
+            playerCount: lobbyPlayers.length
           })
         } else {
           console.log("[v0] ⚠️ 라운드 정보 없음 - 게임이 시작되지 않았을 수 있습니다")
@@ -357,11 +360,18 @@ export default function GameInterface() {
         const totalPlayers = gamePlayers.length
         const totalLives = gamePlayers.reduce((sum, p) => sum + p.lives, 0)
         
+        console.log("[v0] 음성 안내 데이터:", {
+          totalPlayers,
+          totalLives,
+          players: gamePlayers.map(p => ({ nickname: p.nickname, lives: p.lives }))
+        })
+        
         // round.phase로 예선/결승 판단
         const modeText = data.round?.phase === 'final_selection' ? '결승' : '예선'
         const roundNum = data.round?.roundNumber || 1
 
         const startMessage = `이제 총 ${totalPlayers}명, 목숨 ${totalLives}개로, ${modeText} ${roundNum}라운드를 시작합니다`
+        console.log("[v0] 시작 메시지:", startMessage)
         setGameMessage(startMessage)
         
         // 🔒 서버 중심: 라운드는 서버(게임 시작 API)에서만 생성
@@ -409,7 +419,22 @@ export default function GameInterface() {
         (payload: RealtimePostgresChangesPayload<any>) => {
           console.log('[Realtime] 라운드 변경 감지:', payload.new);
           if (payload.new && 'phase' in payload.new) {
-            setGameRound((prev: GameRound) => ({ ...prev, phase: payload.new.phase as GamePhase }));
+            const newPhase = payload.new.phase as GamePhase;
+            console.log(`[Realtime] Phase 변경: ${newPhase}`);
+            
+            // phase에 따라 gameMode도 업데이트
+            if (newPhase === 'final_selection') {
+              console.log(`[Realtime] gameMode 업데이트: final_selection → final`);
+              setGameMode('final');
+            } else if (newPhase === 'selection') {
+              console.log(`[Realtime] gameMode 업데이트: selection → normal`);
+              setGameMode('normal');
+            }
+            
+            setGameRound((prev: GameRound) => {
+              console.log(`[Realtime] gameRound 업데이트: ${prev.phase} → ${newPhase}`);
+              return { ...prev, phase: newPhase };
+            });
           }
         }
       )

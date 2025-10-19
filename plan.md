@@ -252,20 +252,65 @@
 
 ## 📌 최근 완료 작업 (2025-10-19)
 
-### 1. 라운드 중심 아키텍처 전환 ✅
+### 1. 라운드 중심 아키텍처 전환 ✅ (오전)
 - **DB 마이그레이션**: `game_sessions.current_round` 컬럼 제거
 - **코드 수정**: 모든 `current_round` 참조를 `getCurrentRound()` 사용으로 변경
 - **장점**: 데이터 정합성, 단일 진실 공급원(SSOT) 확보
 
-### 2. DB 마이그레이션 스키마 반영 ✅
+### 2. DB 마이그레이션 스키마 반영 ✅ (오전)
 - **`participant_id` → `user_id`**: 마이그레이션 04번 반영
 - **`checkAllPlayersReady()` 메서드 추가**: 자동 페이즈 전환 지원
 - **`savePlayerChoice()` upsert 조건 수정**: 스키마 정합성 확보
 
-### 3. UI 하드코딩 제거 ✅
+### 3. UI 하드코딩 제거 ✅ (오전)
 - **`gameRound` 초기값**: `round: 1` → `round: 0`
 - **DB 데이터 기반**: 모든 라운드 정보를 DB에서 가져옴
 - **로딩 화면 개선**: 데이터 로드 전까지 대기 화면 표시
+
+### 4. 게임 시작 Race Condition 해결 ✅ (오후)
+- **문제**: 게임 시작 시 플레이어 초기화가 순차 처리되어 `checkAllPlayersReady`가 중간 상태 조회
+- **해결**: `Promise.all`로 모든 플레이어를 동시에 초기화
+- **영향**: `app/api/game/session/route.ts`, `app/api/game/scheduler/route.ts`
+- **결과**: 게임 시작 직후 한 명이 죽는 문제 해결
+
+### 5. sessionId 타입 처리 개선 ✅ (오후)
+- **문제**: `/api/game/state`에서 `string | number` 혼용 → `getCurrentRound()` 실패
+- **해결**: sessionId를 명확히 number로 처리, 로그 추가
+- **결과**: 라운드 정보 조회 정상화
+
+### 6. 서버 중심 게임 진행 확립 ✅ (오후)
+- **클라이언트 라운드 생성 제거**: 서버만 라운드 생성 (Race Condition 방지)
+- **GamePhase 타입 확장**: `selection`, `final_selection` 추가
+- **UI 조건문 통일**: 모든 `selectTwo` → `selection || final_selection`
+- **Phase 하드코딩 제거**: 음성 안내 후 phase 변경 안 함
+- **결과**: 
+  - 라운드가 1개만 생성됨 (기존: 서버 + 각 클라이언트마다 생성)
+  - 모든 플레이어가 같은 라운드에서 플레이
+  - 서로를 정상적으로 볼 수 있음
+
+### 7. loadGameData phase 설정 누락 수정 ✅ (오후)
+- **문제**: DB에서 받은 `data.round.phase`를 `gameRound.phase`에 설정 안 함
+- **해결**: 308줄에 `phase: data.round.phase` 추가
+- **결과**: 게임 로딩 화면에서 멈추는 문제 해결
+
+### 8. 라운드 필드 초기화 추가 ✅ (오후 16:10)
+- **문제**: `game_rounds` 테이블에서 `survivors_count`, `rock_count` 등이 모두 NULL/0
+- **원인**: `createRound()` 함수가 필드를 초기화하지 않음
+- **해결**: 
+  - `survivors_count` = 살아있는 플레이어 수로 계산
+  - `rock_count`, `paper_count`, `scissors_count` = 0으로 초기화
+  - 로그 추가
+- **영향**: `lib/database.ts` 169-194줄
+- **결과**: 라운드 생성 시 모든 필드가 올바르게 초기화됨
+
+### 9. gameMode Realtime 동기화 추가 ✅ (오후 16:10)
+- **문제**: Realtime으로 phase가 먼저 업데이트되면 gameMode가 설정되지 않음
+- **원인**: `loadGameData()`의 gameMode 설정 로직이 실행 안 됨 (313-317줄)
+- **해결**: Realtime 구독에서 phase 변경 시 gameMode도 함께 업데이트
+  - `final_selection` → `gameMode = 'final'`
+  - `selection` → `gameMode = 'normal'`
+- **영향**: `app/game/page.tsx` 426-432줄
+- **결과**: "예선 R1" → "결승 R1" 정상 표시
 
 ---
 
@@ -295,5 +340,33 @@
 
 ---
 
-**최종 업데이트**: 2025-10-19  
-**현재 상태**: 프로덕션 배포 완료, 라운드 중심 아키텍처 전환 완료
+**최종 업데이트**: 2025-10-19 15:54  
+**현재 상태**: 서버 중심 게임 진행 확립 완료, Race Condition 해결 완료
+
+## 🔧 현재 디버깅 중인 이슈 (2025-10-19 16:08)
+
+### 1. 예선/결승 UI 표시 문제 🔍
+- **증상**: 2명 게임 시작 시 "예선 R1"으로 표시 (결승이어야 함)
+- **서버**: `final_selection` phase 전송 (정상)
+- **클라이언트**: `gameMode` 상태가 제대로 설정되지 않음
+- **조사 중**:
+  - 314-316줄: `setGameMode(newGameMode)` 호출 확인
+  - 1097줄: UI에서 `gameMode` 값 확인
+- **디버그 로그 추가**: gameMode 설정 로그
+
+### 2. 게임 바로 종료 문제 🔍
+- **증상**: 게임 시작 직후 바로 끝남
+- **조사 중**:
+  - Phase 전환 타이밍
+  - 자동 라운드 종료 로직
+- **디버그 로그 추가**: Realtime phase 변경 로그
+
+### 3. TTS 텍스트 깨짐 🔍
+- **증상**: "이제 총 2명, 목숨 페이지:6589a6187d76268d..."
+- **예상 원인**: `totalLives` 계산 시 객체 혼입
+- **디버그 로그 추가**: totalLives 계산 데이터 로그
+
+### 4. 음성 2번 재생 문제 ⏳
+- **증상**: 게임 시작 시 음성 안내가 2번 재생됨
+- **원인**: 2개 클라이언트가 각각 독립적으로 `speak()` 호출
+- **상태**: 위 3개 이슈 해결 후 작업

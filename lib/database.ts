@@ -167,15 +167,29 @@ export class DatabaseService {
 
   // 라운드 관련
   static async createRound(sessionId: number, roundNumber: number, phase: GameRound['phase']): Promise<GameRound | null> {
+    // 생존자 수 계산
+    const players = await this.getUsersBySession(sessionId);
+    const survivorsCount = players.filter(p => p.status === 'player' && p.current_lives > 0).length;
+    
     const { data, error } = await db
       .from('game_rounds')
-      .insert({ game_session_id: sessionId, round_number: roundNumber, phase: phase })
+      .insert({ 
+        game_session_id: sessionId, 
+        round_number: roundNumber, 
+        phase: phase,
+        survivors_count: survivorsCount,
+        rock_count: 0,
+        paper_count: 0,
+        scissors_count: 0
+      })
       .select()
       .single();
     if (error) {
       console.error('Error creating round:', error);
       return null;
     }
+    
+    console.log(`[DB] 라운드 생성: R${roundNumber}, phase=${phase}, survivors=${survivorsCount}`);
     return data;
   }
 
