@@ -35,12 +35,12 @@ export async function POST(request: NextRequest) {
       if (allReady) {
         console.log(`[Choice API] All players ready for phase: ${currentPhase}`)
         
-        // selectTwo → excludeOne 자동 전환
-        if (currentPhase === 'selectTwo') {
+        // selection/final_selection → excludeOne 자동 전환 (2개 선택 완료)
+        if (currentPhase === 'selection' || currentPhase === 'final_selection') {
           await DatabaseService.updateRound(roundId, { phase: 'excludeOne' as any })
-          console.log(`[Choice API] Phase changed: selectTwo → excludeOne`)
+          console.log(`[Choice API] Phase changed: ${currentPhase} → excludeOne`)
         }
-        // excludeOne → 결과 계산 및 목숨 차감
+        // excludeOne → 결과 계산 및 목숨 차감 (하나 빼기 완료)
         else if (currentPhase === 'excludeOne') {
           // 게임 세션 정보 가져오기 (게임 모드 확인)
           const session = await DatabaseService.getGameSession(round.game_session_id)
@@ -58,14 +58,14 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      choice: {
+      choice: choice ? {
         id: choice.id,
         roundId: choice.round_id,
         userId: choice.user_id,
         selectedChoices: choice.selected_choices,
         finalChoice: choice.final_choice,
         chosenAt: choice.chosen_at,
-      },
+      } : null,
     })
   } catch (error) {
     console.error("Save choice error:", error)

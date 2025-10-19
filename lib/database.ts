@@ -309,7 +309,8 @@ export class DatabaseService {
       // 3. 선택 완료된 플레이어 수 조회
       let readyCount = 0;
       
-      if (phase === 'selectTwo' || phase === 'selection') {
+      // DB phase 기준으로 처리
+      if (phase === 'selection' || phase === 'final_selection') {
         // 2개 선택 단계: selected_choices가 있는지 확인
         const { data: choices, error: choicesError } = await db
           .from('player_choices')
@@ -323,7 +324,7 @@ export class DatabaseService {
         }
         
         readyCount = choices?.length || 0;
-      } else if (phase === 'excludeOne' || phase === 'final_selection') {
+      } else if (phase === 'excludeOne') {
         // 하나 빼기 단계: final_choice가 있는지 확인
         const { data: choices, error: choicesError } = await db
           .from('player_choices')
