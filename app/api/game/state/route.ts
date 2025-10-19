@@ -1,24 +1,32 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { DatabaseService, type PlayerChoice } from "@/lib/database"
+import { DatabaseService } from "@/lib/database"
+import type { PlayerChoice } from "@/lib/types"
 
 export async function GET(request: NextRequest) {
   try {
-    let sessionId: string | null = request.nextUrl.searchParams.get('sessionId')
+    const sessionIdParam = request.nextUrl.searchParams.get('sessionId')
     
     // 세션 ID가 없으면 현재 활성 세션을 자동으로 가져옴
     let session = null
-    if (!sessionId) {
+    let sessionId: number | null = null
+    
+    if (!sessionIdParam) {
       const activeSession = await DatabaseService.getActiveGameSession()
       if (activeSession) {
         session = activeSession
         sessionId = activeSession.id
+        console.log(`[API State] 활성 세션 자동 조회: ${sessionId}`)
       }
     } else {
-      session = await DatabaseService.getGameSession(sessionId)
+      sessionId = parseInt(sessionIdParam, 10)
+      if (!isNaN(sessionId)) {
+        session = await DatabaseService.getGameSession(sessionId)
+        console.log(`[API State] 세션 조회: ${sessionId}`)
+      }
     }
     
     if (!session || !sessionId) {
-      console.log('[API] 활성 게임 세션 없음 - 빈 응답 반환')
+      console.log('[API State] 활성 게임 세션 없음 - 빈 응답 반환')
       return NextResponse.json({ 
         session: null, 
         participants: [], 
@@ -27,8 +35,10 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    const participants = await DatabaseService.getUsersBySession(parseInt(sessionId))
-    const currentRound = await DatabaseService.getCurrentRound(parseInt(sessionId))
+    const participants = await DatabaseService.getUsersBySession(sessionId)
+    const currentRound = await DatabaseService.getCurrentRound(sessionId)
+    
+    console.log(`[API State] 현재 라운드 조회: ${currentRound ? currentRound.id : 'null'}`)
 
     let roundData = null
     let choices: PlayerChoice[] = []

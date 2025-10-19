@@ -305,14 +305,13 @@ export default function GameInterface() {
           setGameRound(prev => ({
             ...prev,
             round: data.round.roundNumber,
+            phase: data.round.phase,  // ← phase 설정 추가!
             survivors: lobbyPlayers.length
           }))
           
           // phase에 따라 gameMode 설정
-          if (data.round.phase === 'final_selection') {
-            setGameMode('final')
-          } else if (data.round.phase === 'selection') {
-            setGameMode('normal')
+          if (data.round.phase === 'final_selection' || data.round.phase === 'selection') {
+            setGameMode(data.round.phase === 'final_selection' ? 'final' : 'normal')
           }
           
           console.log("[v0] 라운드 정보 설정:", {
@@ -320,6 +319,8 @@ export default function GameInterface() {
             roundNumber: data.round.roundNumber,
             phase: data.round.phase
           })
+        } else {
+          console.log("[v0] ⚠️ 라운드 정보 없음 - 게임이 시작되지 않았을 수 있습니다")
         }
 
         const gamePlayers: Player[] = lobbyPlayers.map((p: any) => {
@@ -753,15 +754,15 @@ export default function GameInterface() {
     setVoiceEnabled(newState)
   }
 
-  // 🔄 로딩 중: DB 데이터 로드될 때까지 대기
-  if (gameMode === "waiting" || players.length === 0) {
+  // 🔄 로딩 중: 플레이어 데이터 없을 때만 대기 (gameMode waiting 조건 제거)
+  if (players.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-slate-900 via-purple-950 to-black text-white flex items-center justify-center">
         <Card className="bg-black/80 border-purple-600/50 p-12 max-w-md w-full mx-4 text-center">
           <div className="w-24 h-24 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-6 animate-pulse">
             <span className="text-white font-bold text-4xl">⏳</span>
           </div>
-          <h2 className="text-2xl font-bold text-purple-400 mb-4">게임 로딩 중...</h2>
+          <h2 className="text-2xl font-bold text-purple-400 mb-4">참가자 정보 로딩 중...</h2>
           <p className="text-gray-400">잠시만 기다려주세요</p>
         </Card>
       </div>
